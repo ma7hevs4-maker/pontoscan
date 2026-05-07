@@ -1,26 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
+import { Loader2, ScanLine } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function Index() {
+  const { user, role, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) navigate({ to: "/login" });
+    else if (role === "ELETRICISTA") navigate({ to: "/eletricista" });
+    else navigate({ to: "/admin" });
+  }, [user, role, loading, navigate]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex items-center gap-2 text-primary">
+        <ScanLine className="h-8 w-8" />
+        <span className="text-2xl font-bold">PontoScan</span>
+      </div>
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
