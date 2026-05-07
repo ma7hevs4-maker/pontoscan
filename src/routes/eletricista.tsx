@@ -130,13 +130,11 @@ function EletricistaPage() {
 
 function BigButton({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
   return (
-    <Card asChild className="cursor-pointer transition-transform active:scale-95">
-      <button onClick={onClick} className="flex w-full items-center gap-4 p-6 text-left hover:bg-accent/5">
-        <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
-          <Icon className="h-8 w-8" />
-        </div>
-        <span className="text-2xl font-bold">{label}</span>
-      </button>
-    </Card>
+    <button onClick={onClick} className="flex w-full items-center gap-4 rounded-xl border bg-card p-6 text-left shadow-sm transition-transform hover:bg-accent/5 active:scale-95">
+      <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
+        <Icon className="h-8 w-8" />
+      </div>
+      <span className="text-2xl font-bold">{label}</span>
+    </button>
   );
 }
