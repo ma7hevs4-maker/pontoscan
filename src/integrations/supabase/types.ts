@@ -14,16 +14,182 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bases: {
+        Row: {
+          ativo: boolean
+          codigo_qr: string
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          raio_metros: number
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_qr: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          raio_metros?: number
+        }
+        Update: {
+          ativo?: boolean
+          codigo_qr?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          raio_metros?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id: string
+          nome: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+        }
+        Relationships: []
+      }
+      registros: {
+        Row: {
+          base_id: string | null
+          created_at: string
+          etapa: Database["public"]["Enums"]["etapa_enum"]
+          id: string
+          latitude: number | null
+          longitude: number | null
+          timestamp: string
+          usuario_id: string
+        }
+        Insert: {
+          base_id?: string | null
+          created_at?: string
+          etapa: Database["public"]["Enums"]["etapa_enum"]
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          timestamp?: string
+          usuario_id: string
+        }
+        Update: {
+          base_id?: string | null
+          created_at?: string
+          etapa?: Database["public"]["Enums"]["etapa_enum"]
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          timestamp?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          polo: Database["public"]["Enums"]["polo_enum"] | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"] | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"] | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      vw_tempos: {
+        Row: {
+          dia: string | null
+          nome: string | null
+          polo: Database["public"]["Enums"]["polo_enum"] | null
+          ponto: string | null
+          pos_dds: string | null
+          prefixo: string | null
+          saida_base: string | null
+          tempo_ponto_pos_dds: number | null
+          tempo_pos_dds_saida: number | null
+          usuario_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_admin_polo: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["polo_enum"]
+      }
+      get_user_polo: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["polo_enum"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH"
+      etapa_enum: "PONTO" | "POS_DDS" | "SAIDA_BASE"
+      polo_enum:
+        | "Magé"
+        | "Niterói"
+        | "São Gonçalo"
+        | "Serrana"
+        | "Sul"
+        | "Campos"
+        | "Lagos"
+        | "Macaé"
+        | "Noroeste"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +316,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["ELETRICISTA", "ADMIN_POLO", "ADMIN_DISPATCH"],
+      etapa_enum: ["PONTO", "POS_DDS", "SAIDA_BASE"],
+      polo_enum: [
+        "Magé",
+        "Niterói",
+        "São Gonçalo",
+        "Serrana",
+        "Sul",
+        "Campos",
+        "Lagos",
+        "Macaé",
+        "Noroeste",
+      ],
+    },
   },
 } as const
