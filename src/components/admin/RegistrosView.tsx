@@ -32,7 +32,7 @@ export function RegistrosView() {
       .select("id, etapa, timestamp, usuario_id, latitude, longitude, profiles!inner(nome, prefixo, polo), bases(nome)")
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: false });
-    if (polo && polo !== "all") q = q.eq("profiles.polo", polo);
+    if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
     if (usuario) q = q.ilike("profiles.nome", `%${usuario}%`);
     const { data, error } = await q;
     if (!error) setRows((data as any) ?? []);
