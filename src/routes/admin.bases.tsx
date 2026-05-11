@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { QRCodeCanvas } from "qrcode.react";
-import { Loader2, MapPin, Plus, QrCode, Printer, Power, Crosshair } from "lucide-react";
+import { Loader2, MapPin, Plus, QrCode, Printer, Power, Crosshair, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/bases")({ component: BasesPage });
@@ -26,6 +27,7 @@ function BasesPage() {
   const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState(false);
   const [qrBase, setQrBase] = useState<Base | null>(null);
+  const [delBase, setDelBase] = useState<Base | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -41,6 +43,23 @@ function BasesPage() {
   const toggleAtivo = async (b: Base) => {
     const { error } = await supabase.from("bases").update({ ativo: !b.ativo }).eq("id", b.id);
     if (error) toast.error(error.message); else { toast.success(b.ativo ? "Base desativada" : "Base ativada"); load(); }
+  };
+
+  const confirmDelete = async () => {
+    if (!delBase) return;
+    const { count } = await supabase
+      .from("registros")
+      .select("id", { count: "exact", head: true })
+      .eq("base_id", delBase.id);
+    if ((count ?? 0) > 0) {
+      toast.error(`Base tem ${count} registros vinculados. Desative ao invés de excluir.`);
+      setDelBase(null);
+      return;
+    }
+    const { error } = await supabase.from("bases").delete().eq("id", delBase.id);
+    if (error) toast.error(error.message);
+    else { toast.success("Base excluída"); load(); }
+    setDelBase(null);
   };
 
   return (
@@ -84,6 +103,9 @@ function BasesPage() {
                 <Button size="sm" variant="ghost" onClick={() => toggleAtivo(b)}>
                   <Power className="h-4 w-4" />
                 </Button>
+                <Button size="sm" variant="ghost" onClick={() => setDelBase(b)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
             </Card>
           ))}
@@ -92,6 +114,21 @@ function BasesPage() {
 
       <BaseFormDialog open={openForm} onClose={() => setOpenForm(false)} onSaved={load} />
       <QrDialog base={qrBase} onClose={() => setQrBase(null)} />
+
+      <AlertDialog open={!!delBase} onOpenChange={(o) => !o && setDelBase(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir base "{delBase?.nome}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O QR Code atual deixará de funcionar. Se a base já tiver registros, prefira desativá-la para preservar o histórico.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
