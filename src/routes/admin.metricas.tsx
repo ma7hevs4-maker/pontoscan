@@ -125,7 +125,7 @@ function MetricasPage() {
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip formatter={(v: number) => fmtMin(v)} labelFormatter={(l, p) => p[0]?.payload.fullName ?? l} />
-                  <Bar dataKey="tempo" fill="hsl(var(--primary))" radius={[6,6,0,0]} />
+                  <Bar dataKey="tempo" fill="var(--primary)" radius={[6,6,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
