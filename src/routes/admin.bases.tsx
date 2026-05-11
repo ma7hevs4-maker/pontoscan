@@ -215,27 +215,39 @@ function QrDialog({ base, onClose }: { base: Base | null; onClose: () => void })
     w.document.write(`<html><head><title>QR ${base.nome}</title>
       <style>body{font-family:sans-serif;text-align:center;padding:40px}
       h1{margin:0 0 4px}h2{margin:0 0 24px;color:#666;font-weight:400}
-      .code{font-family:monospace;color:#666;margin-top:16px;font-size:12px}</style>
+      .qr{page-break-after:always;padding:24px 0}
+      .qr:last-child{page-break-after:auto}
+      .etapa{font-size:22px;font-weight:bold;margin:12px 0 8px}
+      .code{font-family:monospace;color:#666;margin-top:8px;font-size:11px}</style>
       </head><body>
-      <h1>${base.nome}</h1>
-      <h2>Polo ${base.polo} · PontoScan</h2>
       ${ref.current.innerHTML}
-      <div class="code">${base.codigo_qr}</div>
       </body></html>`);
     w.document.close();
-    setTimeout(() => { w.print(); w.close(); }, 300);
+    setTimeout(() => { w.print(); w.close(); }, 500);
   };
 
   return (
     <Dialog open={!!base} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-sm text-center">
-        <DialogHeader><DialogTitle>{base?.nome}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{base?.nome}</DialogTitle>
+          <p className="text-sm text-muted-foreground">3 QR Codes — imprima e cole um em cada ponto da base.</p>
+        </DialogHeader>
         {base && (
-          <div ref={ref} className="flex justify-center p-4">
-            <QRCodeCanvas value={base.codigo_qr} size={240} includeMargin />
+          <div ref={ref} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {ETAPAS.map(e => (
+              <div key={e.key} className="qr rounded-lg border p-4 text-center">
+                <h1>{base.nome}</h1>
+                <h2>Polo {base.polo} · PontoScan</h2>
+                <div className="etapa">{e.label}</div>
+                <div className="flex justify-center">
+                  <QRCodeCanvas value={`${base.codigo_qr}|${e.key}`} size={200} includeMargin />
+                </div>
+                <div className="code">{base.codigo_qr}|{e.key}</div>
+              </div>
+            ))}
           </div>
         )}
-        <p className="font-mono text-xs text-muted-foreground">{base?.codigo_qr}</p>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Fechar</Button>
           <Button onClick={print}><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
