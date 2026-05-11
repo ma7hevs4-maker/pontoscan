@@ -30,6 +30,7 @@ function MetricasPage() {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
+  const [search, setSearch] = useState("");
   const [rows, setRows] = useState<VRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -43,12 +44,18 @@ function MetricasPage() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
-  const totalEletricistas = new Set(rows.map(r => r.usuario_id)).size;
-  const completos = rows.filter(r => r.saida_base).length;
-  const tempos = rows.map(r => (r.tempo_ponto_pos_dds ?? 0) + (r.tempo_pos_dds_saida ?? 0)).filter(v => v > 0);
+  const filtered = rows.filter(r => {
+    if (!search.trim()) return true;
+    const s = search.trim().toLowerCase();
+    return (r.nome ?? "").toLowerCase().includes(s) || (r.prefixo ?? "").toLowerCase().includes(s);
+  });
+
+  const totalEletricistas = new Set(filtered.map(r => r.usuario_id)).size;
+  const completos = filtered.filter(r => r.saida_base).length;
+  const tempos = filtered.map(r => (r.tempo_ponto_pos_dds ?? 0) + (r.tempo_pos_dds_saida ?? 0)).filter(v => v > 0);
   const mediaTempo = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
 
-  const ranking = rows
+  const ranking = filtered
     .filter(r => r.tempo_ponto_pos_dds != null)
     .sort((a,b)=> (a.tempo_ponto_pos_dds ?? 0) - (b.tempo_ponto_pos_dds ?? 0))
     .slice(0, 10)
@@ -57,7 +64,7 @@ function MetricasPage() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <div><Label>De</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
           <div><Label>Até</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
           <div>
@@ -69,6 +76,10 @@ function MetricasPage() {
                 {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Nome ou prefixo</Label>
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…" />
           </div>
           <div className="flex items-end"><Button onClick={load} className="w-full">Atualizar</Button></div>
         </div>
@@ -116,8 +127,8 @@ function MetricasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem dados</td></tr>}
-                  {rows.map((r,i) => (
+                  {filtered.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem dados</td></tr>}
+                  {filtered.map((r,i) => (
                     <tr key={i} className="border-t">
                       <td className="p-2">{r.dia}</td>
                       <td className="p-2">{r.nome}</td>
