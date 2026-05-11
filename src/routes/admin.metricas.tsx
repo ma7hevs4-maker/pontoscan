@@ -31,6 +31,7 @@ function MetricasPage() {
   const [to, setTo] = useState(today);
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [search, setSearch] = useState("");
+  const [turno, setTurno] = useState<string>("all");
   const [rows, setRows] = useState<VRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,9 +46,15 @@ function MetricasPage() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
   const filtered = rows.filter(r => {
-    if (!search.trim()) return true;
-    const s = search.trim().toLowerCase();
-    return (r.nome ?? "").toLowerCase().includes(s) || (r.prefixo ?? "").toLowerCase().includes(s);
+    if (turno !== "all") {
+      const letra = (r.prefixo ?? "").split("-")[1]?.[0]?.toUpperCase();
+      if (letra !== turno) return false;
+    }
+    if (search.trim()) {
+      const s = search.trim().toLowerCase();
+      if (!(r.nome ?? "").toLowerCase().includes(s) && !(r.prefixo ?? "").toLowerCase().includes(s)) return false;
+    }
+    return true;
   });
 
   const totalEletricistas = new Set(filtered.map(r => r.usuario_id)).size;
@@ -64,7 +71,7 @@ function MetricasPage() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div><Label>De</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
           <div><Label>Até</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
           <div>
@@ -80,6 +87,18 @@ function MetricasPage() {
           <div>
             <Label>Nome ou prefixo</Label>
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…" />
+          </div>
+          <div>
+            <Label>Turno</Label>
+            <Select value={turno} onValueChange={setTurno}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="A">Turno A</SelectItem>
+                <SelectItem value="B">Turno B</SelectItem>
+                <SelectItem value="C">Turno C</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-end"><Button onClick={load} className="w-full">Atualizar</Button></div>
         </div>
