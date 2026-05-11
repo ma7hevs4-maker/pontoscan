@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -16,6 +18,40 @@ function AdminLayout() {
     if (!user) navigate({ to: "/login" });
     else if (role === "ELETRICISTA") navigate({ to: "/eletricista" });
   }, [user, role, loading, navigate]);
+
+  // Realtime: notificar quando eletricista do polo do admin registra marcação
+  useEffect(() => {
+    if (!user || !role || role === "ELETRICISTA") return;
+    const channel = supabase
+      .channel(`admin-registros-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "registros" },
+        async (payload) => {
+          const reg: any = payload.new;
+          // Buscar perfil do eletricista para filtrar por polo
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("nome, prefixo, polo")
+            .eq("id", reg.usuario_id)
+            .maybeSingle();
+          if (!prof) return;
+          if (role === "ADMIN_POLO" && prof.polo !== adminPolo) return;
+
+          let baseNome = "";
+          if (reg.base_id) {
+            const { data: b } = await supabase.from("bases").select("nome").eq("id", reg.base_id).maybeSingle();
+            baseNome = b?.nome ?? "";
+          }
+          toast.success(`${reg.etapa.replace("_", " ")} · ${prof.nome}`, {
+            description: `${prof.prefixo} · ${prof.polo}${baseNome ? ` · ${baseNome}` : ""}`,
+            duration: 6000,
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, role, adminPolo]);
 
   if (loading || !user || role === "ELETRICISTA") {
     return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;

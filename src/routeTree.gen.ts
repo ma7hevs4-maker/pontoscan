@@ -14,6 +14,8 @@ import { Route as EletricistaRouteImport } from './routes/eletricista'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
+import { Route as AdminBasesRouteImport } from './routes/admin.bases'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -40,40 +42,78 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMetricasRoute = AdminMetricasRouteImport.update({
+  id: '/metricas',
+  path: '/metricas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBasesRoute = AdminBasesRouteImport.update({
+  id: '/bases',
+  path: '/bases',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
+  '/admin/bases': typeof AdminBasesRoute
+  '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
+  '/admin/bases': typeof AdminBasesRoute
+  '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
+  '/admin/bases': typeof AdminBasesRoute
+  '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/cadastro' | '/eletricista' | '/login'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/cadastro'
+    | '/eletricista'
+    | '/login'
+    | '/admin/bases'
+    | '/admin/metricas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/cadastro' | '/eletricista' | '/login'
-  id: '__root__' | '/' | '/admin' | '/cadastro' | '/eletricista' | '/login'
+  to:
+    | '/'
+    | '/admin'
+    | '/cadastro'
+    | '/eletricista'
+    | '/login'
+    | '/admin/bases'
+    | '/admin/metricas'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/cadastro'
+    | '/eletricista'
+    | '/login'
+    | '/admin/bases'
+    | '/admin/metricas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   EletricistaRoute: typeof EletricistaRoute
   LoginRoute: typeof LoginRoute
@@ -116,12 +156,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/metricas': {
+      id: '/admin/metricas'
+      path: '/metricas'
+      fullPath: '/admin/metricas'
+      preLoaderRoute: typeof AdminMetricasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/bases': {
+      id: '/admin/bases'
+      path: '/bases'
+      fullPath: '/admin/bases'
+      preLoaderRoute: typeof AdminBasesRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminBasesRoute: typeof AdminBasesRoute
+  AdminMetricasRoute: typeof AdminMetricasRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminBasesRoute: AdminBasesRoute,
+  AdminMetricasRoute: AdminMetricasRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   CadastroRoute: CadastroRoute,
   EletricistaRoute: EletricistaRoute,
   LoginRoute: LoginRoute,
