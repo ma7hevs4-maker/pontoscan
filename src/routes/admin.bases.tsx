@@ -210,20 +210,32 @@ function QrDialog({ base, onClose }: { base: Base | null; onClose: () => void })
   const ref = useRef<HTMLDivElement>(null);
   const print = () => {
     if (!base || !ref.current) return;
+    const canvases = ref.current.querySelectorAll("canvas");
+    const images = Array.from(canvases).map(c => (c as HTMLCanvasElement).toDataURL("image/png"));
     const w = window.open("", "_blank", "width=600,height=700");
     if (!w) return;
+    const pages = ETAPAS.map((e, i) => `
+      <div class="qr">
+        <h1>${base.nome}</h1>
+        <h2>Polo ${base.polo} · PontoScan</h2>
+        <div class="etapa">${e.label}</div>
+        <img src="${images[i]}" width="320" height="320" />
+        <div class="code">${base.codigo_qr}|${e.key}</div>
+      </div>`).join("");
     w.document.write(`<html><head><title>QR ${base.nome}</title>
-      <style>body{font-family:sans-serif;text-align:center;padding:40px}
-      h1{margin:0 0 4px}h2{margin:0 0 24px;color:#666;font-weight:400}
-      .qr{page-break-after:always;padding:24px 0}
-      .qr:last-child{page-break-after:auto}
-      .etapa{font-size:22px;font-weight:bold;margin:12px 0 8px}
-      .code{font-family:monospace;color:#666;margin-top:8px;font-size:11px}</style>
-      </head><body>
-      ${ref.current.innerHTML}
-      </body></html>`);
+      <style>
+        @page { margin: 20mm; }
+        body{font-family:sans-serif;text-align:center;margin:0;padding:0}
+        h1{margin:0 0 4px;font-size:24px}
+        h2{margin:0 0 16px;color:#666;font-weight:400;font-size:14px}
+        .etapa{font-size:26px;font-weight:bold;margin:16px 0}
+        .qr{page-break-after:always;padding:40px 20px}
+        .qr:last-child{page-break-after:auto}
+        .code{font-family:monospace;color:#666;margin-top:12px;font-size:11px}
+        img{display:block;margin:0 auto}
+      </style></head><body>${pages}</body></html>`);
     w.document.close();
-    setTimeout(() => { w.print(); w.close(); }, 500);
+    setTimeout(() => { w.focus(); w.print(); w.close(); }, 600);
   };
 
   return (
