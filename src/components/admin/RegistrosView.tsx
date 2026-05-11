@@ -21,6 +21,7 @@ export function RegistrosView() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [usuario, setUsuario] = useState("");
+  const [turno, setTurno] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +34,6 @@ export function RegistrosView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: false });
     if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
-    if (usuario) q = q.ilike("profiles.nome", `%${usuario}%`);
     const { data, error } = await q;
     if (!error) setRows((data as any) ?? []);
     setLoading(false);
@@ -41,9 +41,23 @@ export function RegistrosView() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, polo]);
 
+  const filtered = rows.filter(r => {
+    if (turno !== "all") {
+      const letra = (r.profiles?.prefixo ?? "").split("-")[1]?.[0]?.toUpperCase();
+      if (letra !== turno) return false;
+    }
+    if (usuario.trim()) {
+      const s = usuario.trim().toLowerCase();
+      const n = (r.profiles?.nome ?? "").toLowerCase();
+      const p = (r.profiles?.prefixo ?? "").toLowerCase();
+      if (!n.includes(s) && !p.includes(s)) return false;
+    }
+    return true;
+  });
+
   const exportCsv = () => {
     const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Lat","Lng"];
-    const lines = rows.map(r => {
+    const lines = filtered.map(r => {
       const d = new Date(r.timestamp);
       return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, r.profiles?.prefixo, r.profiles?.polo, r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
     });
@@ -56,7 +70,7 @@ export function RegistrosView() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
           <div>
             <Label>Polo</Label>
@@ -69,8 +83,20 @@ export function RegistrosView() {
             </Select>
           </div>
           <div>
-            <Label>Buscar nome</Label>
-            <Input value={usuario} onChange={(e) => setUsuario(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Nome…" />
+            <Label>Nome ou prefixo</Label>
+            <Input value={usuario} onChange={(e) => setUsuario(e.target.value)} placeholder="Buscar…" />
+          </div>
+          <div>
+            <Label>Turno</Label>
+            <Select value={turno} onValueChange={setTurno}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="A">Turno A</SelectItem>
+                <SelectItem value="B">Turno B</SelectItem>
+                <SelectItem value="C">Turno C</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-end gap-2">
             <Button onClick={load} className="flex-1">Filtrar</Button>
@@ -91,8 +117,8 @@ export function RegistrosView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
-              {rows.map(r => (
+              {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
+              {filtered.map(r => (
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
                   <TableCell>{r.profiles?.nome}</TableCell>
