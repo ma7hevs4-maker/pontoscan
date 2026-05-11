@@ -116,6 +116,13 @@ export type Database = {
             referencedRelation: "bases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "registros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -157,7 +164,15 @@ export type Database = {
           tempo_pos_dds_saida: number | null
           usuario_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "registros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
