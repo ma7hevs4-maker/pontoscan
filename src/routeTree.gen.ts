@@ -15,6 +15,7 @@ import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
+import { Route as AdminContasRouteImport } from './routes/admin.contas'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
 
 const LoginRoute = LoginRouteImport.update({
@@ -47,6 +48,11 @@ const AdminMetricasRoute = AdminMetricasRouteImport.update({
   path: '/metricas',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminContasRoute = AdminContasRouteImport.update({
+  id: '/contas',
+  path: '/contas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBasesRoute = AdminBasesRouteImport.update({
   id: '/bases',
   path: '/bases',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
   '/admin/bases': typeof AdminBasesRoute
+  '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
   '/admin/bases': typeof AdminBasesRoute
+  '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/eletricista': typeof EletricistaRoute
   '/login': typeof LoginRoute
   '/admin/bases': typeof AdminBasesRoute
+  '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/eletricista'
     | '/login'
     | '/admin/bases'
+    | '/admin/contas'
     | '/admin/metricas'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/eletricista'
     | '/login'
     | '/admin/bases'
+    | '/admin/contas'
     | '/admin/metricas'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/eletricista'
     | '/login'
     | '/admin/bases'
+    | '/admin/contas'
     | '/admin/metricas'
   fileRoutesById: FileRoutesById
 }
@@ -163,6 +175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMetricasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/contas': {
+      id: '/admin/contas'
+      path: '/contas'
+      fullPath: '/admin/contas'
+      preLoaderRoute: typeof AdminContasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/bases': {
       id: '/admin/bases'
       path: '/bases'
@@ -175,11 +194,13 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminBasesRoute: typeof AdminBasesRoute
+  AdminContasRoute: typeof AdminContasRoute
   AdminMetricasRoute: typeof AdminMetricasRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBasesRoute: AdminBasesRoute,
+  AdminContasRoute: AdminContasRoute,
   AdminMetricasRoute: AdminMetricasRoute,
 }
 
@@ -195,3 +216,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
