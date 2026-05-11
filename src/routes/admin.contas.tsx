@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, KeyRound, Mail, Search } from "lucide-react";
 import { toast } from "sonner";
-import { listAdmins, updateUserEmail, updateUserPassword, searchEletricistas } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/admin/contas")({ component: ContasPage });
 
 interface AdminRow { user_id: string; email: string | null; nome: string; role: string; polo: string | null; }
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }
 
+async function callAdmin(body: any) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Sessão expirada");
+  const r = await fetch("/api/admin-users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 function ContasPage() {
   const { role, loading } = useAuth();
   const navigate = useNavigate();
-  const fetchAdmins = useServerFn(listAdmins);
-  const doSearch = useServerFn(searchEletricistas);
 
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -36,8 +46,8 @@ function ContasPage() {
   const refresh = async () => {
     setLoadingList(true);
     try {
-      const r = await fetchAdmins();
-      setAdmins(r.admins);
+      const r = await callAdmin({ action: "list" });
+      setAdmins(r.admins ?? []);
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao carregar");
     } finally { setLoadingList(false); }
@@ -49,8 +59,8 @@ function ContasPage() {
     if (!q.trim()) { setResults([]); return; }
     setSearching(true);
     try {
-      const r = await doSearch({ data: { q } });
-      setResults(r.users);
+      const r = await callAdmin({ action: "search-eletricistas", q });
+      setResults(r.users ?? []);
     } catch (e: any) {
       toast.error(e.message ?? "Erro");
     } finally { setSearching(false); }
@@ -145,7 +155,6 @@ function ContasPage() {
 }
 
 function ResetPasswordDialog({ userId, label }: { userId: string; label: string }) {
-  const fn = useServerFn(updateUserPassword);
   const [open, setOpen] = useState(false);
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -153,7 +162,7 @@ function ResetPasswordDialog({ userId, label }: { userId: string; label: string 
   const submit = async () => {
     setBusy(true);
     try {
-      await fn({ data: { userId, password: pw } });
+      await callAdmin({ action: "update-password", userId, password: pw });
       toast.success("Senha atualizada");
       setOpen(false); setPw("");
     } catch (e: any) {
@@ -182,7 +191,6 @@ function ResetPasswordDialog({ userId, label }: { userId: string; label: string 
 }
 
 function EditEmailDialog({ userId, currentEmail, onDone }: { userId: string; currentEmail: string; onDone: () => void }) {
-  const fn = useServerFn(updateUserEmail);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(currentEmail);
   const [busy, setBusy] = useState(false);
@@ -192,7 +200,7 @@ function EditEmailDialog({ userId, currentEmail, onDone }: { userId: string; cur
   const submit = async () => {
     setBusy(true);
     try {
-      await fn({ data: { userId, email } });
+      await callAdmin({ action: "update-email", userId, email });
       toast.success("E-mail atualizado");
       setOpen(false);
       onDone();

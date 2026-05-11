@@ -14,6 +14,7 @@ import { Route as EletricistaRouteImport } from './routes/eletricista'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as AdminContasRouteImport } from './routes/admin.contas'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
@@ -43,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
+  id: '/api/admin-users',
+  path: '/api/admin-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMetricasRoute = AdminMetricasRouteImport.update({
   id: '/metricas',
   path: '/metricas',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-users': typeof ApiAdminUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-users': typeof ApiAdminUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-users': typeof ApiAdminUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/metricas'
+    | '/api/admin-users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/metricas'
+    | '/api/admin-users'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/metricas'
+    | '/api/admin-users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CadastroRoute: typeof CadastroRoute
   EletricistaRoute: typeof EletricistaRoute
   LoginRoute: typeof LoginRoute
+  ApiAdminUsersRoute: typeof ApiAdminUsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin-users': {
+      id: '/api/admin-users'
+      path: '/api/admin-users'
+      fullPath: '/api/admin-users'
+      preLoaderRoute: typeof ApiAdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/metricas': {
@@ -212,6 +232,7 @@ const rootRouteChildren: RootRouteChildren = {
   CadastroRoute: CadastroRoute,
   EletricistaRoute: EletricistaRoute,
   LoginRoute: LoginRoute,
+  ApiAdminUsersRoute: ApiAdminUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
