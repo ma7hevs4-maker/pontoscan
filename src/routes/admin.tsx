@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle } from "lucide-react";
+import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -65,6 +65,9 @@ function AdminLayout() {
     { to: "/admin/metricas", label: "Métricas", icon: BarChart3 },
     { to: "/admin/bases", label: "Bases & QR", icon: MapPin },
   ];
+  if (role === "ADMIN_DISPATCH") {
+    tabs.push({ to: "/admin/contas", label: "Contas", icon: ShieldCheck } as any);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,6 +84,11 @@ function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {role === "ADMIN_DISPATCH" && (
+              <Button variant="ghost" size="icon" aria-label="Contas" onClick={() => navigate({ to: "/admin/contas" })}>
+                <ShieldCheck className="h-5 w-5" />
+              </Button>
+            )}
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Ajuda"><HelpCircle className="h-5 w-5" /></Button>
