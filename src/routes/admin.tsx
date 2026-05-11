@@ -2,9 +2,10 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2 } from "lucide-react";
+import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -79,9 +80,41 @@ function AdminLayout() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Ajuda"><HelpCircle className="h-5 w-5" /></Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Ajuda · Glossário</DialogTitle></DialogHeader>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <p className="font-semibold">Eletricistas ativos</p>
+                    <p className="text-muted-foreground">Quantidade de eletricistas distintos que fizeram pelo menos uma marcação (PONTO, POS DDS ou SAÍDA) no período filtrado.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Jornadas completas</p>
+                    <p className="text-muted-foreground">Quantos dias-eletricista tiveram as três etapas registradas (PONTO → POS DDS → SAÍDA). O formato “X/Y” significa X jornadas concluídas de Y iniciadas.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Tempo médio (PONTO → SAÍDA)</p>
+                    <p className="text-muted-foreground">Média do tempo total entre o PONTO e a SAÍDA DA BASE entre todas as jornadas do período.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Etapas</p>
+                    <p className="text-muted-foreground"><b>PONTO</b>: chegada na base. <b>POS DDS</b>: após o Diálogo Diário de Segurança. <b>SAÍDA BASE</b>: saída da base para campo.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Turno</p>
+                    <p className="text-muted-foreground">Identificado pela letra após o hífen no prefixo da equipe (ex.: <b>NI200TST-A</b> = Turno A).</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         <nav className="mx-auto flex max-w-7xl gap-1 px-4">
           {tabs.map(t => {
