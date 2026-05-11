@@ -7,17 +7,17 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QrScanner } from "@/components/QrScanner";
 import { getPosition, distanceMeters } from "@/lib/geo";
-import { ScanLine, LogOut, Clock, FileText, DoorOpen, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
 
 type Etapa = "PONTO" | "POS_DDS" | "SAIDA_BASE";
+const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pós DDS", SAIDA_BASE: "Sair da Base" };
 
 function EletricistaPage() {
   const { user, profile, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [etapa, setEtapa] = useState<Etapa | null>(null);
   const [scanning, setScanning] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -28,14 +28,19 @@ function EletricistaPage() {
     else if (role !== "ELETRICISTA") navigate({ to: "/admin" });
   }, [user, role, loading, navigate]);
 
-  const start = (e: Etapa) => { setEtapa(e); setScanning(true); setResult(null); };
+  const start = () => { setScanning(true); setResult(null); };
 
   const onScan = async (qr: string) => {
-    if (!etapa || !user || working) return;
+    if (!user || working) return;
     setWorking(true);
     try {
+      const [codigoBase, etapaRaw] = qr.split("|");
+      if (!codigoBase || !etapaRaw) throw new Error("QR Code inválido");
+      const etapa = etapaRaw as Etapa;
+      if (!["PONTO", "POS_DDS", "SAIDA_BASE"].includes(etapa)) throw new Error("Etapa do QR inválida");
+
       const { data: base, error: bErr } = await supabase
-        .from("bases").select("*").eq("codigo_qr", qr).eq("ativo", true).maybeSingle();
+        .from("bases").select("*").eq("codigo_qr", codigoBase).eq("ativo", true).maybeSingle();
       if (bErr) throw bErr;
       if (!base) throw new Error("QR Code não reconhecido");
 
@@ -59,7 +64,7 @@ function EletricistaPage() {
       });
       if (iErr) throw iErr;
 
-      setResult({ ok: true, msg: `${etapa} registrado em ${base.nome}` });
+      setResult({ ok: true, msg: `${ETAPA_LABEL[etapa]} registrado em ${base.nome}` });
     } catch (e: any) {
       setResult({ ok: false, msg: e.message ?? "Erro ao registrar" });
     } finally {
@@ -88,18 +93,25 @@ function EletricistaPage() {
       </header>
 
       <main className="mx-auto max-w-md p-4">
-        <h2 className="mb-4 text-lg font-semibold text-muted-foreground">Selecione a etapa</h2>
-        <div className="space-y-3">
-          <BigButton icon={Clock} label="Ponto" onClick={() => start("PONTO")} />
-          <BigButton icon={FileText} label="Pós DDS" onClick={() => start("POS_DDS")} />
-          <BigButton icon={DoorOpen} label="Sair da Base" onClick={() => start("SAIDA_BASE")} />
-        </div>
+        <Card className="p-6 text-center">
+          <h2 className="mb-2 text-lg font-semibold">Registrar marcação</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Escaneie o QR Code da etapa correspondente: <b>Ponto</b>, <b>Pós DDS</b> ou <b>Sair da Base</b>.
+          </p>
+          <button
+            onClick={start}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary p-8 text-primary-foreground shadow-md transition-transform active:scale-95"
+          >
+            <QrCode className="h-10 w-10" />
+            <span className="text-2xl font-bold">Escanear QR</span>
+          </button>
+        </Card>
       </main>
 
       <Dialog open={scanning} onOpenChange={(o) => !o && setScanning(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Escanear QR — {etapa?.replace("_", " ")}</DialogTitle>
+            <DialogTitle>Escanear QR Code</DialogTitle>
           </DialogHeader>
           {scanning && <QrScanner onScan={onScan} />}
           {working && <div className="flex items-center justify-center gap-2 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Registrando…</div>}
@@ -125,16 +137,5 @@ function EletricistaPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function BigButton({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex w-full items-center gap-4 rounded-xl border bg-card p-6 text-left shadow-sm transition-transform hover:bg-accent/5 active:scale-95">
-      <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
-        <Icon className="h-8 w-8" />
-      </div>
-      <span className="text-2xl font-bold">{label}</span>
-    </button>
   );
 }
