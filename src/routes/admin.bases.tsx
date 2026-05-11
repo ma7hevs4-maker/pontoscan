@@ -15,6 +15,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/bases")({ component: BasesPage });
 
+const ETAPAS = [
+  { key: "PONTO", label: "Ponto" },
+  { key: "POS_DDS", label: "Pós DDS" },
+  { key: "SAIDA_BASE", label: "Sair da Base" },
+] as const;
+
 interface Base {
   id: string; nome: string; polo: Polo; codigo_qr: string;
   latitude: number | null; longitude: number | null;
