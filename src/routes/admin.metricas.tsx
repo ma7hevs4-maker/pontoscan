@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Timer, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/admin/metricas")({ component: MetricasPage });
 
@@ -34,6 +35,7 @@ function MetricasPage() {
   const [turno, setTurno] = useState<string>("all");
   const [rows, setRows] = useState<VRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [agrupamento, setAgrupamento] = useState<"equipe" | "pessoa">("equipe");
 
   const load = async () => {
     setLoading(true);
@@ -62,11 +64,25 @@ function MetricasPage() {
   const tempos = filtered.map(r => (r.tempo_ponto_pos_dds ?? 0) + (r.tempo_pos_dds_saida ?? 0)).filter(v => v > 0);
   const mediaTempo = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
 
-  const ranking = filtered
-    .filter(r => r.tempo_ponto_pos_dds != null)
-    .sort((a,b)=> (a.tempo_ponto_pos_dds ?? 0) - (b.tempo_ponto_pos_dds ?? 0))
-    .slice(0, 10)
-    .map(r => ({ nome: `${r.prefixo}`, tempo: r.tempo_ponto_pos_dds ?? 0, fullName: r.nome }));
+  const rankingSource = filtered.filter(r => r.tempo_ponto_pos_dds != null);
+  const grupos = new Map<string, { label: string; full: string; tempos: number[] }>();
+  for (const r of rankingSource) {
+    const key = agrupamento === "equipe" ? (r.prefixo ?? "—") : (r.usuario_id ?? r.nome);
+    const label = agrupamento === "equipe" ? (r.prefixo ?? "—") : r.nome;
+    const full = agrupamento === "equipe"
+      ? `Equipe ${r.prefixo ?? "—"}`
+      : `${r.nome} (${r.prefixo ?? "—"})`;
+    if (!grupos.has(key)) grupos.set(key, { label, full, tempos: [] });
+    grupos.get(key)!.tempos.push(r.tempo_ponto_pos_dds ?? 0);
+  }
+  const ranking = Array.from(grupos.values())
+    .map(g => ({
+      nome: g.label,
+      fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
+      tempo: g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length,
+    }))
+    .sort((a,b) => a.tempo - b.tempo)
+    .slice(0, 10);
 
   return (
     <div className="space-y-4">
@@ -115,7 +131,18 @@ function MetricasPage() {
           </div>
 
           <Card className="p-4">
-            <h3 className="mb-3 font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
+              <ToggleGroup
+                type="single"
+                value={agrupamento}
+                onValueChange={(v) => v && setAgrupamento(v as "equipe" | "pessoa")}
+                size="sm"
+              >
+                <ToggleGroupItem value="equipe">Por equipe</ToggleGroupItem>
+                <ToggleGroupItem value="pessoa">Por pessoa</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
             {ranking.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
