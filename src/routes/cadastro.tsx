@@ -33,7 +33,10 @@ function SignupPage() {
     if (!polo) { toast.error("Selecione um polo"); return; }
     if (password.length < 6) { toast.error("Senha mínima 6 caracteres"); return; }
     setLoading(true);
-    const email = `${prefixo.toLowerCase().replace(/[^a-z0-9]/g, "")}@pontoscan.app`;
+    const nomeSlug = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const prefixoSlug = prefixo.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!nomeSlug) { toast.error("Informe o nome completo"); setLoading(false); return; }
+    const email = `${prefixoSlug}.${nomeSlug}@pontoscan.app`;
     const { error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: window.location.origin, data: { nome, prefixo, polo } },
