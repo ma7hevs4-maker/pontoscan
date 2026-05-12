@@ -115,7 +115,7 @@ function MetricasPage() {
           </div>
 
           <Card className="p-4">
-            <h3 className="mb-3 font-semibold">Top 10 — Tempo PONTO → POS DDS (mais rápidos)</h3>
+            <h3 className="mb-3 font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
             {ranking.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
