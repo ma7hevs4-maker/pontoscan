@@ -64,25 +64,56 @@ function MetricasPage() {
   const tempos = filtered.map(r => (r.tempo_ponto_pos_dds ?? 0) + (r.tempo_pos_dds_saida ?? 0)).filter(v => v > 0);
   const mediaTempo = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
 
-  const rankingSource = filtered.filter(r => r.tempo_ponto_pos_dds != null);
-  const grupos = new Map<string, { label: string; full: string; tempos: number[] }>();
-  for (const r of rankingSource) {
-    const key = agrupamento === "equipe" ? (r.prefixo ?? "—") : (r.usuario_id ?? r.nome);
-    const label = agrupamento === "equipe" ? (r.prefixo ?? "—") : r.nome;
-    const full = agrupamento === "equipe"
-      ? `Equipe ${r.prefixo ?? "—"}`
-      : `${r.nome} (${r.prefixo ?? "—"})`;
-    if (!grupos.has(key)) grupos.set(key, { label, full, tempos: [] });
-    grupos.get(key)!.tempos.push(r.tempo_ponto_pos_dds ?? 0);
+  let ranking: { nome: string; fullName: string; tempo: number }[] = [];
+  if (agrupamento === "pessoa") {
+    const grupos = new Map<string, { label: string; full: string; tempos: number[] }>();
+    for (const r of filtered) {
+      if (r.tempo_ponto_pos_dds == null) continue;
+      const key = r.usuario_id ?? r.nome;
+      if (!grupos.has(key)) grupos.set(key, { label: r.nome, full: `${r.nome} (${r.prefixo ?? "—"})`, tempos: [] });
+      grupos.get(key)!.tempos.push(r.tempo_ponto_pos_dds);
+    }
+    ranking = Array.from(grupos.values())
+      .map(g => ({
+        nome: g.label,
+        fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
+        tempo: g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length,
+      }));
+  } else {
+    // Por equipe: agrega por (prefixo, dia) — ponto = mais cedo, dds = média, saída = mais tarde
+    const ts = (s: string | null) => (s ? new Date(s).getTime() : NaN);
+    const dias = new Map<string, { prefixo: string; dia: string; pontos: number[]; dds: number[]; saidas: number[] }>();
+    for (const r of filtered) {
+      const k = `${r.prefixo}|${r.dia}`;
+      if (!dias.has(k)) dias.set(k, { prefixo: r.prefixo ?? "—", dia: r.dia, pontos: [], dds: [], saidas: [] });
+      const g = dias.get(k)!;
+      const tp = ts(r.ponto), td = ts(r.pos_dds), tsd = ts(r.saida_base);
+      if (!isNaN(tp)) g.pontos.push(tp);
+      if (!isNaN(td)) g.dds.push(td);
+      if (!isNaN(tsd)) g.saidas.push(tsd);
+    }
+    const porEquipe = new Map<string, { tempos: number[]; integrantes: number }>();
+    const sizes = new Map<string, Set<string>>();
+    for (const r of filtered) {
+      if (!sizes.has(r.prefixo ?? "—")) sizes.set(r.prefixo ?? "—", new Set());
+      sizes.get(r.prefixo ?? "—")!.add(r.usuario_id);
+    }
+    for (const g of dias.values()) {
+      if (!g.pontos.length || !g.dds.length) continue;
+      const ponto = Math.min(...g.pontos);
+      const dds = g.dds.reduce((a,b)=>a+b,0) / g.dds.length;
+      const tempo = (dds - ponto) / 60000;
+      if (tempo <= 0) continue;
+      if (!porEquipe.has(g.prefixo)) porEquipe.set(g.prefixo, { tempos: [], integrantes: sizes.get(g.prefixo)?.size ?? 0 });
+      porEquipe.get(g.prefixo)!.tempos.push(tempo);
+    }
+    ranking = Array.from(porEquipe.entries()).map(([prefixo, v]) => ({
+      nome: prefixo,
+      fullName: `Equipe ${prefixo} — ${v.integrantes} integrante${v.integrantes > 1 ? "s" : ""}, ${v.tempos.length} dia${v.tempos.length > 1 ? "s" : ""}`,
+      tempo: v.tempos.reduce((a,b)=>a+b,0) / v.tempos.length,
+    }));
   }
-  const ranking = Array.from(grupos.values())
-    .map(g => ({
-      nome: g.label,
-      fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
-      tempo: g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length,
-    }))
-    .sort((a,b) => a.tempo - b.tempo)
-    .slice(0, 10);
+  ranking = ranking.sort((a,b) => a.tempo - b.tempo).slice(0, 10);
 
   return (
     <div className="space-y-4">
