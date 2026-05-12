@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin/bases")({ component: BasesPage });
 
 const ETAPAS = [
   { key: "PONTO", label: "Ponto" },
-  { key: "POS_DDS", label: "Pós DDS" },
+  { key: "POS_DDS", label: "Pré DDS" },
   { key: "SAIDA_BASE", label: "Sair da Base" },
 ] as const;
 

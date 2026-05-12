@@ -15,7 +15,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
 
 type Etapa = "PONTO" | "POS_DDS" | "SAIDA_BASE";
-const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pós DDS", SAIDA_BASE: "Sair da Base" };
+const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pré DDS", SAIDA_BASE: "Sair da Base" };
 
 const PROV_KEY = "pontoscan.prefixo_provisorio";
 
@@ -160,7 +160,7 @@ function EletricistaPage() {
         <Card className="p-6 text-center">
           <h2 className="mb-2 text-lg font-semibold">Registrar marcação</h2>
           <p className="mb-6 text-sm text-muted-foreground">
-            Escaneie o QR Code da etapa correspondente: <b>Ponto</b>, <b>Pós DDS</b> ou <b>Sair da Base</b>.
+            Escaneie o QR Code da etapa correspondente: <b>Ponto</b>, <b>Pré DDS</b> ou <b>Sair da Base</b>.
           </p>
           <button
             onClick={start}
