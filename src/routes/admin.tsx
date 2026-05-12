@@ -98,11 +98,11 @@ function AdminLayout() {
                 <div className="space-y-4 text-sm">
                   <div>
                     <p className="font-semibold">Eletricistas ativos</p>
-                    <p className="text-muted-foreground">Quantidade de eletricistas distintos que fizeram pelo menos uma marcação (PONTO, POS DDS ou SAÍDA) no período filtrado.</p>
+                    <p className="text-muted-foreground">Quantidade de eletricistas distintos que fizeram pelo menos uma marcação (PONTO, PRÉ DDS ou SAÍDA) no período filtrado.</p>
                   </div>
                   <div>
                     <p className="font-semibold">Jornadas completas</p>
-                    <p className="text-muted-foreground">Quantos dias-eletricista tiveram as três etapas registradas (PONTO → POS DDS → SAÍDA). O formato “X/Y” significa X jornadas concluídas de Y iniciadas.</p>
+                    <p className="text-muted-foreground">Quantos dias-eletricista tiveram as três etapas registradas (PONTO → PRÉ DDS → SAÍDA). O formato “X/Y” significa X jornadas concluídas de Y iniciadas.</p>
                   </div>
                   <div>
                     <p className="font-semibold">Tempo médio (PONTO → SAÍDA)</p>
@@ -110,7 +110,7 @@ function AdminLayout() {
                   </div>
                   <div>
                     <p className="font-semibold">Etapas</p>
-                    <p className="text-muted-foreground"><b>PONTO</b>: chegada na base. <b>POS DDS</b>: após o Diálogo Diário de Segurança. <b>SAÍDA BASE</b>: saída da base para campo.</p>
+                    <p className="text-muted-foreground"><b>PONTO</b>: chegada na base. <b>PRÉ DDS</b>: antes do Diálogo Diário de Segurança. <b>SAÍDA BASE</b>: saída da base para campo.</p>
                   </div>
                   <div>
                     <p className="font-semibold">Turno</p>
