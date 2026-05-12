@@ -122,8 +122,15 @@ function EletricistaPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary">
       <header className="flex items-center justify-between border-b bg-card p-4 shadow-sm">
         <div className="flex items-center gap-2">
-          <ScanLine className="h-6 w-6 text-primary" />
-          <div>
+          <Button variant="ghost" size="icon" title="Histórico" onClick={() => setHistoryOpen(true)}>
+            <History className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" title="Prefixo provisório" onClick={() => setProvOpen(true)}>
+            <UserCog className={`h-5 w-5 ${provAtivo ? "text-amber-600" : ""}`} />
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
             <p className="text-sm font-bold">{profile.nome}</p>
             <p className="text-xs text-muted-foreground">
               {provAtivo ? (
@@ -133,14 +140,7 @@ function EletricistaPage() {
               )}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" title="Histórico" onClick={() => setHistoryOpen(true)}>
-            <History className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" title="Prefixo provisório" onClick={() => setProvOpen(true)}>
-            <UserCog className={`h-5 w-5 ${provAtivo ? "text-amber-600" : ""}`} />
-          </Button>
+          <ScanLine className="h-6 w-6 text-primary" />
           <Button variant="ghost" size="icon" title="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
             <LogOut className="h-5 w-5" />
           </Button>
