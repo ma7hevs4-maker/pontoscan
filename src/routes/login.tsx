@@ -16,6 +16,7 @@ function slug(p: string) {
 
 function LoginPage() {
   const [identificador, setIdent] = useState("");
+  const [nome, setNome] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -28,13 +29,13 @@ function LoginPage() {
     // Se for prefixo (eletricista) busca email pelo prefixo
     if (!email.includes("@")) {
       const up = email.toUpperCase();
-      // tenta como prefixo
-      const { data } = await supabase.from("profiles").select("id").eq("prefixo", up).maybeSingle();
-      if (data) {
-        // We can't fetch email from auth — use prefixo as deterministic email
-        email = `${up.toLowerCase().replace(/[^a-z0-9]/g, "")}@pontoscan.app`;
+      const nomeSlug = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const prefixoSlug = up.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (nomeSlug) {
+        // eletricista: prefixo + nome
+        email = `${prefixoSlug}.${nomeSlug}@pontoscan.app`;
       } else {
-        // Tentativa: admin shortcut "polo" → admin.<polo>@pontoscan.app
+        // admin shortcut "polo" → admin.<polo>@pontoscan.app
         const s = slug(email);
         email = `admin.${s}@pontoscan.app`;
       }
@@ -61,6 +62,11 @@ function LoginPage() {
           <div>
             <Label htmlFor="ident">Prefixo ou e-mail</Label>
             <Input id="ident" value={identificador} onChange={(e) => setIdent(e.target.value)} placeholder="SG010SOE-A" required autoCapitalize="characters" />
+          </div>
+          <div>
+            <Label htmlFor="nome">Nome (eletricistas)</Label>
+            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" />
+            <p className="mt-1 text-xs text-muted-foreground">Obrigatório quando logar com prefixo. Deixe em branco se usar e-mail.</p>
           </div>
           <div>
             <Label htmlFor="pw">Senha</Label>
