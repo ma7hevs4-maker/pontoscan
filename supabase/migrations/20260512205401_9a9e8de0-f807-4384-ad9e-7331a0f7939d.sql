@@ -1,0 +1,1 @@
+ALTER TABLE public.registros ADD COLUMN IF NOT EXISTS prefixo_override TEXT;
