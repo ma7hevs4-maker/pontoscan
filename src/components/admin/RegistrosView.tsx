@@ -12,6 +12,7 @@ import { Download, Loader2 } from "lucide-react";
 interface Row {
   id: string; etapa: string; timestamp: string; usuario_id: string;
   latitude: number | null; longitude: number | null;
+  prefixo_override: string | null;
   profiles: { nome: string; prefixo: string; polo: string } | null;
   bases: { nome: string } | null;
 }
@@ -30,7 +31,7 @@ export function RegistrosView() {
     const start = new Date(date + "T00:00:00").toISOString();
     const end = new Date(date + "T23:59:59").toISOString();
     let q = supabase.from("registros")
-      .select("id, etapa, timestamp, usuario_id, latitude, longitude, profiles!inner(nome, prefixo, polo), bases(nome)")
+      .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, profiles!inner(nome, prefixo, polo), bases(nome)")
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: false });
     if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
@@ -42,14 +43,15 @@ export function RegistrosView() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, polo]);
 
   const filtered = rows.filter(r => {
+    const prefEfetivo = r.prefixo_override ?? r.profiles?.prefixo ?? "";
     if (turno !== "all") {
-      const letra = (r.profiles?.prefixo ?? "").split("-")[1]?.[0]?.toUpperCase();
+      const letra = prefEfetivo.split("-")[1]?.[0]?.toUpperCase();
       if (letra !== turno) return false;
     }
     if (usuario.trim()) {
       const s = usuario.trim().toLowerCase();
       const n = (r.profiles?.nome ?? "").toLowerCase();
-      const p = (r.profiles?.prefixo ?? "").toLowerCase();
+      const p = prefEfetivo.toLowerCase();
       if (!n.includes(s) && !p.includes(s)) return false;
     }
     return true;
@@ -59,7 +61,8 @@ export function RegistrosView() {
     const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Lat","Lng"];
     const lines = filtered.map(r => {
       const d = new Date(r.timestamp);
-      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, r.profiles?.prefixo, r.profiles?.polo, r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
+      const pref = r.prefixo_override ? `${r.prefixo_override} (prov.)` : r.profiles?.prefixo;
+      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, pref, r.profiles?.polo, r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
     });
     const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -122,7 +125,14 @@ export function RegistrosView() {
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
                   <TableCell>{r.profiles?.nome}</TableCell>
-                  <TableCell className="font-mono">{r.profiles?.prefixo}</TableCell>
+                  <TableCell className="font-mono">
+                    {r.prefixo_override ? (
+                      <span title={`Original: ${r.profiles?.prefixo}`}>
+                        {r.prefixo_override}
+                        <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">prov.</span>
+                      </span>
+                    ) : r.profiles?.prefixo}
+                  </TableCell>
                   <TableCell>{r.profiles?.polo}</TableCell>
                   <TableCell><span className="rounded-full bg-secondary px-2 py-1 text-xs font-semibold">{r.etapa}</span></TableCell>
                   <TableCell>{r.bases?.nome ?? "—"}</TableCell>
