@@ -5,9 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { QrScanner } from "@/components/QrScanner";
 import { getPosition, distanceMeters } from "@/lib/geo";
-import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode } from "lucide-react";
+import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
@@ -15,12 +17,32 @@ export const Route = createFileRoute("/eletricista")({ component: EletricistaPag
 type Etapa = "PONTO" | "POS_DDS" | "SAIDA_BASE";
 const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pós DDS", SAIDA_BASE: "Sair da Base" };
 
+const PROV_KEY = "pontoscan.prefixo_provisorio";
+
+function getProvisorio(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PROV_KEY);
+    if (!raw) return null;
+    const { prefixo, date } = JSON.parse(raw) as { prefixo: string; date: string };
+    const today = new Date().toISOString().slice(0, 10);
+    if (date !== today) { localStorage.removeItem(PROV_KEY); return null; }
+    return prefixo;
+  } catch { return null; }
+}
+
 function EletricistaPage() {
   const { user, profile, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [provOpen, setProvOpen] = useState(false);
+  const [provPrefixo, setProvPrefixo] = useState("");
+  const [provAtivo, setProvAtivo] = useState<string | null>(null);
+
+  useEffect(() => { setProvAtivo(getProvisorio()); }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -59,18 +81,37 @@ function EletricistaPage() {
         }
       }
 
+      const overridePref = getProvisorio();
       const { error: iErr } = await supabase.from("registros").insert({
         usuario_id: user.id, base_id: base.id, etapa, latitude: lat, longitude: lng,
+        prefixo_override: overridePref,
       });
       if (iErr) throw iErr;
 
-      setResult({ ok: true, msg: `${ETAPA_LABEL[etapa]} registrado em ${base.nome}` });
+      setResult({ ok: true, msg: `${ETAPA_LABEL[etapa]} registrado em ${base.nome}${overridePref ? ` (prefixo prov.: ${overridePref})` : ""}` });
     } catch (e: any) {
       setResult({ ok: false, msg: e.message ?? "Erro ao registrar" });
     } finally {
       setWorking(false);
       setScanning(false);
     }
+  };
+
+  const ativarProvisorio = () => {
+    const p = provPrefixo.trim().toUpperCase();
+    if (!p) { toast.error("Informe um prefixo"); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(PROV_KEY, JSON.stringify({ prefixo: p, date: today }));
+    setProvAtivo(p);
+    setProvOpen(false);
+    setProvPrefixo("");
+    toast.success(`Prefixo provisório ${p} ativo até o fim do dia`);
+  };
+
+  const limparProvisorio = () => {
+    localStorage.removeItem(PROV_KEY);
+    setProvAtivo(null);
+    toast.success("Prefixo provisório removido");
   };
 
   if (loading || !profile) {
@@ -84,13 +125,36 @@ function EletricistaPage() {
           <ScanLine className="h-6 w-6 text-primary" />
           <div>
             <p className="text-sm font-bold">{profile.nome}</p>
-            <p className="text-xs text-muted-foreground">{profile.prefixo} · {profile.polo}</p>
+            <p className="text-xs text-muted-foreground">
+              {provAtivo ? (
+                <><span className="font-semibold text-amber-600">{provAtivo} (prov.)</span> · {profile.polo}</>
+              ) : (
+                <>{profile.prefixo} · {profile.polo}</>
+              )}
+            </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" title="Histórico" onClick={() => setHistoryOpen(true)}>
+            <History className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" title="Prefixo provisório" onClick={() => setProvOpen(true)}>
+            <UserCog className={`h-5 w-5 ${provAtivo ? "text-amber-600" : ""}`} />
+          </Button>
+          <Button variant="ghost" size="icon" title="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </header>
+
+      {provAtivo && (
+        <div className="flex items-center justify-between gap-2 border-b bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          <span>Usando prefixo provisório <b>{provAtivo}</b> apenas para hoje.</span>
+          <Button variant="ghost" size="sm" className="h-6 text-amber-900" onClick={limparProvisorio}>
+            <X className="mr-1 h-3 w-3" />Remover
+          </Button>
+        </div>
+      )}
 
       <main className="mx-auto max-w-md p-4">
         <Card className="p-6 text-center">
@@ -136,6 +200,102 @@ function EletricistaPage() {
           <Button onClick={() => setResult(null)}>OK</Button>
         </DialogContent>
       </Dialog>
+
+      <HistoryDialog open={historyOpen} onClose={() => setHistoryOpen(false)} userId={user?.id ?? ""} />
+
+      <Dialog open={provOpen} onOpenChange={(o) => !o && setProvOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Prefixo provisório</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Use outro prefixo para bater pontos somente <b>hoje</b>. Será removido automaticamente amanhã.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="prov">Prefixo</Label>
+            <Input id="prov" value={provPrefixo} onChange={(e) => setProvPrefixo(e.target.value)} placeholder="Ex.: NI200TST-A" autoCapitalize="characters" />
+          </div>
+          <div className="flex justify-end gap-2">
+            {provAtivo && <Button variant="outline" onClick={limparProvisorio}>Remover atual</Button>}
+            <Button onClick={ativarProvisorio}>Ativar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+type HistRow = {
+  id: string; etapa: Etapa; timestamp: string;
+  prefixo_override: string | null;
+  bases: { nome: string } | null;
+};
+
+function HistoryDialog({ open, onClose, userId }: { open: boolean; onClose: () => void; userId: string }) {
+  const [periodo, setPeriodo] = useState<"dia" | "semana" | "mes">("dia");
+  const [rows, setRows] = useState<HistRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !userId) return;
+    const now = new Date();
+    const start = new Date(now);
+    if (periodo === "dia") start.setHours(0, 0, 0, 0);
+    else if (periodo === "semana") { start.setDate(now.getDate() - 7); start.setHours(0,0,0,0); }
+    else { start.setMonth(now.getMonth() - 1); start.setHours(0,0,0,0); }
+    setLoading(true);
+    supabase.from("registros")
+      .select("id, etapa, timestamp, prefixo_override, bases(nome)")
+      .eq("usuario_id", userId)
+      .gte("timestamp", start.toISOString())
+      .order("timestamp", { ascending: false })
+      .then(({ data }) => { setRows((data as any) ?? []); setLoading(false); });
+  }, [open, periodo, userId]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Meu histórico</DialogTitle></DialogHeader>
+        <div className="flex gap-1 rounded-md border p-1">
+          {(["dia","semana","mes"] as const).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriodo(p)}
+              className={`flex-1 rounded px-2 py-1 text-xs font-medium ${periodo === p ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+            >
+              {p === "dia" ? "Hoje" : p === "semana" ? "7 dias" : "30 dias"}
+            </button>
+          ))}
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          ) : rows.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem registros no período.</p>
+          ) : (
+            <ul className="divide-y">
+              {rows.map(r => {
+                const d = new Date(r.timestamp);
+                return (
+                  <li key={r.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{ETAPA_LABEL[r.etapa]}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.bases?.nome ?? "—"}
+                        {r.prefixo_override && <span className="ml-1 text-amber-600">· {r.prefixo_override} (prov.)</span>}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      <p>{d.toLocaleDateString("pt-BR")}</p>
+                      <p className="font-mono">{d.toLocaleTimeString("pt-BR")}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
