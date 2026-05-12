@@ -85,6 +85,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          prefixo_override: string | null
           timestamp: string
           usuario_id: string
         }
@@ -95,6 +96,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          prefixo_override?: string | null
           timestamp?: string
           usuario_id: string
         }
@@ -105,6 +107,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          prefixo_override?: string | null
           timestamp?: string
           usuario_id?: string
         }
