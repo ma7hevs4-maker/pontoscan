@@ -192,8 +192,8 @@ function MetricasPage() {
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip
-                    formatter={(v: number, name: string) => [fmtMin(v), name === "tempoPonto" ? "PONTO → PRÉ DDS" : "PRÉ DDS → SAÍDA"]}
-                    labelFormatter={(l, p) => p[0]?.payload.fullName ?? l}
+                    formatter={(v: number, name) => [fmtMin(v), name === "tempoPonto" ? "PONTO → PRÉ DDS" : "PRÉ DDS → SAÍDA"]}
+                    labelFormatter={(l, p: any) => p?.[0]?.payload?.fullName ?? l}
                   />
                   <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PRÉ DDS" />
                   <Bar dataKey="tempoSaida" stackId="t" fill="#1d4ed8" radius={[6,6,0,0]} name="PRÉ DDS → SAÍDA" />
