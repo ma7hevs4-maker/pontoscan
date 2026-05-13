@@ -21,8 +21,15 @@ interface VRow {
 
 function fmtMin(m: number | null) {
   if (m == null) return "—";
-  const h = Math.floor(m / 60); const r = Math.round(m % 60);
-  return h > 0 ? `${h}h${String(r).padStart(2,"0")}` : `${r}min`;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const r = Math.round(m % 60);
+    return `${h}h${String(r).padStart(2, "0")}`;
+  }
+  const min = Math.floor(m);
+  const sec = Math.round((m - min) * 60);
+  if (sec === 60) return `${min + 1}min`;
+  return sec === 0 ? `${min}min` : `${min}min${String(sec).padStart(2, "0")}`;
 }
 
 function MetricasPage() {
