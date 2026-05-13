@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Timer, Activity } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/admin/metricas")({ component: MetricasPage });
@@ -187,7 +187,11 @@ function MetricasPage() {
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip formatter={(v: number) => fmtMin(v)} labelFormatter={(l, p) => p[0]?.payload.fullName ?? l} />
-                  <Bar dataKey="tempo" radius={[6,6,0,0]} />
+                  <Bar dataKey="tempo" radius={[6,6,0,0]}>
+                    {rankingColored.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
