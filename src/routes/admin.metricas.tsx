@@ -64,60 +64,65 @@ function MetricasPage() {
   const tempos = filtered.map(r => (r.tempo_ponto_pos_dds ?? 0) + (r.tempo_pos_dds_saida ?? 0)).filter(v => v > 0);
   const mediaTempo = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
 
-  let ranking: { nome: string; fullName: string; tempo: number }[] = [];
+  let ranking: { nome: string; fullName: string; tempoPonto: number; tempoSaida: number; tempo: number }[] = [];
   if (agrupamento === "pessoa") {
-    const grupos = new Map<string, { label: string; full: string; tempos: number[] }>();
+    const grupos = new Map<string, { label: string; full: string; tempos: number[]; saidas: number[] }>();
     for (const r of filtered) {
       if (r.tempo_ponto_pos_dds == null) continue;
       const key = r.usuario_id ?? r.nome;
-      if (!grupos.has(key)) grupos.set(key, { label: r.nome, full: `${r.nome} (${r.prefixo ?? "—"})`, tempos: [] });
+      if (!grupos.has(key)) grupos.set(key, { label: r.nome, full: `${r.nome} (${r.prefixo ?? "—"})`, tempos: [], saidas: [] });
       grupos.get(key)!.tempos.push(r.tempo_ponto_pos_dds);
+      if (r.tempo_pos_dds_saida != null) grupos.get(key)!.saidas.push(r.tempo_pos_dds_saida);
     }
     ranking = Array.from(grupos.values())
-      .map(g => ({
-        nome: g.label,
-        fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
-        tempo: g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length,
-      }));
+      .map(g => {
+        const tp = g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length;
+        const ts = g.saidas.length ? g.saidas.reduce((a,b)=>a+b,0) / g.saidas.length : 0;
+        return {
+          nome: g.label,
+          fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
+          tempoPonto: tp,
+          tempoSaida: ts,
+          tempo: tp,
+        };
+      });
   } else {
-    // Por equipe: o tempo da equipe por dia é o MAIOR tempo PONTO→DDS entre os integrantes
-    // (a equipe só está pronta quando o último integrante bate o pré DDS).
-    const dias = new Map<string, { prefixo: string; tempos: number[] }>();
+    // Por equipe: PONTO→DDS = maior entre integrantes (último a bater o pré DDS).
+    // DDS→SAÍDA = maior entre integrantes (último a sair da base).
+    const dias = new Map<string, { prefixo: string; tempos: number[]; saidas: number[] }>();
     for (const r of filtered) {
       if (r.tempo_ponto_pos_dds == null) continue;
       const k = `${r.prefixo}|${r.dia}`;
-      if (!dias.has(k)) dias.set(k, { prefixo: r.prefixo ?? "—", tempos: [] });
+      if (!dias.has(k)) dias.set(k, { prefixo: r.prefixo ?? "—", tempos: [], saidas: [] });
       dias.get(k)!.tempos.push(r.tempo_ponto_pos_dds);
+      if (r.tempo_pos_dds_saida != null) dias.get(k)!.saidas.push(r.tempo_pos_dds_saida);
     }
     const sizes = new Map<string, Set<string>>();
     for (const r of filtered) {
       if (!sizes.has(r.prefixo ?? "—")) sizes.set(r.prefixo ?? "—", new Set());
       sizes.get(r.prefixo ?? "—")!.add(r.usuario_id);
     }
-    const porEquipe = new Map<string, { tempos: number[]; integrantes: number }>();
+    const porEquipe = new Map<string, { tempos: number[]; saidas: number[]; integrantes: number }>();
     for (const g of dias.values()) {
       if (!g.tempos.length) continue;
       const tempoDia = Math.max(...g.tempos);
-      if (!porEquipe.has(g.prefixo)) porEquipe.set(g.prefixo, { tempos: [], integrantes: sizes.get(g.prefixo)?.size ?? 0 });
+      if (!porEquipe.has(g.prefixo)) porEquipe.set(g.prefixo, { tempos: [], saidas: [], integrantes: sizes.get(g.prefixo)?.size ?? 0 });
       porEquipe.get(g.prefixo)!.tempos.push(tempoDia);
+      if (g.saidas.length) porEquipe.get(g.prefixo)!.saidas.push(Math.max(...g.saidas));
     }
-    ranking = Array.from(porEquipe.entries()).map(([prefixo, v]) => ({
-      nome: prefixo,
-      fullName: `Equipe ${prefixo} — ${v.integrantes} integrante${v.integrantes > 1 ? "s" : ""}, ${v.tempos.length} dia${v.tempos.length > 1 ? "s" : ""}`,
-      tempo: v.tempos.reduce((a,b)=>a+b,0) / v.tempos.length,
-    }));
+    ranking = Array.from(porEquipe.entries()).map(([prefixo, v]) => {
+      const tp = v.tempos.reduce((a,b)=>a+b,0) / v.tempos.length;
+      const ts = v.saidas.length ? v.saidas.reduce((a,b)=>a+b,0) / v.saidas.length : 0;
+      return {
+        nome: prefixo,
+        fullName: `Equipe ${prefixo} — ${v.integrantes} integrante${v.integrantes > 1 ? "s" : ""}, ${v.tempos.length} dia${v.tempos.length > 1 ? "s" : ""}`,
+        tempoPonto: tp,
+        tempoSaida: ts,
+        tempo: tp,
+      };
+    });
   }
   ranking = ranking.sort((a,b) => a.tempo - b.tempo).slice(0, 10);
-
-  // Clusterização por tempo (tons de azul: mais rápido = mais claro/vivo, mais lento = mais escuro)
-  const tonsAzul = ["#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e3a8a"];
-  const minT = ranking.length ? Math.min(...ranking.map(r => r.tempo)) : 0;
-  const maxT = ranking.length ? Math.max(...ranking.map(r => r.tempo)) : 0;
-  const rankingColored = ranking.map(r => {
-    const ratio = maxT === minT ? 0 : (r.tempo - minT) / (maxT - minT);
-    const idx = Math.min(tonsAzul.length - 1, Math.floor(ratio * tonsAzul.length));
-    return { ...r, fill: tonsAzul[idx] };
-  });
 
   return (
     <div className="space-y-4">
@@ -182,16 +187,16 @@ function MetricasPage() {
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={rankingColored}>
+                <BarChart data={ranking}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
-                  <Tooltip formatter={(v: number) => fmtMin(v)} labelFormatter={(l, p) => p[0]?.payload.fullName ?? l} />
-                  <Bar dataKey="tempo" radius={[6,6,0,0]}>
-                    {rankingColored.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Bar>
+                  <Tooltip
+                    formatter={(v: number, name: string) => [fmtMin(v), name === "tempoPonto" ? "PONTO → PRÉ DDS" : "PRÉ DDS → SAÍDA"]}
+                    labelFormatter={(l, p) => p[0]?.payload.fullName ?? l}
+                  />
+                  <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PRÉ DDS" />
+                  <Bar dataKey="tempoSaida" stackId="t" fill="#1d4ed8" radius={[6,6,0,0]} name="PRÉ DDS → SAÍDA" />
                 </BarChart>
               </ResponsiveContainer>
             )}
