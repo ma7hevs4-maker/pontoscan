@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, Timer, Activity } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/admin/metricas")({ component: MetricasPage });
@@ -80,32 +80,26 @@ function MetricasPage() {
         tempo: g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length,
       }));
   } else {
-    // Por equipe: agrega por (prefixo, dia) — ponto = mais cedo, dds = média, saída = mais tarde
-    const ts = (s: string | null) => (s ? new Date(s).getTime() : NaN);
-    const dias = new Map<string, { prefixo: string; dia: string; pontos: number[]; dds: number[]; saidas: number[] }>();
+    // Por equipe: o tempo da equipe por dia é o MAIOR tempo PONTO→DDS entre os integrantes
+    // (a equipe só está pronta quando o último integrante bate o pré DDS).
+    const dias = new Map<string, { prefixo: string; tempos: number[] }>();
     for (const r of filtered) {
+      if (r.tempo_ponto_pos_dds == null) continue;
       const k = `${r.prefixo}|${r.dia}`;
-      if (!dias.has(k)) dias.set(k, { prefixo: r.prefixo ?? "—", dia: r.dia, pontos: [], dds: [], saidas: [] });
-      const g = dias.get(k)!;
-      const tp = ts(r.ponto), td = ts(r.pos_dds), tsd = ts(r.saida_base);
-      if (!isNaN(tp)) g.pontos.push(tp);
-      if (!isNaN(td)) g.dds.push(td);
-      if (!isNaN(tsd)) g.saidas.push(tsd);
+      if (!dias.has(k)) dias.set(k, { prefixo: r.prefixo ?? "—", tempos: [] });
+      dias.get(k)!.tempos.push(r.tempo_ponto_pos_dds);
     }
-    const porEquipe = new Map<string, { tempos: number[]; integrantes: number }>();
     const sizes = new Map<string, Set<string>>();
     for (const r of filtered) {
       if (!sizes.has(r.prefixo ?? "—")) sizes.set(r.prefixo ?? "—", new Set());
       sizes.get(r.prefixo ?? "—")!.add(r.usuario_id);
     }
+    const porEquipe = new Map<string, { tempos: number[]; integrantes: number }>();
     for (const g of dias.values()) {
-      if (!g.pontos.length || !g.dds.length) continue;
-      const ponto = Math.min(...g.pontos);
-      const dds = g.dds.reduce((a,b)=>a+b,0) / g.dds.length;
-      const tempo = (dds - ponto) / 60000;
-      if (tempo <= 0) continue;
+      if (!g.tempos.length) continue;
+      const tempoDia = Math.max(...g.tempos);
       if (!porEquipe.has(g.prefixo)) porEquipe.set(g.prefixo, { tempos: [], integrantes: sizes.get(g.prefixo)?.size ?? 0 });
-      porEquipe.get(g.prefixo)!.tempos.push(tempo);
+      porEquipe.get(g.prefixo)!.tempos.push(tempoDia);
     }
     ranking = Array.from(porEquipe.entries()).map(([prefixo, v]) => ({
       nome: prefixo,
@@ -114,6 +108,16 @@ function MetricasPage() {
     }));
   }
   ranking = ranking.sort((a,b) => a.tempo - b.tempo).slice(0, 10);
+
+  // Clusterização por tempo (tons de azul: mais rápido = mais claro/vivo, mais lento = mais escuro)
+  const tonsAzul = ["#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e3a8a"];
+  const minT = ranking.length ? Math.min(...ranking.map(r => r.tempo)) : 0;
+  const maxT = ranking.length ? Math.max(...ranking.map(r => r.tempo)) : 0;
+  const rankingColored = ranking.map(r => {
+    const ratio = maxT === minT ? 0 : (r.tempo - minT) / (maxT - minT);
+    const idx = Math.min(tonsAzul.length - 1, Math.floor(ratio * tonsAzul.length));
+    return { ...r, fill: tonsAzul[idx] };
+  });
 
   return (
     <div className="space-y-4">
@@ -178,12 +182,16 @@ function MetricasPage() {
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={ranking}>
+                <BarChart data={rankingColored}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip formatter={(v: number) => fmtMin(v)} labelFormatter={(l, p) => p[0]?.payload.fullName ?? l} />
-                  <Bar dataKey="tempo" fill="var(--primary)" radius={[6,6,0,0]} />
+                  <Bar dataKey="tempo" radius={[6,6,0,0]}>
+                    {rankingColored.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
