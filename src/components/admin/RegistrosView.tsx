@@ -25,6 +25,7 @@ export function RegistrosView() {
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [usuario, setUsuario] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [etapa, setEtapa] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +51,7 @@ export function RegistrosView() {
       const letra = prefEfetivo.split("-")[1]?.[0]?.toUpperCase();
       if (letra !== turno) return false;
     }
+    if (etapa !== "all" && r.etapa !== etapa) return false;
     if (usuario.trim()) {
       const s = usuario.trim().toLowerCase();
       const n = (r.profiles?.nome ?? "").toLowerCase();
@@ -75,7 +77,7 @@ export function RegistrosView() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
           <div>
             <Label>Polo</Label>
@@ -100,6 +102,18 @@ export function RegistrosView() {
                 <SelectItem value="A">Turno A</SelectItem>
                 <SelectItem value="B">Turno B</SelectItem>
                 <SelectItem value="C">Turno C</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Etapa</Label>
+            <Select value={etapa} onValueChange={setEtapa}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="PONTO">PONTO</SelectItem>
+                <SelectItem value="POS_DDS">PRE_DDS</SelectItem>
+                <SelectItem value="SAIDA_BASE">SAIDA_BASE</SelectItem>
               </SelectContent>
             </Select>
           </div>
