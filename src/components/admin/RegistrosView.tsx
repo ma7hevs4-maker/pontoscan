@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { POLOS, useAuth } from "@/lib/auth-context";
 import { Download, Loader2 } from "lucide-react";
 
+const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRE_DDS", SAIDA_BASE: "SAIDA_BASE" };
+
 interface Row {
   id: string; etapa: string; timestamp: string; usuario_id: string;
   latitude: number | null; longitude: number | null;
@@ -62,7 +64,7 @@ export function RegistrosView() {
     const lines = filtered.map(r => {
       const d = new Date(r.timestamp);
       const pref = r.prefixo_override ? `${r.prefixo_override} (prov.)` : r.profiles?.prefixo;
-      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, pref, r.profiles?.polo, r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
+      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, pref, r.profiles?.polo, ETAPA_LABEL[r.etapa] ?? r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
     });
     const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -134,7 +136,7 @@ export function RegistrosView() {
                     ) : r.profiles?.prefixo}
                   </TableCell>
                   <TableCell>{r.profiles?.polo}</TableCell>
-                  <TableCell><span className="rounded-full bg-secondary px-2 py-1 text-xs font-semibold">{r.etapa}</span></TableCell>
+                  <TableCell><span className="rounded-full bg-secondary px-2 py-1 text-xs font-semibold">{ETAPA_LABEL[r.etapa] ?? r.etapa}</span></TableCell>
                   <TableCell>{r.bases?.nome ?? "—"}</TableCell>
                 </TableRow>
               ))}
