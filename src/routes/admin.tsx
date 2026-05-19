@@ -65,7 +65,7 @@ function AdminLayout() {
     { to: "/admin/metricas", label: "Métricas", icon: BarChart3 },
     { to: "/admin/bases", label: "Bases & QR", icon: MapPin },
   ];
-  if (role === "ADMIN_DISPATCH") {
+  if (role === "ADMIN_DISPATCH" || role === "ADMIN_POLO") {
     tabs.push({ to: "/admin/contas", label: "Contas", icon: ShieldCheck } as any);
   }
 
@@ -84,7 +84,7 @@ function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {role === "ADMIN_DISPATCH" && (
+            {(role === "ADMIN_DISPATCH" || role === "ADMIN_POLO") && (
               <Button variant="ghost" size="icon" aria-label="Contas" onClick={() => navigate({ to: "/admin/contas" })}>
                 <ShieldCheck className="h-5 w-5" />
               </Button>

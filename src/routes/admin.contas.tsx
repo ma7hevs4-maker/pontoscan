@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, KeyRound, Mail, Search } from "lucide-react";
+import { Loader2, KeyRound, Mail, Search, Tag } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/contas")({ component: ContasPage });
@@ -30,8 +30,10 @@ async function callAdmin(body: any) {
 }
 
 function ContasPage() {
-  const { role, loading } = useAuth();
+  const { role, loading, adminPolo } = useAuth();
   const navigate = useNavigate();
+  const isDispatch = role === "ADMIN_DISPATCH";
+  const isPolo = role === "ADMIN_POLO";
 
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -40,7 +42,7 @@ function ContasPage() {
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    if (!loading && role !== "ADMIN_DISPATCH") navigate({ to: "/admin" });
+    if (!loading && !isDispatch && !isPolo) navigate({ to: "/admin" });
   }, [role, loading, navigate]);
 
   const refresh = async () => {
@@ -53,10 +55,9 @@ function ContasPage() {
     } finally { setLoadingList(false); }
   };
 
-  useEffect(() => { if (role === "ADMIN_DISPATCH") refresh(); /* eslint-disable-next-line */ }, [role]);
+  useEffect(() => { if (isDispatch) refresh(); /* eslint-disable-next-line */ }, [role]);
 
   const runSearch = async () => {
-    if (!q.trim()) { setResults([]); return; }
     setSearching(true);
     try {
       const r = await callAdmin({ action: "search-eletricistas", q });
@@ -66,11 +67,14 @@ function ContasPage() {
     } finally { setSearching(false); }
   };
 
-  if (role !== "ADMIN_DISPATCH") return null;
+  // Auto-load list for ADMIN_POLO (already scoped server-side)
+  useEffect(() => { if (isPolo) runSearch(); /* eslint-disable-next-line */ }, [isPolo]);
+
+  if (!isDispatch && !isPolo) return null;
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
+      {isDispatch && <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b p-3">
           <div>
             <h3 className="font-semibold">Administradores</h3>
@@ -109,28 +113,33 @@ function ContasPage() {
             </TableBody>
           </Table>
         </div>
-      </Card>
+      </Card>}
 
       <Card className="overflow-hidden">
         <div className="border-b p-3">
-          <h3 className="font-semibold">Resetar senha de eletricista</h3>
-          <p className="text-xs text-muted-foreground">Busque por nome ou prefixo</p>
+          <h3 className="font-semibold">Eletricistas{isPolo ? ` · ${adminPolo}` : ""}</h3>
+          <p className="text-xs text-muted-foreground">
+            {isPolo ? "Visualize, altere prefixo ou redefina a senha dos eletricistas do seu polo." : "Busque por nome ou prefixo para redefinir a senha."}
+          </p>
         </div>
         <div className="space-y-3 p-4">
           <div className="flex gap-2">
             <div className="flex-1">
               <Label className="sr-only">Buscar</Label>
-              <Input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && runSearch()} placeholder="Nome ou prefixo…" />
+              <Input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && runSearch()} placeholder={isPolo ? "Filtrar por nome ou prefixo…" : "Nome ou prefixo…"} />
             </div>
             <Button onClick={runSearch} disabled={searching}>
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
+          {results.length === 0 && !searching && (
+            <p className="py-4 text-center text-sm text-muted-foreground">Nenhum eletricista encontrado</p>
+          )}
           {results.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead><TableHead>Prefixo</TableHead><TableHead>Polo</TableHead><TableHead>E-mail</TableHead><TableHead className="text-right">Ação</TableHead>
+                  <TableHead>Nome</TableHead><TableHead>Prefixo</TableHead><TableHead>Polo</TableHead><TableHead>E-mail</TableHead><TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -140,7 +149,8 @@ function ContasPage() {
                     <TableCell className="font-mono">{u.prefixo}</TableCell>
                     <TableCell>{u.polo}</TableCell>
                     <TableCell className="font-mono text-xs">{u.email ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      <EditPrefixoDialog userId={u.id} currentPrefixo={u.prefixo} label={u.nome} onDone={runSearch} />
                       <ResetPasswordDialog userId={u.id} label={u.nome} />
                     </TableCell>
                   </TableRow>
@@ -223,6 +233,46 @@ function EditEmailDialog({ userId, currentEmail, onDone }: { userId: string; cur
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={busy || !email.includes("@")}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditPrefixoDialog({ userId, currentPrefixo, label, onDone }: { userId: string; currentPrefixo: string; label: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [prefixo, setPrefixo] = useState(currentPrefixo);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setPrefixo(currentPrefixo); }, [open, currentPrefixo]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "update-prefixo", userId, prefixo });
+      toast.success("Prefixo atualizado");
+      setOpen(false);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><Tag className="mr-1 h-3.5 w-3.5" />Prefixo</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Alterar prefixo · {label}</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <Label>Novo prefixo</Label>
+          <Input value={prefixo} onChange={e => setPrefixo(e.target.value.toUpperCase())} placeholder="Ex: NI200TST-A" autoComplete="off" />
+          <p className="text-xs text-muted-foreground">O prefixo identifica polo, equipe, serviço e turno do eletricista.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={busy || prefixo.trim().length < 3}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

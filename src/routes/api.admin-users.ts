@@ -16,14 +16,18 @@ async function authorize(request: Request) {
   );
   const { data, error } = await client.auth.getUser(token);
   if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
-  const { data: role } = await supabaseAdmin
+  const { data: roles } = await supabaseAdmin
     .from("user_roles")
-    .select("role")
-    .eq("user_id", data.user.id)
-    .eq("role", "ADMIN_DISPATCH")
-    .maybeSingle();
-  if (!role) return { error: new Response("Forbidden", { status: 403 }) };
-  return { userId: data.user.id };
+    .select("role, polo")
+    .eq("user_id", data.user.id);
+  const dispatch = roles?.find((r) => r.role === "ADMIN_DISPATCH");
+  const polo = roles?.find((r) => r.role === "ADMIN_POLO");
+  if (!dispatch && !polo) return { error: new Response("Forbidden", { status: 403 }) };
+  return {
+    userId: data.user.id,
+    isDispatch: !!dispatch,
+    adminPolo: (polo?.polo as string | null) ?? null,
+  };
 }
 
 async function listAdmins() {
@@ -54,13 +58,14 @@ async function listAdmins() {
   return { admins };
 }
 
-async function searchEletricistas(q: string) {
-  if (!q?.trim()) return { users: [] };
-  const { data: profs, error } = await supabaseAdmin
+async function searchEletricistas(q: string, restrictPolo: string | null) {
+  let query = supabaseAdmin
     .from("profiles")
     .select("id, nome, prefixo, polo")
-    .or(`nome.ilike.%${q}%,prefixo.ilike.%${q}%`)
-    .limit(20);
+    .limit(50);
+  if (restrictPolo) query = query.eq("polo", restrictPolo as any);
+  if (q?.trim()) query = query.or(`nome.ilike.%${q}%,prefixo.ilike.%${q}%`);
+  const { data: profs, error } = await query;
   if (error) throw new Error(error.message);
   const users: any[] = [];
   for (const p of profs ?? []) {
@@ -70,35 +75,55 @@ async function searchEletricistas(q: string) {
   return { users };
 }
 
+async function ensureSamePolo(userId: string, restrictPolo: string | null) {
+  if (!restrictPolo) return true;
+  const { data: p } = await supabaseAdmin.from("profiles").select("polo").eq("id", userId).maybeSingle();
+  return p?.polo === restrictPolo;
+}
+
 export const Route = createFileRoute("/api/admin-users")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const auth = await authorize(request);
         if (auth.error) return auth.error;
+        const isDispatch = auth.isDispatch;
+        const restrictPolo = isDispatch ? null : auth.adminPolo;
         let body: any = {};
         try { body = await request.json(); } catch {}
         const action = body?.action as string;
         try {
           if (action === "list") {
+            if (!isDispatch) return new Response("Forbidden", { status: 403 });
             return Response.json(await listAdmins());
           }
           if (action === "search-eletricistas") {
-            return Response.json(await searchEletricistas(String(body?.q ?? "")));
+            return Response.json(await searchEletricistas(String(body?.q ?? ""), restrictPolo));
           }
           if (action === "update-password") {
             const userId = String(body?.userId ?? "");
             const password = String(body?.password ?? "");
             if (!userId || password.length < 6) return new Response("Dados inválidos", { status: 400 });
+            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
           }
           if (action === "update-email") {
+            if (!isDispatch) return new Response("Forbidden", { status: 403 });
             const userId = String(body?.userId ?? "");
             const email = String(body?.email ?? "");
             if (!userId || !email.includes("@")) return new Response("Dados inválidos", { status: 400 });
             const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { email, email_confirm: true });
+            if (error) return new Response(error.message, { status: 400 });
+            return Response.json({ ok: true });
+          }
+          if (action === "update-prefixo") {
+            const userId = String(body?.userId ?? "");
+            const prefixo = String(body?.prefixo ?? "").trim().toUpperCase();
+            if (!userId || prefixo.length < 3) return new Response("Dados inválidos", { status: 400 });
+            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            const { error } = await supabaseAdmin.from("profiles").update({ prefixo }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
           }
