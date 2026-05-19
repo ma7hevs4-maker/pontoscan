@@ -238,3 +238,43 @@ function EditEmailDialog({ userId, currentEmail, onDone }: { userId: string; cur
     </Dialog>
   );
 }
+
+function EditPrefixoDialog({ userId, currentPrefixo, label, onDone }: { userId: string; currentPrefixo: string; label: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [prefixo, setPrefixo] = useState(currentPrefixo);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setPrefixo(currentPrefixo); }, [open, currentPrefixo]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "update-prefixo", userId, prefixo });
+      toast.success("Prefixo atualizado");
+      setOpen(false);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><Tag className="mr-1 h-3.5 w-3.5" />Prefixo</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Alterar prefixo · {label}</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <Label>Novo prefixo</Label>
+          <Input value={prefixo} onChange={e => setPrefixo(e.target.value.toUpperCase())} placeholder="Ex: NI200TST-A" autoComplete="off" />
+          <p className="text-xs text-muted-foreground">O prefixo identifica polo, equipe, serviço e turno do eletricista.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={busy || prefixo.trim().length < 3}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
