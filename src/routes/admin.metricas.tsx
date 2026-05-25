@@ -201,11 +201,11 @@ function MetricasPage() {
                   <Tooltip
                     formatter={(v: number, _name, item: any) => [
                       fmtMin(v),
-                      item?.dataKey === "tempoPonto" ? "PONTO → PÓS DDS" : "PÓS DDS → SAÍDA",
+                      item?.dataKey === "tempoPonto" ? "PONTO → PRÉ DDS" : "PÓS DDS → SAÍDA",
                     ]}
                     labelFormatter={(l, p: any) => p?.[0]?.payload?.fullName ?? l}
                   />
-                  <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PÓS DDS" />
+                  <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PRÉ DDS" />
                   <Bar dataKey="tempoSaida" stackId="t" fill="#1d4ed8" radius={[6,6,0,0]} name="PÓS DDS → SAÍDA" />
                 </BarChart>
               </ResponsiveContainer>
