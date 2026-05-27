@@ -134,14 +134,15 @@ export function RegistrosView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Hora</TableHead><TableHead>Nome</TableHead><TableHead>Prefixo</TableHead>
+                <TableHead>Data</TableHead><TableHead>Hora</TableHead><TableHead>Nome</TableHead><TableHead>Prefixo</TableHead>
                 <TableHead>Polo</TableHead><TableHead>Etapa</TableHead><TableHead>Base</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
+              {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
               {filtered.map(r => (
                 <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
                   <TableCell>{r.profiles?.nome}</TableCell>
                   <TableCell className="font-mono">
