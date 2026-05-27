@@ -21,7 +21,9 @@ interface Row {
 
 export function RegistrosView() {
   const { role, adminPolo } = useAuth();
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const today = new Date().toISOString().slice(0, 10);
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [usuario, setUsuario] = useState("");
   const [turno, setTurno] = useState<string>("all");
