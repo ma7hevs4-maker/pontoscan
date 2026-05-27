@@ -33,8 +33,8 @@ export function RegistrosView() {
 
   const load = async () => {
     setLoading(true);
-    const start = new Date(date + "T00:00:00").toISOString();
-    const end = new Date(date + "T23:59:59").toISOString();
+    const start = new Date(from + "T00:00:00").toISOString();
+    const end = new Date(to + "T23:59:59").toISOString();
     let q = supabase.from("registros")
       .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, profiles!inner(nome, prefixo, polo), bases(nome)")
       .gte("timestamp", start).lte("timestamp", end)
@@ -45,7 +45,7 @@ export function RegistrosView() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, polo]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
   const filtered = rows.filter(r => {
     const prefEfetivo = r.prefixo_override ?? r.profiles?.prefixo ?? "";
@@ -72,15 +72,16 @@ export function RegistrosView() {
     });
     const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `registros_${date}.csv`; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `registros_${from}_${to}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-6">
-          <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div className="grid gap-3 md:grid-cols-7">
+          <div><Label>De</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><Label>Até</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div>
             <Label>Polo</Label>
             <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
