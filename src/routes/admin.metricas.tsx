@@ -199,11 +199,20 @@ function MetricasPage() {
                   <XAxis dataKey="nome" />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip
-                    formatter={(v: number, _name, item: any) => [
-                      fmtMin(v),
-                      item?.dataKey === "tempoPonto" ? "PONTO → PRÉ DDS" : "PÓS DDS → SAÍDA",
-                    ]}
-                    labelFormatter={(l, p: any) => p?.[0]?.payload?.fullName ?? l}
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const full = payload[0]?.payload?.fullName ?? "";
+                      const tp = payload.find((p: any) => p.dataKey === "tempoPonto")?.value ?? 0;
+                      const ts = payload.find((p: any) => p.dataKey === "tempoSaida")?.value ?? 0;
+                      return (
+                        <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                          <div className="mb-1 font-medium">{full}</div>
+                          <div style={{ color: "#60a5fa" }}>PONTO → PRÉ DDS : {fmtMin(tp)}</div>
+                          <div style={{ color: "#1d4ed8" }} className="mt-0.5">PÓS DDS → SAÍDA : {fmtMin(ts)}</div>
+                          <div className="mt-1 border-t pt-1 font-medium">Total : {fmtMin(tp + ts)}</div>
+                        </div>
+                      );
+                    }}
                   />
                   <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PRÉ DDS" />
                   <Bar dataKey="tempoSaida" stackId="t" fill="#1d4ed8" radius={[6,6,0,0]} name="PÓS DDS → SAÍDA" />
