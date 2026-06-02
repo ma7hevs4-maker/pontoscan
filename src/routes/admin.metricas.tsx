@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Timer, Activity } from "lucide-react";
+import { Loader2, Users, Timer, Activity, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -43,6 +43,12 @@ function MetricasPage() {
   const [rows, setRows] = useState<VRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [agrupamento, setAgrupamento] = useState<"equipe" | "pessoa">("equipe");
+  const [sortKey, setSortKey] = useState<string>("dia");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (k: string) => {
+    if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -130,6 +136,32 @@ function MetricasPage() {
     });
   }
   ranking = ranking.sort((a,b) => a.tempo - b.tempo).slice(0, 10);
+
+  const getVal = (r: VRow, k: string): string | number => {
+    switch (k) {
+      case "dia": return r.dia ?? "";
+      case "nome": return (r.nome ?? "").toLowerCase();
+      case "prefixo": return (r.prefixo ?? "").toLowerCase();
+      case "polo": return (r.polo ?? "").toLowerCase();
+      case "tempo_ponto_pos_dds": return r.tempo_ponto_pos_dds ?? -1;
+      case "tempo_pos_dds_saida": return r.tempo_pos_dds_saida ?? -1;
+      default: return 0;
+    }
+  };
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const va = getVal(a, sortKey); const vb = getVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+  const SortTh = ({ k, children }: { k: string; children: React.ReactNode }) => (
+    <th className="p-2 text-left">
+      <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:text-foreground">
+        {children}
+        {sortKey === k ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+      </button>
+    </th>
+  );
 
   return (
     <div className="space-y-4">
@@ -227,17 +259,17 @@ function MetricasPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="p-2 text-left">Dia</th>
-                    <th className="p-2 text-left">Nome</th>
-                    <th className="p-2 text-left">Prefixo</th>
-                    <th className="p-2 text-left">Polo</th>
-                    <th className="p-2 text-left">Ponto→DDS</th>
-                    <th className="p-2 text-left">DDS→Saída</th>
+                    <SortTh k="dia">Dia</SortTh>
+                    <SortTh k="nome">Nome</SortTh>
+                    <SortTh k="prefixo">Prefixo</SortTh>
+                    <SortTh k="polo">Polo</SortTh>
+                    <SortTh k="tempo_ponto_pos_dds">Ponto→DDS</SortTh>
+                    <SortTh k="tempo_pos_dds_saida">DDS→Saída</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem dados</td></tr>}
-                  {filtered.map((r,i) => (
+                  {sortedFiltered.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem dados</td></tr>}
+                  {sortedFiltered.map((r,i) => (
                     <tr key={i} className="border-t">
                       <td className="p-2">{r.dia}</td>
                       <td className="p-2">{r.nome}</td>
