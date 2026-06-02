@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRE_DDS", SAIDA_BASE: "SAIDA_BASE" };
 
@@ -30,6 +30,12 @@ export function RegistrosView() {
   const [etapa, setEtapa] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sortKey, setSortKey] = useState<string>("timestamp");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (k: string) => {
+    if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -47,7 +53,7 @@ export function RegistrosView() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
-  const filtered = rows.filter(r => {
+  const filteredBase = rows.filter(r => {
     const prefEfetivo = r.prefixo_override ?? r.profiles?.prefixo ?? "";
     if (turno !== "all") {
       const letra = prefEfetivo.split("-")[1]?.[0]?.toUpperCase();
@@ -62,6 +68,32 @@ export function RegistrosView() {
     }
     return true;
   });
+
+  const getVal = (r: Row, k: string): string | number => {
+    const pref = r.prefixo_override ?? r.profiles?.prefixo ?? "";
+    switch (k) {
+      case "timestamp": return new Date(r.timestamp).getTime();
+      case "nome": return (r.profiles?.nome ?? "").toLowerCase();
+      case "prefixo": return pref.toLowerCase();
+      case "polo": return (r.profiles?.polo ?? "").toLowerCase();
+      case "etapa": return (ETAPA_LABEL[r.etapa] ?? r.etapa).toLowerCase();
+      case "base": return (r.bases?.nome ?? "").toLowerCase();
+      default: return 0;
+    }
+  };
+  const filtered = [...filteredBase].sort((a, b) => {
+    const va = getVal(a, sortKey); const vb = getVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const SortBtn = ({ k, children }: { k: string; children: React.ReactNode }) => (
+    <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:text-foreground">
+      {children}
+      {sortKey === k ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+    </button>
+  );
 
   const exportCsv = () => {
     const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Lat","Lng"];
@@ -134,8 +166,13 @@ export function RegistrosView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead><TableHead>Hora</TableHead><TableHead>Nome</TableHead><TableHead>Prefixo</TableHead>
-                <TableHead>Polo</TableHead><TableHead>Etapa</TableHead><TableHead>Base</TableHead>
+                <TableHead><SortBtn k="timestamp">Data</SortBtn></TableHead>
+                <TableHead><SortBtn k="timestamp">Hora</SortBtn></TableHead>
+                <TableHead><SortBtn k="nome">Nome</SortBtn></TableHead>
+                <TableHead><SortBtn k="prefixo">Prefixo</SortBtn></TableHead>
+                <TableHead><SortBtn k="polo">Polo</SortBtn></TableHead>
+                <TableHead><SortBtn k="etapa">Etapa</SortBtn></TableHead>
+                <TableHead><SortBtn k="base">Base</SortBtn></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
