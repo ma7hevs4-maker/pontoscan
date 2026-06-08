@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, Timer, Activity, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, Users, Timer, Activity, ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -163,6 +163,54 @@ function MetricasPage() {
     </th>
   );
 
+  const exportRankingCsv = () => {
+    const isPessoa = agrupamento === "pessoa";
+    const header = isPessoa
+      ? ["Nome", "Prefixo", "Jornadas", "Ponto->DDS (min)", "DDS->Saida (min)", "Total (min)"]
+      : ["Prefixo", "Integrantes", "Dias", "Ponto->DDS (min)", "DDS->Saida (min)", "Total (min)"];
+    const lines = ranking.map((r) => {
+      const tp = (r.tempoPonto ?? 0).toFixed(2);
+      const ts = (r.tempoSaida ?? 0).toFixed(2);
+      const total = ((r.tempoPonto ?? 0) + (r.tempoSaida ?? 0)).toFixed(2);
+      if (isPessoa) {
+        const match = r.fullName.match(/^(.*?) \((.*?)\)/);
+        const nome = match ? match[1] : r.nome;
+        const prefixo = match ? match[2] : "";
+        const jornadas = r.fullName.match(/média de (\d+)/)?.[1] ?? "";
+        return [nome, prefixo, jornadas, tp, ts, total].join(";");
+      }
+      const integrantes = r.fullName.match(/(\d+) integrante/)?.[1] ?? "";
+      const dias = r.fullName.match(/(\d+) dia/)?.[1] ?? "";
+      return [r.nome, integrantes, dias, tp, ts, total].join(";");
+    });
+    const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ranking_${agrupamento}_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDetalhamentoCsv = () => {
+    const header = ["Dia", "Nome", "Prefixo", "Polo", "Ponto->DDS (min)", "DDS->Saida (min)"];
+    const lines = sortedFiltered.map((r) => [
+      r.dia,
+      r.nome,
+      r.prefixo ?? "",
+      r.polo,
+      r.tempo_ponto_pos_dds?.toFixed(2) ?? "",
+      r.tempo_pos_dds_saida?.toFixed(2) ?? "",
+    ].join(";"));
+    const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `metricas_detalhamento_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -212,7 +260,11 @@ function MetricasPage() {
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
-              <ToggleGroup
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={exportRankingCsv}>
+                  <Download className="mr-2 h-4 w-4" />CSV
+                </Button>
+                <ToggleGroup
                 type="single"
                 value={agrupamento}
                 onValueChange={(v) => v && setAgrupamento(v as "equipe" | "pessoa")}
@@ -221,6 +273,7 @@ function MetricasPage() {
                 <ToggleGroupItem value="equipe">Por equipe</ToggleGroupItem>
                 <ToggleGroupItem value="pessoa">Por pessoa</ToggleGroupItem>
               </ToggleGroup>
+              </div>
             </div>
             {ranking.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
@@ -254,7 +307,12 @@ function MetricasPage() {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b p-3 font-semibold">Detalhamento</div>
+            <div className="flex items-center justify-between border-b p-3">
+              <span className="font-semibold">Detalhamento</span>
+              <Button variant="outline" size="sm" onClick={exportDetalhamentoCsv}>
+                <Download className="mr-2 h-4 w-4" />CSV
+              </Button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
