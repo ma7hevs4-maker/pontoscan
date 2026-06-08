@@ -307,7 +307,12 @@ function MetricasPage() {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b p-3 font-semibold">Detalhamento</div>
+            <div className="flex items-center justify-between border-b p-3">
+              <span className="font-semibold">Detalhamento</span>
+              <Button variant="outline" size="sm" onClick={exportDetalhamentoCsv}>
+                <Download className="mr-2 h-4 w-4" />CSV
+              </Button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
