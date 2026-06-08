@@ -41,13 +41,24 @@ export function RegistrosView() {
     setLoading(true);
     const start = new Date(from + "T00:00:00").toISOString();
     const end = new Date(to + "T23:59:59").toISOString();
-    let q = supabase.from("registros")
-      .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, profiles!inner(nome, prefixo, polo), bases(nome)")
-      .gte("timestamp", start).lte("timestamp", end)
-      .order("timestamp", { ascending: false });
-    if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
-    const { data, error } = await q;
-    if (!error) setRows((data as any) ?? []);
+    const pageSize = 1000;
+    let all: any[] = [];
+    let offset = 0;
+    while (true) {
+      let q = supabase.from("registros")
+        .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, profiles!inner(nome, prefixo, polo), bases(nome)")
+        .gte("timestamp", start).lte("timestamp", end)
+        .order("timestamp", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
+      const { data, error } = await q;
+      if (error) break;
+      const batch = (data as any[]) ?? [];
+      all = all.concat(batch);
+      if (batch.length < pageSize) break;
+      offset += pageSize;
+    }
+    setRows(all as any);
     setLoading(false);
   };
 
