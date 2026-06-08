@@ -163,6 +163,54 @@ function MetricasPage() {
     </th>
   );
 
+  const exportRankingCsv = () => {
+    const isPessoa = agrupamento === "pessoa";
+    const header = isPessoa
+      ? ["Nome", "Prefixo", "Jornadas", "Ponto->DDS (min)", "DDS->Saida (min)", "Total (min)"]
+      : ["Prefixo", "Integrantes", "Dias", "Ponto->DDS (min)", "DDS->Saida (min)", "Total (min)"];
+    const lines = ranking.map((r) => {
+      const tp = (r.tempoPonto ?? 0).toFixed(2);
+      const ts = (r.tempoSaida ?? 0).toFixed(2);
+      const total = ((r.tempoPonto ?? 0) + (r.tempoSaida ?? 0)).toFixed(2);
+      if (isPessoa) {
+        const match = r.fullName.match(/^(.*?) \((.*?)\)/);
+        const nome = match ? match[1] : r.nome;
+        const prefixo = match ? match[2] : "";
+        const jornadas = r.fullName.match(/média de (\d+)/)?.[1] ?? "";
+        return [nome, prefixo, jornadas, tp, ts, total].join(";");
+      }
+      const integrantes = r.fullName.match(/(\d+) integrante/)?.[1] ?? "";
+      const dias = r.fullName.match(/(\d+) dia/)?.[1] ?? "";
+      return [r.nome, integrantes, dias, tp, ts, total].join(";");
+    });
+    const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ranking_${agrupamento}_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDetalhamentoCsv = () => {
+    const header = ["Dia", "Nome", "Prefixo", "Polo", "Ponto->DDS (min)", "DDS->Saida (min)"];
+    const lines = sortedFiltered.map((r) => [
+      r.dia,
+      r.nome,
+      r.prefixo ?? "",
+      r.polo,
+      r.tempo_ponto_pos_dds?.toFixed(2) ?? "",
+      r.tempo_pos_dds_saida?.toFixed(2) ?? "",
+    ].join(";"));
+    const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `metricas_detalhamento_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
