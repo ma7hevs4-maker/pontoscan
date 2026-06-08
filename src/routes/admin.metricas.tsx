@@ -260,7 +260,11 @@ function MetricasPage() {
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
-              <ToggleGroup
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={exportRankingCsv}>
+                  <Download className="mr-2 h-4 w-4" />CSV
+                </Button>
+                <ToggleGroup
                 type="single"
                 value={agrupamento}
                 onValueChange={(v) => v && setAgrupamento(v as "equipe" | "pessoa")}
