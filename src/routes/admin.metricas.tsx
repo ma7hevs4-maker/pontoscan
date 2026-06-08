@@ -273,6 +273,7 @@ function MetricasPage() {
                 <ToggleGroupItem value="equipe">Por equipe</ToggleGroupItem>
                 <ToggleGroupItem value="pessoa">Por pessoa</ToggleGroupItem>
               </ToggleGroup>
+              </div>
             </div>
             {ranking.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
