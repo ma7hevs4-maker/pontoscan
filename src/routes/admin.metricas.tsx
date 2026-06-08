@@ -52,10 +52,31 @@ function MetricasPage() {
 
   const load = async () => {
     setLoading(true);
-    let q = supabase.from("vw_tempos").select("*").gte("dia", from).lte("dia", to);
-    if (polo && polo !== "all") q = q.eq("polo", polo as any);
-    const { data } = await q;
-    setRows((data as any) ?? []);
+    const pageSize = 1000;
+    let offset = 0;
+    let all: VRow[] = [];
+
+    while (true) {
+      let q = supabase
+        .from("vw_tempos")
+        .select("*")
+        .gte("dia", from)
+        .lte("dia", to)
+        .range(offset, offset + pageSize - 1);
+
+      if (polo && polo !== "all") q = q.eq("polo", polo as any);
+
+      const { data, error } = await q;
+      if (error) break;
+
+      const batch = ((data as VRow[] | null) ?? []);
+      all = all.concat(batch);
+
+      if (batch.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    setRows(all);
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
