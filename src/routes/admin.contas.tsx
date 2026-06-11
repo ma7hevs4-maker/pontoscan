@@ -136,17 +136,17 @@ function ContasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail (login)</TableHead>
-                <TableHead>Papel</TableHead>
-                <TableHead>Polo</TableHead>
+                <TableHead><SortBtn k="nome">Nome</SortBtn></TableHead>
+                <TableHead><SortBtn k="email">E-mail (login)</SortBtn></TableHead>
+                <TableHead><SortBtn k="role">Papel</SortBtn></TableHead>
+                <TableHead><SortBtn k="polo">Polo</SortBtn></TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loadingList && <TableRow><TableCell colSpan={5} className="py-6 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></TableCell></TableRow>}
-              {!loadingList && admins.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum admin encontrado</TableCell></TableRow>}
-              {admins.map(a => (
+              {!loadingList && sortedAdmins.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum admin encontrado</TableCell></TableRow>}
+              {sortedAdmins.map(a => (
                 <TableRow key={`${a.user_id}-${a.role}`}>
                   <TableCell>{a.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{a.email ?? "—"}</TableCell>
