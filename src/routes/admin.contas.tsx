@@ -187,11 +187,15 @@ function ContasPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead><TableHead>Prefixo</TableHead><TableHead>Polo</TableHead><TableHead>E-mail</TableHead><TableHead className="text-right">Ações</TableHead>
+                  <TableHead><SortBtn k="nome">Nome</SortBtn></TableHead>
+                  <TableHead><SortBtn k="prefixo">Prefixo</SortBtn></TableHead>
+                  <TableHead><SortBtn k="polo">Polo</SortBtn></TableHead>
+                  <TableHead><SortBtn k="email">E-mail</SortBtn></TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map(u => (
+                {sortedResults.map(u => (
                   <TableRow key={u.id}>
                     <TableCell>{u.nome}</TableCell>
                     <TableCell className="font-mono">{u.prefixo}</TableCell>
