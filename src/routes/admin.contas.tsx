@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, KeyRound, Mail, Search, Tag } from "lucide-react";
+import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/contas")({ component: ContasPage });
@@ -40,6 +40,54 @@ function ContasPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<UserRow[]>([]);
   const [searching, setSearching] = useState(false);
+  const [sortKey, setSortKey] = useState<string>("nome");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (k: string) => {
+    if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+
+  const SortBtn = ({ k, children }: { k: string; children: React.ReactNode }) => (
+    <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:text-foreground">
+      {children}
+      {sortKey === k ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+    </button>
+  );
+
+  const getAdminVal = (a: AdminRow, k: string): string | number => {
+    switch (k) {
+      case "nome": return a.nome.toLowerCase();
+      case "email": return (a.email ?? "").toLowerCase();
+      case "role": return a.role.toLowerCase();
+      case "polo": return (a.polo ?? "").toLowerCase();
+      default: return 0;
+    }
+  };
+
+  const sortedAdmins = [...admins].sort((a, b) => {
+    const va = getAdminVal(a, sortKey); const vb = getAdminVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const getUserVal = (u: UserRow, k: string): string | number => {
+    switch (k) {
+      case "nome": return u.nome.toLowerCase();
+      case "prefixo": return u.prefixo.toLowerCase();
+      case "polo": return u.polo.toLowerCase();
+      case "email": return (u.email ?? "").toLowerCase();
+      default: return 0;
+    }
+  };
+
+  const sortedResults = [...results].sort((a, b) => {
+    const va = getUserVal(a, sortKey); const vb = getUserVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
 
   useEffect(() => {
     if (!loading && !isDispatch && !isPolo) navigate({ to: "/admin" });
@@ -88,17 +136,17 @@ function ContasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail (login)</TableHead>
-                <TableHead>Papel</TableHead>
-                <TableHead>Polo</TableHead>
+                <TableHead><SortBtn k="nome">Nome</SortBtn></TableHead>
+                <TableHead><SortBtn k="email">E-mail (login)</SortBtn></TableHead>
+                <TableHead><SortBtn k="role">Papel</SortBtn></TableHead>
+                <TableHead><SortBtn k="polo">Polo</SortBtn></TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loadingList && <TableRow><TableCell colSpan={5} className="py-6 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></TableCell></TableRow>}
-              {!loadingList && admins.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum admin encontrado</TableCell></TableRow>}
-              {admins.map(a => (
+              {!loadingList && sortedAdmins.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum admin encontrado</TableCell></TableRow>}
+              {sortedAdmins.map(a => (
                 <TableRow key={`${a.user_id}-${a.role}`}>
                   <TableCell>{a.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{a.email ?? "—"}</TableCell>
@@ -139,11 +187,15 @@ function ContasPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead><TableHead>Prefixo</TableHead><TableHead>Polo</TableHead><TableHead>E-mail</TableHead><TableHead className="text-right">Ações</TableHead>
+                  <TableHead><SortBtn k="nome">Nome</SortBtn></TableHead>
+                  <TableHead><SortBtn k="prefixo">Prefixo</SortBtn></TableHead>
+                  <TableHead><SortBtn k="polo">Polo</SortBtn></TableHead>
+                  <TableHead><SortBtn k="email">E-mail</SortBtn></TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map(u => (
+                {sortedResults.map(u => (
                   <TableRow key={u.id}>
                     <TableCell>{u.nome}</TableCell>
                     <TableCell className="font-mono">{u.prefixo}</TableCell>
