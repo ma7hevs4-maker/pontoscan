@@ -40,6 +40,54 @@ function ContasPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<UserRow[]>([]);
   const [searching, setSearching] = useState(false);
+  const [sortKey, setSortKey] = useState<string>("nome");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (k: string) => {
+    if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+
+  const SortBtn = ({ k, children }: { k: string; children: React.ReactNode }) => (
+    <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:text-foreground">
+      {children}
+      {sortKey === k ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+    </button>
+  );
+
+  const getAdminVal = (a: AdminRow, k: string): string | number => {
+    switch (k) {
+      case "nome": return a.nome.toLowerCase();
+      case "email": return (a.email ?? "").toLowerCase();
+      case "role": return a.role.toLowerCase();
+      case "polo": return (a.polo ?? "").toLowerCase();
+      default: return 0;
+    }
+  };
+
+  const sortedAdmins = [...admins].sort((a, b) => {
+    const va = getAdminVal(a, sortKey); const vb = getAdminVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const getUserVal = (u: UserRow, k: string): string | number => {
+    switch (k) {
+      case "nome": return u.nome.toLowerCase();
+      case "prefixo": return u.prefixo.toLowerCase();
+      case "polo": return u.polo.toLowerCase();
+      case "email": return (u.email ?? "").toLowerCase();
+      default: return 0;
+    }
+  };
+
+  const sortedResults = [...results].sort((a, b) => {
+    const va = getUserVal(a, sortKey); const vb = getUserVal(b, sortKey);
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
 
   useEffect(() => {
     if (!loading && !isDispatch && !isPolo) navigate({ to: "/admin" });
