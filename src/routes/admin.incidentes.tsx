@@ -153,8 +153,13 @@ function IncidentesFeed() {
             <Label>Até</Label>
             <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
           </div>
-          <div className="flex items-end text-xs text-muted-foreground md:col-span-2">
-            {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
+          <div className="flex items-end justify-between gap-2 md:col-span-2">
+            <span className="text-xs text-muted-foreground">
+              {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
+            </span>
+            <Button variant="outline" size="sm" onClick={() => exportarCSV(filtradas, nomes)} disabled={filtradas.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
           </div>
         </div>
       </Card>
