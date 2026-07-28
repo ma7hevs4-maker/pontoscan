@@ -95,8 +95,8 @@ function IncidentesFeed() {
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
       if (q) {
-        const nome = (r.usuario_id && nomes[r.usuario_id]) ? nomes[r.usuario_id].toUpperCase() : "";
-        if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q)) return false;
+        const nome = ((r.usuario_id && nomes[r.usuario_id]) || r.nome_colaborador || "").toUpperCase();
+        if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q) && !(r.parceira ?? "").toUpperCase().includes(q)) return false;
       }
       return true;
     });
