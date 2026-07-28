@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrScanner } from "@/components/QrScanner";
 import { getPosition, distanceMeters } from "@/lib/geo";
-import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X } from "lucide-react";
+import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
@@ -168,6 +168,13 @@ function EletricistaPage() {
           >
             <QrCode className="h-10 w-10" />
             <span className="text-2xl font-bold">Escanear QR</span>
+          </button>
+          <button
+            onClick={() => toast.info("Formulário de incidente em breve")}
+            className="mt-3 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-6 text-amber-900 shadow-sm transition-transform active:scale-95 hover:bg-amber-100"
+          >
+            <AlertTriangle className="h-8 w-8" />
+            <span className="text-xl font-bold">Incidente</span>
           </button>
         </Card>
       </main>
