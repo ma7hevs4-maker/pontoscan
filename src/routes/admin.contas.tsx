@@ -26,9 +26,8 @@ async function callAdmin(body: any) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      "X-PontoScan-Auth": token,
     },
-    body: JSON.stringify({ ...body, _authToken: token }),
+    body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();

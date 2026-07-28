@@ -45,34 +45,15 @@ function createAdminClient() {
 }
 
 async function authorize(request: Request) {
-  const tokens = new Set<string>();
-  const headerToken = request.headers.get("x-pontoscan-auth")?.trim();
-  if (headerToken) tokens.add(headerToken);
-
-  try {
-    const body = await request.clone().json();
-    const bodyToken = typeof body?._authToken === "string" ? body._authToken.trim() : "";
-    if (bodyToken) tokens.add(bodyToken);
-  } catch {}
-
   const authHeader = request.headers.get("authorization") ?? "";
-  if (authHeader.startsWith("Bearer ")) {
-    tokens.add(authHeader.slice(7));
-  }
-
-  for (const token of tokens) {
-    const auth = await authorizeToken(token);
-    if (!auth.error) return auth;
-  }
-
-  return { error: new Response("Unauthorized", { status: 401 }) };
+  if (!authHeader.startsWith("Bearer ")) return { error: new Response("Unauthorized", { status: 401 }) };
+  return authorizeToken(authHeader.slice(7));
 }
 
 async function authorizeToken(token: string) {
-  const supabaseAuth = createAuthClient();
-  const { data, error } = await supabaseAuth.auth.getUser(token);
-  if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
   const supabaseAdmin = createAdminClient();
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("role, polo")
