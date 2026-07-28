@@ -212,7 +212,7 @@ function IncidenteCard({ inc, nome, onOpen }: { inc: Incidente; nome?: string; o
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-sm font-bold">{inc.numero_incidente}</span>
             <Badge variant={inc.origem === "INSOURCING" ? "default" : "secondary"}>
-              {inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"}
+              {inc.origem === "INSOURCING" ? "Insourcing" : (inc.parceira ?? "Parceira")}
             </Badge>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -263,7 +263,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
           <div className="grid grid-cols-2 gap-3">
             <Info label="Colaborador" value={nome ?? "—"} />
             <Info label="Equipe" value={inc.prefixo} mono />
-            <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"} />
+            <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : `Parceira · ${inc.parceira ?? "—"}`} />
             <Info label="Polo (eletricista)" value={inc.polo_eletricista ?? "—"} />
             <Info label="Polo (prefixo)" value={inc.polo_prefixo ?? "—"} />
             <Info label="Polo (GPS)" value={inc.polo_geo ?? "—"} />
