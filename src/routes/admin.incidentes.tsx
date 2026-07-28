@@ -304,9 +304,14 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
 
 function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?: string; onClose: () => void }) {
   const [urls, setUrls] = useState<string[]>([]);
+  const [ligacaoUrls, setLigacaoUrls] = useState<string[]>([]);
   useEffect(() => {
-    if (!inc) { setUrls([]); return; }
+    if (!inc) { setUrls([]); setLigacaoUrls([]); return; }
     Promise.all(inc.fotos.map(p => signedPhotoUrl(p, 3600))).then(us => setUrls(us.filter(Boolean) as string[]));
+    const lp = (inc.dados as any)?.ligacaoPrint;
+    const arr: string[] = Array.isArray(lp) ? lp : [];
+    Promise.all(arr.map(p => p?.startsWith("data:") ? Promise.resolve(p) : signedPhotoUrl(p, 3600)))
+      .then(us => setLigacaoUrls(us.filter(Boolean) as string[]));
   }, [inc?.id]);
 
   if (!inc) return null;
@@ -343,7 +348,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
           <div>
             <p className="mb-2 font-semibold">Respostas do formulário</p>
             <div className="divide-y rounded-md border">
-              {Object.entries(inc.dados ?? {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => (
+              {Object.entries(inc.dados ?? {}).filter(([k, v]) => v !== "" && v != null && k !== "ligacaoPrint").map(([k, v]) => (
                 <div key={k} className="grid grid-cols-3 gap-2 p-2 text-xs">
                   <div className="col-span-1 font-medium text-muted-foreground">{fieldLabel(k)}</div>
                   <div className="col-span-2 break-words">{String(v)}</div>
@@ -351,6 +356,19 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
               ))}
             </div>
           </div>
+
+          {ligacaoUrls.length > 0 && (
+            <div>
+              <p className="mb-2 font-semibold">Print da ligação ({ligacaoUrls.length})</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {ligacaoUrls.map((u, i) => (
+                  <a key={i} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border">
+                    <img src={u} alt={`Print ligação ${i + 1}`} className="aspect-square w-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="mb-2 font-semibold">Fotos ({inc.fotos.length})</p>
@@ -395,6 +413,7 @@ function fieldLabel(k: string): string {
     medicao: "Medição",
     correlacaoDefeito: "Correlação do defeito", correlacaoDefeitoOutro: "Correlação (outro)",
     motivo: "Motivo",
+    ligacaoCliente: "Ligação para o cliente",
     observacao: "Observação",
   };
   return map[k] ?? k;
@@ -407,7 +426,7 @@ function escapeCSV(v: string): string {
 }
 
 function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
-  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {}))));
+  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {})))).filter(k => k !== "ligacaoPrint");
   const headers = [
     "Data/Hora", "Tipo", "Nº Incidente", "Origem", "Parceira", "Colaborador",
     "Equipe", "Polo (eletricista)", "Polo (prefixo)", "Polo (GPS)", "Latitude", "Longitude",
