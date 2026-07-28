@@ -5,20 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
+
+const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELCA", "Ceneged"] as const;
+const PARCEIRA_KEY = "pontoscan.parceira_session";
 
 function slug(p: string) {
   return p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s/g, "");
 }
 
 function LoginPage() {
+  const [modo, setModo] = useState<"insourcing" | "parceira">("insourcing");
   const [identificador, setIdent] = useState("");
   const [nome, setNome] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [parcPrefixo, setParcPrefixo] = useState("");
+  const [parcNome, setParcNome] = useState("");
+  const [parcEmpresa, setParcEmpresa] = useState<string>("");
   const navigate = useNavigate();
 
   const onSubmit = async (e: React.FormEvent) => {
