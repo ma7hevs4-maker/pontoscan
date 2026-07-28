@@ -345,7 +345,7 @@ function fieldLabel(k: string): string {
 
 function escapeCSV(v: string): string {
   const s = String(v ?? "").replace(/\r?\n/g, " ");
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
+  if (/[";\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
   return s;
 }
 
@@ -373,9 +373,9 @@ function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
       i.longitude ?? "",
     ];
     const dados = dadosKeys.map(k => i.dados?.[k] ?? "");
-    return [...base, ...dados].map(escapeCSV).join(",");
+    return [...base, ...dados].map(escapeCSV).join(";");
   });
-  const csv = [headers.map(escapeCSV).join(","), ...rows].join("\n");
+  const csv = [headers.map(escapeCSV).join(";"), ...rows].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
