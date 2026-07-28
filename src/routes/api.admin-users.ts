@@ -1,5 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+type AdminAuth = {
+  userId: string;
+  isDispatch: boolean;
+  adminPolo: string | null;
+  supabaseAdmin: SupabaseClient<Database>;
+};
+
+function getEnv(name: "SUPABASE_URL" | "SUPABASE_PUBLISHABLE_KEY" | "SUPABASE_SERVICE_ROLE_KEY") {
+  const value = process.env[name];
+  if (!value) throw new Error(`Configuração ausente: ${name}`);
+  return value;
+}
+
+function createBackendClient(key: string) {
+  const url = getEnv("SUPABASE_URL");
+  return createClient<Database>(url, key, {
+    auth: {
+      storage: undefined,
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) {
+          headers.delete("Authorization");
+        }
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      },
+    },
+  });
+}
+
+function createAuthClient() {
+  return createBackendClient(getEnv("SUPABASE_PUBLISHABLE_KEY"));
+}
+
+function createAdminClient() {
+  return createBackendClient(getEnv("SUPABASE_SERVICE_ROLE_KEY"));
+}
 
 async function authorize(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -7,8 +50,10 @@ async function authorize(request: Request) {
     return { error: new Response("Unauthorized", { status: 401 }) };
   }
   const token = authHeader.slice(7);
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  const supabaseAuth = createAuthClient();
+  const { data, error } = await supabaseAuth.auth.getUser(token);
   if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
+  const supabaseAdmin = createAdminClient();
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("role, polo")
@@ -20,10 +65,11 @@ async function authorize(request: Request) {
     userId: data.user.id,
     isDispatch: !!dispatch,
     adminPolo: (polo?.polo as string | null) ?? null,
+    supabaseAdmin,
   };
 }
 
-async function listAdmins() {
+async function listAdmins(supabaseAdmin: SupabaseClient<Database>) {
   const { data: roles, error: rErr } = await supabaseAdmin
     .from("user_roles")
     .select("user_id, role, polo")
@@ -51,10 +97,11 @@ async function listAdmins() {
   return { admins };
 }
 
-async function searchEletricistas(q: string, restrictPolo: string | null) {
+async function searchEletricistas(supabaseAdmin: SupabaseClient<Database>, q: string, restrictPolo: string | null) {
   let query = supabaseAdmin
     .from("profiles")
     .select("id, nome, prefixo, polo")
+    .eq("ativo", true)
     .limit(50);
   if (restrictPolo) query = query.eq("polo", restrictPolo as any);
   if (q?.trim()) query = query.or(`nome.ilike.%${q}%,prefixo.ilike.%${q}%`);
@@ -68,7 +115,7 @@ async function searchEletricistas(q: string, restrictPolo: string | null) {
   return { users };
 }
 
-async function ensureSamePolo(userId: string, restrictPolo: string | null) {
+async function ensureSamePolo(supabaseAdmin: SupabaseClient<Database>, userId: string, restrictPolo: string | null) {
   if (!restrictPolo) return true;
   const { data: p } = await supabaseAdmin.from("profiles").select("polo").eq("id", userId).maybeSingle();
   return p?.polo === restrictPolo;
@@ -82,22 +129,23 @@ export const Route = createFileRoute("/api/admin-users")({
         if (auth.error) return auth.error;
         const isDispatch = auth.isDispatch;
         const restrictPolo = isDispatch ? null : auth.adminPolo;
+        const supabaseAdmin = (auth as AdminAuth).supabaseAdmin;
         let body: any = {};
         try { body = await request.json(); } catch {}
         const action = body?.action as string;
         try {
           if (action === "list") {
             if (!isDispatch) return new Response("Forbidden", { status: 403 });
-            return Response.json(await listAdmins());
+            return Response.json(await listAdmins(supabaseAdmin));
           }
           if (action === "search-eletricistas") {
-            return Response.json(await searchEletricistas(String(body?.q ?? ""), restrictPolo));
+            return Response.json(await searchEletricistas(supabaseAdmin, String(body?.q ?? ""), restrictPolo));
           }
           if (action === "update-password") {
             const userId = String(body?.userId ?? "");
             const password = String(body?.password ?? "");
             if (!userId || password.length < 6) return new Response("Dados inválidos", { status: 400 });
-            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
@@ -115,7 +163,7 @@ export const Route = createFileRoute("/api/admin-users")({
             const userId = String(body?.userId ?? "");
             const prefixo = String(body?.prefixo ?? "").trim().toUpperCase();
             if (!userId || prefixo.length < 3) return new Response("Dados inválidos", { status: 400 });
-            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ prefixo }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
@@ -124,7 +172,7 @@ export const Route = createFileRoute("/api/admin-users")({
             const userId = String(body?.userId ?? "");
             const nome = String(body?.nome ?? "").trim();
             if (!userId || nome.length < 2) return new Response("Dados inválidos", { status: 400 });
-            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ nome }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
@@ -132,7 +180,7 @@ export const Route = createFileRoute("/api/admin-users")({
           if (action === "delete-user") {
             const userId = String(body?.userId ?? "");
             if (!userId) return new Response("Dados inválidos", { status: 400 });
-            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
             // Não permitir exclusão de administradores por esta rota
             const { data: adminRoles } = await supabaseAdmin
               .from("user_roles")
@@ -143,10 +191,9 @@ export const Route = createFileRoute("/api/admin-users")({
               return new Response("Não é possível excluir administradores", { status: 403 });
             }
             if (userId === auth.userId) return new Response("Você não pode excluir a si mesmo", { status: 400 });
-            // Remove registros vinculados para evitar violação de FK (se existir)
-            await supabaseAdmin.from("registros").delete().eq("usuario_id", userId);
+            // Mantém o histórico de ponto para auditoria; apenas remove acesso e oculta o perfil da gestão de contas.
             await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-            await supabaseAdmin.from("profiles").delete().eq("id", userId);
+            await supabaseAdmin.from("profiles").update({ ativo: false }).eq("id", userId);
             const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
