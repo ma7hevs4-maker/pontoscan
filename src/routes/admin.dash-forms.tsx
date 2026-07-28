@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { TIPO_LABEL } from "@/lib/incidentes";
@@ -13,7 +14,20 @@ import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
 
-const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"] as const;
+const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"] as const;
+
+const POLO_COLORS: Record<string, string> = {
+  "Magé": "hsl(210 80% 45%)",
+  "Niterói": "hsl(190 75% 40%)",
+  "São Gonçalo": "hsl(160 60% 40%)",
+  "Serrana": "hsl(140 55% 40%)",
+  "Sul": "hsl(35 85% 50%)",
+  "Campos": "hsl(15 80% 50%)",
+  "Lagos": "hsl(260 60% 55%)",
+  "Macaé": "hsl(290 55% 50%)",
+  "Noroeste": "hsl(340 65% 50%)",
+  "Perdas": "hsl(55 80% 45%)",
+};
 
 function exportarCSV(tipo: string, charts: { field: { label: string }; data: { name: string; value: number }[]; total: number }[]) {
   const sep = ";";
@@ -35,6 +49,31 @@ function exportarCSV(tipo: string, charts: { field: { label: string }; data: { n
   const a = document.createElement("a");
   a.href = url;
   a.download = `dash-forms-${tipo}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportarCSVPorPolo(tipo: string, charts: { field: { label: string }; polos: string[]; rows: { name: string; counts: Record<string, number>; total: number }[] }[]) {
+  const sep = ";";
+  const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines: string[] = [];
+  for (const c of charts) {
+    lines.push([c.field.label].map(esc).join(sep));
+    lines.push(["Resposta", ...c.polos, "Total"].map(esc).join(sep));
+    if (c.rows.length === 0) {
+      lines.push(["(sem respostas)", ...c.polos.map(() => "0"), "0"].map(esc).join(sep));
+    } else {
+      for (const r of c.rows) {
+        lines.push([r.name, ...c.polos.map(p => String(r.counts[p] ?? 0)), String(r.total)].map(esc).join(sep));
+      }
+    }
+    lines.push("");
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dash-forms-${tipo}-por-polo-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -63,6 +102,7 @@ const FIELDS: Record<Row["tipo"], FieldDef[]> = {
     { key: "noKirchhoff", label: "Nó de Kirchhoff" },
     { key: "medicao", label: "Medição" },
     { key: "correlacaoDefeito", label: "Correlação do Defeito", outroKey: "correlacaoDefeitoOutro" },
+    { key: "ligacaoCliente", label: "Ligação para o cliente" },
   ],
   ORDEM_2: [{ key: "motivo", label: "Motivo" }],
   IMPRODUTIVO: [{ key: "motivo", label: "Motivo" }],
@@ -75,6 +115,7 @@ function DashForms() {
   const [tipo, setTipo] = useState<Row["tipo"]>("ATENDIMENTO_INDIVIDUAL");
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
+  const [porPolo, setPorPolo] = useState(false);
   const hoje = new Date().toISOString().slice(0, 10);
   const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const [de, setDe] = useState(trintaDias);
@@ -127,6 +168,33 @@ function DashForms() {
     });
   }, [filtradas, tipo]);
 
+  const chartsPorPolo = useMemo(() => {
+    return FIELDS[tipo].map(f => {
+      const rowsByResp: Record<string, Record<string, number>> = {};
+      const polosSet = new Set<string>();
+      for (const r of filtradas) {
+        let val = r.dados?.[f.key];
+        if (val == null || val === "") continue;
+        val = String(val);
+        if (val === "Outro" && f.outroKey) {
+          const outro = String(r.dados?.[f.outroKey] ?? "").trim();
+          val = outro ? `Outro: ${outro}` : "Outro";
+        }
+        const p = r.polo_eletricista ?? r.polo_prefixo ?? r.polo_geo ?? "Sem polo";
+        polosSet.add(p);
+        if (!rowsByResp[val]) rowsByResp[val] = {};
+        rowsByResp[val][p] = (rowsByResp[val][p] ?? 0) + 1;
+      }
+      const polos = Array.from(polosSet).sort();
+      const rows = Object.entries(rowsByResp).map(([name, counts]) => ({
+        name,
+        counts,
+        total: Object.values(counts).reduce((s, n) => s + n, 0),
+      })).sort((a, b) => b.total - a.total);
+      return { field: f, polos, rows };
+    });
+  }, [filtradas, tipo]);
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -173,9 +241,20 @@ function DashForms() {
             <Label className="text-xs">Até</Label>
             <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
           </div>
-          <div className="flex items-end justify-between gap-2 md:col-span-2">
+          <div className="flex flex-wrap items-end justify-between gap-3 md:col-span-2">
             <p className="text-sm text-muted-foreground">{filtradas.length} formulário(s) no período</p>
-            <Button variant="outline" size="sm" onClick={() => exportarCSV(tipo, charts)} disabled={filtradas.length === 0}>
+            {role === "ADMIN_DISPATCH" && (
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={porPolo} onCheckedChange={setPorPolo} />
+                <span>{porPolo ? "Por polo" : "Geral"}</span>
+              </label>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => porPolo ? exportarCSVPorPolo(tipo, chartsPorPolo) : exportarCSV(tipo, charts)}
+              disabled={filtradas.length === 0}
+            >
               <Download className="mr-2 h-4 w-4" />Exportar CSV
             </Button>
           </div>
@@ -186,6 +265,43 @@ function DashForms() {
         <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : filtradas.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">Sem respostas no período.</Card>
+      ) : porPolo ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {chartsPorPolo.map(c => {
+            const data = c.rows.map(r => ({ name: r.name, ...r.counts }));
+            return (
+              <Card key={c.field.key} className="p-4">
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h3 className="font-semibold">{c.field.label}</h3>
+                  <span className="text-xs text-muted-foreground">{c.rows.reduce((s, r) => s + r.total, 0)} resposta(s) · {c.polos.length} polo(s)</span>
+                </div>
+                {c.rows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sem respostas.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={Math.max(200, c.rows.length * 44)}>
+                    <BarChart data={data} layout="vertical" margin={{ left: 8, right: 24 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      {c.polos.map(p => (
+                        <Bar key={p} dataKey={p} stackId="polo" fill={POLO_COLORS[p] ?? "var(--primary)"} />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {c.polos.map(p => (
+                    <span key={p} className="flex items-center gap-1">
+                      <span className="inline-block h-3 w-3 rounded" style={{ background: POLO_COLORS[p] ?? "var(--primary)" }} />
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {charts.map(c => (

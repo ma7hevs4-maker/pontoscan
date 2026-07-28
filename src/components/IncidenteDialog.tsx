@@ -33,6 +33,7 @@ async function submitIncidente(args: {
   dados: Record<string, any>;
   fotos: File[];
   actor: IncidenteActor;
+  extraFotos?: { key: string; files: File[] }[];
 }): Promise<void> {
   let lat: number | null = null, lng: number | null = null;
   try {
@@ -42,6 +43,10 @@ async function submitIncidente(args: {
 
   if (args.actor.mode === "parceira") {
     const fotos = await Promise.all(args.fotos.map(fileToDataUrl));
+    const dadosExtras: Record<string, any> = { ...args.dados };
+    for (const g of args.extraFotos ?? []) {
+      dadosExtras[g.key] = await Promise.all(g.files.map(fileToDataUrl));
+    }
     const res = await fetch("/api/public/incidente-parceira", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,7 +56,7 @@ async function submitIncidente(args: {
         parceira: args.actor.parceira,
         tipo: args.tipo,
         numero: args.numero,
-        dados: args.dados,
+        dados: dadosExtras,
         fotos,
         latitude: lat,
         longitude: lng,
@@ -75,6 +80,20 @@ async function submitIncidente(args: {
     paths.push(path);
   }
 
+  const dadosFinal: Record<string, any> = { ...args.dados };
+  for (const g of args.extraFotos ?? []) {
+    const gPaths: string[] = [];
+    for (let i = 0; i < g.files.length; i++) {
+      const f = g.files[i];
+      const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+      const path = `${args.actor.userId}/${g.key}_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("incidentes-fotos").upload(path, f, { contentType: f.type || "image/jpeg", upsert: false });
+      if (error) throw new Error(`Falha ao enviar ${g.key} ${i + 1}: ${error.message}`);
+      gPaths.push(path);
+    }
+    dadosFinal[g.key] = gPaths;
+  }
+
   const { error: iErr } = await (supabase as any).from("incidentes").insert({
     usuario_id: args.actor.userId,
     prefixo: args.actor.prefixo,
@@ -86,7 +105,7 @@ async function submitIncidente(args: {
     numero_incidente: args.numero,
     latitude: lat,
     longitude: lng,
-    dados: args.dados,
+    dados: dadosFinal,
     fotos: paths,
   });
   if (iErr) throw new Error(iErr.message);
@@ -160,6 +179,7 @@ type AIForm = {
   noKirchhoff: string;
   medicao: string;
   correlacaoDefeito: string; correlacaoDefeitoOutro: string;
+  ligacaoCliente: string;
 };
 
 const emptyAI: AIForm = {
@@ -174,11 +194,13 @@ const emptyAI: AIForm = {
   noKirchhoff: "",
   medicao: "",
   correlacaoDefeito: "", correlacaoDefeitoOutro: "",
+  ligacaoCliente: "",
 };
 
 function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
+  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
 
@@ -201,6 +223,8 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
     if (!f.medicao) return "Selecione a condição da medição";
     if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
     if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
+    if (!f.ligacaoCliente) return "Informe se foi efetuada ligação para o cliente";
+    if (f.ligacaoCliente === "Sim" && printLigacao.length === 0) return "Anexe o print da ligação para o cliente";
     if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
     return null;
   };
@@ -216,6 +240,7 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
         dados: f,
         fotos,
         actor,
+        extraFotos: f.ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
       });
       toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
@@ -301,6 +326,14 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
           ]}
           outroValue={f.correlacaoDefeitoOutro} onOutroChange={(v) => set("correlacaoDefeitoOutro", v)}
         />
+
+        <RadioField label="Foi efetuada ligação para o cliente?" required value={f.ligacaoCliente} onChange={(v) => set("ligacaoCliente", v)}
+          options={["Sim", "Não"]}
+        />
+
+        {f.ligacaoCliente === "Sim" && (
+          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+        )}
 
         <EvidenciasPicker fotos={fotos} onChange={setFotos} />
 
@@ -405,6 +438,39 @@ function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (fot
         </div>
       )}
       <p className="text-xs text-muted-foreground">{fotos.length} foto(s) anexada(s)</p>
+    </Field>
+  );
+}
+
+function PrintLigacaoPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
+  const albumRef = useRef<HTMLInputElement>(null);
+  const add = (list: FileList | null) => {
+    if (!list) return;
+    const arr = Array.from(list).filter(f => f.type.startsWith("image/"));
+    onChange([...fotos, ...arr]);
+  };
+  const remove = (i: number) => onChange(fotos.filter((_, idx) => idx !== i));
+  const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
+  return (
+    <Field label="Print da ligação para o cliente" required>
+      <Button type="button" variant="outline" onClick={() => albumRef.current?.click()} className="h-12 w-full">
+        <ImageIcon className="mr-2 h-5 w-5" /> Álbum
+      </Button>
+      <input ref={albumRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+      {previews.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          {previews.map((p, i) => (
+            <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
+              <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+              <button type="button" onClick={() => remove(i)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white" aria-label="Remover">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">{fotos.length} print(s) anexado(s)</p>
     </Field>
   );
 }

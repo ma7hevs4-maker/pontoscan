@@ -3,7 +3,7 @@ import { distanceMeters } from "@/lib/geo";
 
 export type Polo =
   | "Magé" | "Niterói" | "São Gonçalo" | "Serrana" | "Sul"
-  | "Campos" | "Lagos" | "Macaé" | "Noroeste" | "Perdas" | "Comercial";
+  | "Campos" | "Lagos" | "Macaé" | "Noroeste" | "Perdas";
 
 // Regra: CP-Campos; AR/CF-Lagos; MC-Macaé; MG-Magé; NI-Niterói;
 // CG/PD/IT-Noroeste; SG-São Gonçalo; PE/TE-Serrana; AN/RE-Sul.
