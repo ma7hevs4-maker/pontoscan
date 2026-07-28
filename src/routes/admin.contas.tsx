@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown, User, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/contas")({ component: ContasPage });
@@ -203,7 +204,9 @@ function ContasPage() {
                     <TableCell className="font-mono text-xs">{u.email ?? "—"}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <EditPrefixoDialog userId={u.id} currentPrefixo={u.prefixo} label={u.nome} onDone={runSearch} />
+                      <EditNomeDialog userId={u.id} currentNome={u.nome} onDone={runSearch} />
                       <ResetPasswordDialog userId={u.id} label={u.nome} />
+                      <DeleteUserButton userId={u.id} label={u.nome} onDone={runSearch} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -328,5 +331,79 @@ function EditPrefixoDialog({ userId, currentPrefixo, label, onDone }: { userId: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function EditNomeDialog({ userId, currentNome, onDone }: { userId: string; currentNome: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [nome, setNome] = useState(currentNome);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setNome(currentNome); }, [open, currentNome]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "update-nome", userId, nome });
+      toast.success("Nome atualizado");
+      setOpen(false);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><User className="mr-1 h-3.5 w-3.5" />Nome</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Alterar nome</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <Label>Novo nome</Label>
+          <Input value={nome} onChange={e => setNome(e.target.value)} autoComplete="off" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={busy || nome.trim().length < 2}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteUserButton({ userId, label, onDone }: { userId: string; label: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "delete-user", userId });
+      toast.success("Perfil excluído");
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm"><Trash2 className="mr-1 h-3.5 w-3.5" />Excluir</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir {label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta ação remove permanentemente o perfil, a conta de acesso e todos os registros de ponto deste eletricista. Não é possível desfazer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir definitivamente"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
