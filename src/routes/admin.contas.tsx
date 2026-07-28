@@ -23,7 +23,11 @@ async function callAdmin(body: any) {
   if (!token) throw new Error("Sessão expirada");
   const r = await fetch("/api/admin-users", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "X-PontoScan-Auth": token,
+    },
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(await r.text());

@@ -45,11 +45,19 @@ function createAdminClient() {
 }
 
 async function authorize(request: Request) {
+  const fallbackToken = request.headers.get("x-pontoscan-auth")?.trim();
+  if (fallbackToken) {
+    return authorizeToken(fallbackToken);
+  }
   const authHeader = request.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return { error: new Response("Unauthorized", { status: 401 }) };
   }
   const token = authHeader.slice(7);
+  return authorizeToken(token);
+}
+
+async function authorizeToken(token: string) {
   const supabaseAuth = createAuthClient();
   const { data, error } = await supabaseAuth.auth.getUser(token);
   if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
