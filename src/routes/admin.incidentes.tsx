@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, ImageOff, Image as ImgIcon } from "lucide-react";
+import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
@@ -153,8 +153,13 @@ function IncidentesFeed() {
             <Label>Até</Label>
             <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
           </div>
-          <div className="flex items-end text-xs text-muted-foreground md:col-span-2">
-            {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
+          <div className="flex items-end justify-between gap-2 md:col-span-2">
+            <span className="text-xs text-muted-foreground">
+              {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
+            </span>
+            <Button variant="outline" size="sm" onClick={() => exportarCSV(filtradas, nomes)} disabled={filtradas.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
           </div>
         </div>
       </Card>
@@ -336,4 +341,48 @@ function fieldLabel(k: string): string {
     observacao: "Observação",
   };
   return map[k] ?? k;
+}
+
+function escapeCSV(v: string): string {
+  const s = String(v ?? "").replace(/\r?\n/g, " ");
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
+  return s;
+}
+
+function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
+  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {}))));
+  const headers = [
+    "Data/Hora", "Tipo", "Nº Incidente", "Origem", "Parceira", "Colaborador",
+    "Equipe", "Polo (eletricista)", "Polo (prefixo)", "Polo (GPS)", "Latitude", "Longitude",
+    ...dadosKeys.map(fieldLabel),
+  ];
+  const rows = incidentes.map(i => {
+    const nome = i.usuario_id ? nomes[i.usuario_id] : (i.nome_colaborador ?? "");
+    const base = [
+      new Date(i.created_at).toLocaleString("pt-BR"),
+      TIPO_LABEL[i.tipo],
+      i.numero_incidente,
+      i.origem,
+      i.parceira ?? "",
+      nome,
+      i.prefixo,
+      i.polo_eletricista ?? "",
+      i.polo_prefixo ?? "",
+      i.polo_geo ?? "",
+      i.latitude ?? "",
+      i.longitude ?? "",
+    ];
+    const dados = dadosKeys.map(k => i.dados?.[k] ?? "");
+    return [...base, ...dados].map(escapeCSV).join(",");
+  });
+  const csv = [headers.map(escapeCSV).join(","), ...rows].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `incidentes_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
