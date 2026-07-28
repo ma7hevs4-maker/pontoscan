@@ -375,7 +375,7 @@ function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
     const dados = dadosKeys.map(k => i.dados?.[k] ?? "");
     return [...base, ...dados].map(escapeCSV).join(";");
   });
-  const csv = [headers.map(escapeCSV).join(","), ...rows].join("\n");
+  const csv = [headers.map(escapeCSV).join(";"), ...rows].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
