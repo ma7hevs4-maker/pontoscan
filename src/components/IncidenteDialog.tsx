@@ -179,7 +179,6 @@ type AIForm = {
   noKirchhoff: string;
   medicao: string;
   correlacaoDefeito: string; correlacaoDefeitoOutro: string;
-  ligacaoCliente: string;
 };
 
 const emptyAI: AIForm = {
@@ -194,13 +193,11 @@ const emptyAI: AIForm = {
   noKirchhoff: "",
   medicao: "",
   correlacaoDefeito: "", correlacaoDefeitoOutro: "",
-  ligacaoCliente: "",
 };
 
 function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
-  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
 
@@ -223,8 +220,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
     if (!f.medicao) return "Selecione a condição da medição";
     if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
     if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
-    if (!f.ligacaoCliente) return "Informe se foi efetuada ligação para o cliente";
-    if (f.ligacaoCliente === "Sim" && printLigacao.length === 0) return "Anexe o print da ligação para o cliente";
     if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
     return null;
   };
@@ -240,7 +235,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
         dados: f,
         fotos,
         actor,
-        extraFotos: f.ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
       });
       toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
@@ -326,14 +320,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
           ]}
           outroValue={f.correlacaoDefeitoOutro} onOutroChange={(v) => set("correlacaoDefeitoOutro", v)}
         />
-
-        <RadioField label="Foi efetuada ligação para o cliente?" required value={f.ligacaoCliente} onChange={(v) => set("ligacaoCliente", v)}
-          options={["Sim", "Não"]}
-        />
-
-        {f.ligacaoCliente === "Sim" && (
-          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
-        )}
 
         <EvidenciasPicker fotos={fotos} onChange={setFotos} />
 
