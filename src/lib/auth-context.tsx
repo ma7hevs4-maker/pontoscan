@@ -52,10 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null); setRole(null); setAdminPolo(null);
       }
     });
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s?.user) loadMeta(s.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error || !data.user) {
+        supabase.auth.signOut();
+        setSession(null);
+        setProfile(null); setRole(null); setAdminPolo(null);
+        setLoading(false);
+        return;
+      }
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        setSession(s);
+        loadMeta(data.user.id).finally(() => setLoading(false));
+      });
     });
     return () => subscription.unsubscribe();
   }, []);

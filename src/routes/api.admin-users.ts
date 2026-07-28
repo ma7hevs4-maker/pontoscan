@@ -46,14 +46,14 @@ function createAdminClient() {
 
 async function authorize(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return { error: new Response("Unauthorized", { status: 401 }) };
-  }
-  const token = authHeader.slice(7);
-  const supabaseAuth = createAuthClient();
-  const { data, error } = await supabaseAuth.auth.getUser(token);
-  if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
+  if (!authHeader.startsWith("Bearer ")) return { error: new Response("Unauthorized", { status: 401 }) };
+  return authorizeToken(authHeader.slice(7));
+}
+
+async function authorizeToken(token: string) {
   const supabaseAdmin = createAdminClient();
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("role, polo")
