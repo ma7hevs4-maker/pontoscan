@@ -1,0 +1,286 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, MapPin, ImageOff, Image as ImgIcon } from "lucide-react";
+import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
+
+export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
+
+type Incidente = {
+  id: string;
+  usuario_id: string | null;
+  prefixo: string;
+  polo_eletricista: string | null;
+  polo_prefixo: string | null;
+  polo_geo: string | null;
+  origem: "INSOURCING" | "PARCEIRA";
+  tipo: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+  numero_incidente: string;
+  latitude: number | null;
+  longitude: number | null;
+  dados: Record<string, any>;
+  fotos: string[];
+  created_at: string;
+};
+
+function IncidentesFeed() {
+  const { role, adminPolo } = useAuth();
+  const [rows, setRows] = useState<Incidente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState<string>("all");
+  const [origem, setOrigem] = useState<string>("all");
+  const [detalhe, setDetalhe] = useState<Incidente | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("incidentes")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setRows((data as Incidente[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // Realtime
+  useEffect(() => {
+    const ch = supabase.channel("admin-incidentes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "incidentes" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  const filtradas = useMemo(() => {
+    const q = busca.trim().toUpperCase();
+    return rows.filter(r => {
+      if (tipo !== "all" && r.tipo !== tipo) return false;
+      if (origem !== "all" && r.origem !== origem) return false;
+      if (q && !r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q)) return false;
+      return true;
+    });
+  }, [rows, busca, tipo, origem]);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          <div>
+            <Label>Buscar (nº ou prefixo)</Label>
+            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: NI200TST-A ou ABC1234567" />
+          </div>
+          <div>
+            <Label>Tipo</Label>
+            <Select value={tipo} onValueChange={setTipo}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>
+                <SelectItem value="ORDEM_2">Ordem 2</SelectItem>
+                <SelectItem value="IMPRODUTIVO">Improdutivo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Origem</Label>
+            <Select value={origem} onValueChange={setOrigem}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="INSOURCING">Insourcing</SelectItem>
+                <SelectItem value="PARCEIRA">Parceira</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end text-xs text-muted-foreground">
+            {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
+          </div>
+        </div>
+      </Card>
+
+      {loading ? (
+        <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : filtradas.length === 0 ? (
+        <Card className="p-10 text-center text-muted-foreground">Nenhum incidente encontrado.</Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtradas.map(inc => (
+            <IncidenteCard key={inc.id} inc={inc} onOpen={() => setDetalhe(inc)} />
+          ))}
+        </div>
+      )}
+
+      <IncidenteDetalhe inc={detalhe} onClose={() => setDetalhe(null)} />
+    </div>
+  );
+}
+
+function IncidenteCard({ inc, onOpen }: { inc: Incidente; onOpen: () => void }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (inc.fotos?.[0]) {
+      signedPhotoUrl(inc.fotos[0]).then(u => { if (alive) setThumb(u); });
+    }
+    return () => { alive = false; };
+  }, [inc.id]);
+
+  const date = new Date(inc.created_at).toLocaleString("pt-BR");
+  const gmaps = inc.latitude != null && inc.longitude != null
+    ? `https://www.google.com/maps?q=${inc.latitude},${inc.longitude}`
+    : null;
+
+  return (
+    <Card className="overflow-hidden">
+      <button onClick={onOpen} className="block w-full text-left">
+        <div className="relative aspect-video bg-muted">
+          {thumb ? (
+            <img src={thumb} alt="Evidência" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              {inc.fotos?.length ? <ImgIcon className="h-8 w-8 animate-pulse" /> : <ImageOff className="h-8 w-8" />}
+            </div>
+          )}
+          {inc.fotos?.length > 1 && (
+            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+              +{inc.fotos.length - 1} foto(s)
+            </span>
+          )}
+        </div>
+        <div className="space-y-2 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-sm font-bold">{inc.numero_incidente}</span>
+            <Badge variant={inc.origem === "INSOURCING" ? "default" : "secondary"}>
+              {inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"}
+            </Badge>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            <p><b>{TIPO_LABEL[inc.tipo]}</b></p>
+            <p>Equipe: <span className="font-mono">{inc.prefixo}</span></p>
+            <p>{date}</p>
+          </div>
+        </div>
+      </button>
+      <div className="border-t p-2">
+        {gmaps ? (
+          <a href={gmaps} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+            <Button variant="outline" size="sm" className="w-full">
+              <MapPin className="mr-2 h-4 w-4" />Ver no mapa
+            </Button>
+          </a>
+        ) : (
+          <Button variant="outline" size="sm" className="w-full" disabled>
+            <MapPin className="mr-2 h-4 w-4" />Sem GPS
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function IncidenteDetalhe({ inc, onClose }: { inc: Incidente | null; onClose: () => void }) {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    if (!inc) { setUrls([]); return; }
+    Promise.all(inc.fotos.map(p => signedPhotoUrl(p, 3600))).then(us => setUrls(us.filter(Boolean) as string[]));
+  }, [inc?.id]);
+
+  if (!inc) return null;
+  const gmaps = inc.latitude != null && inc.longitude != null
+    ? `https://www.google.com/maps?q=${inc.latitude},${inc.longitude}`
+    : null;
+
+  return (
+    <Dialog open={!!inc} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{TIPO_LABEL[inc.tipo]} · {inc.numero_incidente}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <Info label="Equipe" value={inc.prefixo} mono />
+            <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"} />
+            <Info label="Polo (eletricista)" value={inc.polo_eletricista ?? "—"} />
+            <Info label="Polo (prefixo)" value={inc.polo_prefixo ?? "—"} />
+            <Info label="Polo (GPS)" value={inc.polo_geo ?? "—"} />
+            <Info label="Data/hora" value={new Date(inc.created_at).toLocaleString("pt-BR")} />
+          </div>
+
+          {gmaps && (
+            <a href={gmaps} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm">
+                <MapPin className="mr-2 h-4 w-4" />Abrir no Google Maps ({inc.latitude?.toFixed(5)}, {inc.longitude?.toFixed(5)})
+              </Button>
+            </a>
+          )}
+
+          <div>
+            <p className="mb-2 font-semibold">Respostas do formulário</p>
+            <div className="divide-y rounded-md border">
+              {Object.entries(inc.dados ?? {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => (
+                <div key={k} className="grid grid-cols-3 gap-2 p-2 text-xs">
+                  <div className="col-span-1 font-medium text-muted-foreground">{fieldLabel(k)}</div>
+                  <div className="col-span-2 break-words">{String(v)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 font-semibold">Fotos ({inc.fotos.length})</p>
+            {urls.length === 0 ? (
+              <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {urls.map((u, i) => (
+                  <a key={i} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border">
+                    <img src={u} alt={`Foto ${i + 1}`} className="aspect-square w-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-sm font-medium ${mono ? "font-mono" : ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function fieldLabel(k: string): string {
+  const map: Record<string, string> = {
+    numeroIncidente: "Nº Incidente",
+    tipoRede: "Tipo de Rede", tipoRedeOutro: "Tipo de Rede (outro)",
+    tipoConexao: "Tipo de conexão", tipoConexaoOutro: "Tipo de conexão (outro)",
+    caixaDae: "Caixa DAE",
+    materialRamal: "Material do ramal",
+    bitolaRamal: "Bitola do ramal", bitolaRamalOutro: "Bitola (outro)",
+    tipoRamal: "Tipo de ramal",
+    tipoDisjuntor: "Tipo de disjuntor", tipoDisjuntorOutro: "Disjuntor (outro)",
+    noKirchhoff: "Nó de Kirchhoff",
+    medicao: "Medição",
+    correlacaoDefeito: "Correlação do defeito", correlacaoDefeitoOutro: "Correlação (outro)",
+    motivo: "Motivo",
+    observacao: "Observação",
+  };
+  return map[k] ?? k;
+}
