@@ -362,9 +362,14 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
               <p className="mb-2 font-semibold">Print da ligação ({ligacaoUrls.length})</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {ligacaoUrls.map((u, i) => (
-                  <a key={i} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border">
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => openImageInNewTab(u)}
+                    className="block overflow-hidden rounded-md border"
+                  >
                     <img src={u} alt={`Print ligação ${i + 1}`} className="aspect-square w-full object-cover" />
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -423,6 +428,22 @@ function escapeCSV(v: string): string {
   const s = String(v ?? "").replace(/\r?\n/g, " ");
   if (/[";\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
   return s;
+}
+
+async function openImageInNewTab(url: string) {
+  try {
+    if (url.startsWith("data:")) {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 }
 
 function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
