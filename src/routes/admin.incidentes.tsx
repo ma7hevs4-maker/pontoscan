@@ -14,6 +14,8 @@ import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
 
+const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"] as const;
+
 type Incidente = {
   id: string;
   usuario_id: string | null;
@@ -34,10 +36,16 @@ type Incidente = {
 function IncidentesFeed() {
   const { role, adminPolo } = useAuth();
   const [rows, setRows] = useState<Incidente[]>([]);
+  const [nomes, setNomes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<string>("all");
   const [origem, setOrigem] = useState<string>("all");
+  const [polo, setPolo] = useState<string>("all");
+  const hoje = new Date().toISOString().slice(0, 10);
+  const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [dataDe, setDataDe] = useState<string>(trintaDias);
+  const [dataAte, setDataAte] = useState<string>(hoje);
   const [detalhe, setDetalhe] = useState<Incidente | null>(null);
 
   const load = async () => {
@@ -47,7 +55,17 @@ function IncidentesFeed() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    setRows((data as Incidente[]) ?? []);
+    const list = (data as Incidente[]) ?? [];
+    setRows(list);
+    const ids = Array.from(new Set(list.map(r => r.usuario_id).filter(Boolean))) as string[];
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", ids);
+      const map: Record<string, string> = {};
+      (profs ?? []).forEach((p: any) => { map[p.id] = p.nome; });
+      setNomes(map);
+    } else {
+      setNomes({});
+    }
     setLoading(false);
   };
 
@@ -63,13 +81,24 @@ function IncidentesFeed() {
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toUpperCase();
+    const deTs = dataDe ? new Date(dataDe + "T00:00:00").getTime() : null;
+    const ateTs = dataAte ? new Date(dataAte + "T23:59:59.999").getTime() : null;
     return rows.filter(r => {
       if (tipo !== "all" && r.tipo !== tipo) return false;
       if (origem !== "all" && r.origem !== origem) return false;
-      if (q && !r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q)) return false;
+      if (polo !== "all") {
+        if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
+      }
+      const ts = new Date(r.created_at).getTime();
+      if (deTs != null && ts < deTs) return false;
+      if (ateTs != null && ts > ateTs) return false;
+      if (q) {
+        const nome = (r.usuario_id && nomes[r.usuario_id]) ? nomes[r.usuario_id].toUpperCase() : "";
+        if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q)) return false;
+      }
       return true;
     });
-  }, [rows, busca, tipo, origem]);
+  }, [rows, busca, tipo, origem, polo, dataDe, dataAte, nomes]);
 
   return (
     <div className="space-y-4">
@@ -77,7 +106,7 @@ function IncidentesFeed() {
         <div className="grid gap-3 md:grid-cols-4">
           <div>
             <Label>Buscar (nº ou prefixo)</Label>
-            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: NI200TST-A ou ABC1234567" />
+            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nº, prefixo ou nome" />
           </div>
           <div>
             <Label>Tipo</Label>
@@ -102,7 +131,27 @@ function IncidentesFeed() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-end text-xs text-muted-foreground">
+          {role === "ADMIN_DISPATCH" && (
+            <div>
+              <Label>Polo</Label>
+              <Select value={polo} onValueChange={setPolo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label>De</Label>
+            <Input type="date" value={dataDe} onChange={(e) => setDataDe(e.target.value)} />
+          </div>
+          <div>
+            <Label>Até</Label>
+            <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
+          </div>
+          <div className="flex items-end text-xs text-muted-foreground md:col-span-2">
             {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
           </div>
         </div>
@@ -115,17 +164,17 @@ function IncidentesFeed() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map(inc => (
-            <IncidenteCard key={inc.id} inc={inc} onOpen={() => setDetalhe(inc)} />
+            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : undefined} onOpen={() => setDetalhe(inc)} />
           ))}
         </div>
       )}
 
-      <IncidenteDetalhe inc={detalhe} onClose={() => setDetalhe(null)} />
+      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : undefined} onClose={() => setDetalhe(null)} />
     </div>
   );
 }
 
-function IncidenteCard({ inc, onOpen }: { inc: Incidente; onOpen: () => void }) {
+function IncidenteCard({ inc, nome, onOpen }: { inc: Incidente; nome?: string; onOpen: () => void }) {
   const [thumb, setThumb] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -166,6 +215,7 @@ function IncidenteCard({ inc, onOpen }: { inc: Incidente; onOpen: () => void }) 
           </div>
           <div className="text-xs text-muted-foreground">
             <p><b>{TIPO_LABEL[inc.tipo]}</b></p>
+            <p>Colaborador: <span className="font-medium text-foreground">{nome ?? "—"}</span></p>
             <p>Equipe: <span className="font-mono">{inc.prefixo}</span></p>
             <p>{date}</p>
           </div>
@@ -188,7 +238,7 @@ function IncidenteCard({ inc, onOpen }: { inc: Incidente; onOpen: () => void }) 
   );
 }
 
-function IncidenteDetalhe({ inc, onClose }: { inc: Incidente | null; onClose: () => void }) {
+function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?: string; onClose: () => void }) {
   const [urls, setUrls] = useState<string[]>([]);
   useEffect(() => {
     if (!inc) { setUrls([]); return; }
@@ -209,6 +259,7 @@ function IncidenteDetalhe({ inc, onClose }: { inc: Incidente | null; onClose: ()
 
         <div className="space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3">
+            <Info label="Colaborador" value={nome ?? "—"} />
             <Info label="Equipe" value={inc.prefixo} mono />
             <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"} />
             <Info label="Polo (eletricista)" value={inc.polo_eletricista ?? "—"} />
