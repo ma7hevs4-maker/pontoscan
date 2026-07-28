@@ -333,3 +333,77 @@ function EditPrefixoDialog({ userId, currentPrefixo, label, onDone }: { userId: 
     </Dialog>
   );
 }
+
+function EditNomeDialog({ userId, currentNome, onDone }: { userId: string; currentNome: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [nome, setNome] = useState(currentNome);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setNome(currentNome); }, [open, currentNome]);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "update-nome", userId, nome });
+      toast.success("Nome atualizado");
+      setOpen(false);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><User className="mr-1 h-3.5 w-3.5" />Nome</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Alterar nome</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <Label>Novo nome</Label>
+          <Input value={nome} onChange={e => setNome(e.target.value)} autoComplete="off" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={busy || nome.trim().length < 2}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteUserButton({ userId, label, onDone }: { userId: string; label: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await callAdmin({ action: "delete-user", userId });
+      toast.success("Perfil excluído");
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setBusy(false); }
+  };
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm"><Trash2 className="mr-1 h-3.5 w-3.5" />Excluir</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir {label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta ação remove permanentemente o perfil, a conta de acesso e todos os registros de ponto deste eletricista. Não é possível desfazer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir definitivamente"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
