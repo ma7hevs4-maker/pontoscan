@@ -19,6 +19,7 @@ import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
 import { Route as AdminContasRouteImport } from './routes/admin.contas'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
+import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -70,6 +71,12 @@ const AdminBasesRoute = AdminBasesRouteImport.update({
   path: '/bases',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicIncidenteParceiraRoute =
+  ApiPublicIncidenteParceiraRouteImport.update({
+    id: '/api/public/incidente-parceira',
+    path: '/api/public/incidente-parceira',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +116,7 @@ export interface FileRoutesById {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
+    | '/api/public/incidente-parceira'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
+    | '/api/public/incidente-parceira'
   id:
     | '__root__'
     | '/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
+    | '/api/public/incidente-parceira'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -154,6 +167,7 @@ export interface RootRouteChildren {
   EletricistaRoute: typeof EletricistaRoute
   LoginRoute: typeof LoginRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
+  ApiPublicIncidenteParceiraRoute: typeof ApiPublicIncidenteParceiraRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -228,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBasesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/incidente-parceira': {
+      id: '/api/public/incidente-parceira'
+      path: '/api/public/incidente-parceira'
+      fullPath: '/api/public/incidente-parceira'
+      preLoaderRoute: typeof ApiPublicIncidenteParceiraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -254,6 +275,7 @@ const rootRouteChildren: RootRouteChildren = {
   EletricistaRoute: EletricistaRoute,
   LoginRoute: LoginRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
+  ApiPublicIncidenteParceiraRoute: ApiPublicIncidenteParceiraRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
