@@ -31,6 +31,8 @@ type Incidente = {
   dados: Record<string, any>;
   fotos: string[];
   created_at: string;
+  parceira: string | null;
+  nome_colaborador: string | null;
 };
 
 function IncidentesFeed() {
