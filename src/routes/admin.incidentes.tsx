@@ -92,7 +92,6 @@ function IncidentesFeed() {
       const ts = new Date(r.created_at).getTime();
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
-      if (q && !r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q)) return false;
       if (q) {
         const nome = (r.usuario_id && nomes[r.usuario_id]) ? nomes[r.usuario_id].toUpperCase() : "";
         if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q)) return false;
