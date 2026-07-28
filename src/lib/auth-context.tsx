@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
 type Role = "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH";
-type Polo = "Magé" | "Niterói" | "São Gonçalo" | "Serrana" | "Sul" | "Campos" | "Lagos" | "Macaé" | "Noroeste" | "Perdas" | "Comercial";
+type Polo = "Magé" | "Niterói" | "São Gonçalo" | "Serrana" | "Sul" | "Campos" | "Lagos" | "Macaé" | "Noroeste" | "Perdas";
 
 export interface Profile {
   id: string;
@@ -87,5 +87,5 @@ export const useAuth = () => {
   return c;
 };
 
-export const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"];
+export const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"];
 export type { Role, Polo };
