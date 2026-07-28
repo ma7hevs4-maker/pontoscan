@@ -18,6 +18,11 @@ interface AdminRow { user_id: string; email: string | null; nome: string; role: 
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }
 
 async function callAdmin(body: any) {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    await supabase.auth.signOut();
+    throw new Error("Sessão expirada. Entre novamente.");
+  }
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Sessão expirada");
