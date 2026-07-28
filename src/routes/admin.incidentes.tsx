@@ -425,9 +425,6 @@ function fieldLabel(k: string): string {
 }
 
 function escapeCSV(v: string): string {
-  return _escapeCSV(v);
-}
-function _escapeCSV(v: string): string {
   const s = String(v ?? "").replace(/\r?\n/g, " ");
   if (/[";\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
   return s;
