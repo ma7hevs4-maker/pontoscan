@@ -413,6 +413,7 @@ function fieldLabel(k: string): string {
     medicao: "Medição",
     correlacaoDefeito: "Correlação do defeito", correlacaoDefeitoOutro: "Correlação (outro)",
     motivo: "Motivo",
+    ligacaoCliente: "Ligação para o cliente",
     observacao: "Observação",
   };
   return map[k] ?? k;
