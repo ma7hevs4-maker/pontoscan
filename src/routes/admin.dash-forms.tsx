@@ -5,16 +5,48 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { TIPO_LABEL } from "@/lib/incidentes";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
+
+const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"] as const;
+
+function exportarCSV(tipo: string, charts: { field: { label: string }; data: { name: string; value: number }[]; total: number }[]) {
+  const sep = ";";
+  const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines: string[] = [];
+  lines.push(["Pergunta", "Resposta", "Quantidade", "Total", "%"].map(esc).join(sep));
+  for (const c of charts) {
+    if (c.data.length === 0) {
+      lines.push([c.field.label, "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
+      continue;
+    }
+    for (const d of c.data) {
+      const pct = c.total ? ((d.value / c.total) * 100).toFixed(1) + "%" : "0%";
+      lines.push([c.field.label, d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
+    }
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dash-forms-${tipo}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 type Row = {
   tipo: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
   dados: Record<string, any>;
   created_at: string;
+  origem: "INSOURCING" | "PARCEIRA";
+  polo_eletricista: string | null;
+  polo_prefixo: string | null;
+  polo_geo: string | null;
 };
 
 type FieldDef = { key: string; label: string; outroKey?: string };
@@ -37,9 +69,12 @@ const FIELDS: Record<Row["tipo"], FieldDef[]> = {
 };
 
 function DashForms() {
+  const { role } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [tipo, setTipo] = useState<Row["tipo"]>("ATENDIMENTO_INDIVIDUAL");
+  const [origem, setOrigem] = useState<string>("all");
+  const [polo, setPolo] = useState<string>("all");
   const hoje = new Date().toISOString().slice(0, 10);
   const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const [de, setDe] = useState(trintaDias);
@@ -50,7 +85,7 @@ function DashForms() {
       setLoading(true);
       const { data } = await (supabase as any)
         .from("incidentes")
-        .select("tipo, dados, created_at")
+        .select("tipo, dados, created_at, origem, polo_eletricista, polo_prefixo, polo_geo")
         .order("created_at", { ascending: false })
         .limit(5000);
       setRows((data as Row[]) ?? []);
@@ -63,10 +98,14 @@ function DashForms() {
     const ateTs = new Date(ate + "T23:59:59").getTime();
     return rows.filter(r => {
       if (r.tipo !== tipo) return false;
+      if (origem !== "all" && r.origem !== origem) return false;
+      if (polo !== "all") {
+        if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
+      }
       const t = new Date(r.created_at).getTime();
       return t >= deTs && t <= ateTs;
     });
-  }, [rows, tipo, de, ate]);
+  }, [rows, tipo, origem, polo, de, ate]);
 
   const charts = useMemo(() => {
     return FIELDS[tipo].map(f => {
@@ -104,6 +143,29 @@ function DashForms() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Origem</Label>
+            <Select value={origem} onValueChange={setOrigem}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="INSOURCING">Insourcing</SelectItem>
+                <SelectItem value="PARCEIRA">Parceira</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {role === "ADMIN_DISPATCH" && (
+            <div>
+              <Label className="text-xs">Polo</Label>
+              <Select value={polo} onValueChange={setPolo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
             <Label className="text-xs">De</Label>
             <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
           </div>
@@ -111,8 +173,11 @@ function DashForms() {
             <Label className="text-xs">Até</Label>
             <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end justify-between gap-2 md:col-span-2">
             <p className="text-sm text-muted-foreground">{filtradas.length} formulário(s) no período</p>
+            <Button variant="outline" size="sm" onClick={() => exportarCSV(tipo, charts)} disabled={filtradas.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
           </div>
         </div>
       </Card>
