@@ -14,14 +14,25 @@ import { getPosition } from "@/lib/geo";
 
 type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
 
+export type IncidenteActor =
+  | { mode: "insourcing"; userId: string; prefixo: string; polo: string }
+  | { mode: "parceira"; prefixo: string; nome: string; parceira: string };
+
+function fileToDataUrl(f: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(f);
+  });
+}
+
 async function submitIncidente(args: {
   tipo: TipoIncidente;
   numero: string;
   dados: Record<string, any>;
   fotos: File[];
-  userId: string;
-  prefixo: string;
-  polo: string;
+  actor: IncidenteActor;
 }): Promise<void> {
   let lat: number | null = null, lng: number | null = null;
   try {
@@ -29,7 +40,28 @@ async function submitIncidente(args: {
     lat = pos.coords.latitude; lng = pos.coords.longitude;
   } catch { /* GPS opcional */ }
 
-  const poloPrefixo = poloFromPrefixo(args.prefixo);
+  if (args.actor.mode === "parceira") {
+    const fotos = await Promise.all(args.fotos.map(fileToDataUrl));
+    const res = await fetch("/api/public/incidente-parceira", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prefixo: args.actor.prefixo,
+        nome: args.actor.nome,
+        parceira: args.actor.parceira,
+        tipo: args.tipo,
+        numero: args.numero,
+        dados: args.dados,
+        fotos,
+        latitude: lat,
+        longitude: lng,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => "Falha ao enviar"));
+    return;
+  }
+
+  const poloPrefixo = poloFromPrefixo(args.actor.prefixo);
   const poloGeo = await poloFromGeo(lat, lng);
 
   // Upload fotos primeiro (pasta = userId, para bater com RLS do storage)
@@ -37,16 +69,16 @@ async function submitIncidente(args: {
   for (let i = 0; i < args.fotos.length; i++) {
     const f = args.fotos[i];
     const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
-    const path = `${args.userId}/${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${args.actor.userId}/${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await supabase.storage.from("incidentes-fotos").upload(path, f, { contentType: f.type || "image/jpeg", upsert: false });
     if (error) throw new Error(`Falha ao enviar foto ${i + 1}: ${error.message}`);
     paths.push(path);
   }
 
   const { error: iErr } = await (supabase as any).from("incidentes").insert({
-    usuario_id: args.userId,
-    prefixo: args.prefixo,
-    polo_eletricista: args.polo,
+    usuario_id: args.actor.userId,
+    prefixo: args.actor.prefixo,
+    polo_eletricista: args.actor.polo,
     polo_prefixo: poloPrefixo,
     polo_geo: poloGeo,
     origem: "INSOURCING",
