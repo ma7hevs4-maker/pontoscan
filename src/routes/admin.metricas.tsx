@@ -15,6 +15,7 @@ export const Route = createFileRoute("/admin/metricas")({ component: MetricasPag
 
 interface VRow {
   usuario_id: string; nome: string; prefixo: string; polo: string;
+  base_polo: string | null;
   dia: string; ponto: string | null; pos_dds: string | null; saida_base: string | null;
   tempo_ponto_pos_dds: number | null; tempo_pos_dds_saida: number | null;
 }
@@ -64,7 +65,7 @@ function MetricasPage() {
         .lte("dia", to)
         .range(offset, offset + pageSize - 1);
 
-      if (polo && polo !== "all") q = q.eq("polo", polo as any);
+      if (polo && polo !== "all") q = q.or(`polo.eq.${polo},base_polo.eq.${polo}`);
 
       const { data, error } = await q;
       if (error) break;

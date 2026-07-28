@@ -154,8 +154,42 @@ export type Database = {
       }
     }
     Views: {
+      vw_registros_admin: {
+        Row: {
+          base_id: string | null
+          base_nome: string | null
+          base_polo: Database["public"]["Enums"]["polo_enum"] | null
+          etapa: Database["public"]["Enums"]["etapa_enum"] | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          nome: string | null
+          prefixo: string | null
+          prefixo_override: string | null
+          timestamp: string | null
+          user_polo: Database["public"]["Enums"]["polo_enum"] | null
+          usuario_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "bases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_tempos: {
         Row: {
+          base_polo: Database["public"]["Enums"]["polo_enum"] | null
           dia: string | null
           nome: string | null
           polo: Database["public"]["Enums"]["polo_enum"] | null
@@ -208,6 +242,8 @@ export type Database = {
         | "Lagos"
         | "Macaé"
         | "Noroeste"
+        | "Perdas"
+        | "Comercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -347,6 +383,8 @@ export const Constants = {
         "Lagos",
         "Macaé",
         "Noroeste",
+        "Perdas",
+        "Comercial",
       ],
     },
   },
