@@ -425,7 +425,7 @@ function escapeCSV(v: string): string {
 }
 
 function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
-  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {}))));
+  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {})))).filter(k => k !== "ligacaoPrint");
   const headers = [
     "Data/Hora", "Tipo", "Nº Incidente", "Origem", "Parceira", "Colaborador",
     "Equipe", "Polo (eletricista)", "Polo (prefixo)", "Polo (GPS)", "Latitude", "Longitude",
