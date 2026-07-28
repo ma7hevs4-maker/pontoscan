@@ -228,6 +228,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_registro_no_polo: {
+        Args: {
+          _polo: Database["public"]["Enums"]["polo_enum"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH"
