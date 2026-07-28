@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronLeft, Camera, ImageIcon, X, User, Users, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -26,12 +27,16 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
             <p className="text-sm text-muted-foreground">Selecione o tipo de atendimento:</p>
             <div className="grid gap-3">
               <TipoButton icon={<User className="h-6 w-6" />} label="Atendimento Individual" onClick={() => setTipo("ATENDIMENTO_INDIVIDUAL")} />
-              <TipoButton icon={<Users className="h-6 w-6" />} label="Ordem 2" onClick={() => { toast.info("Formulário Ordem 2 em breve"); }} disabled />
-              <TipoButton icon={<MinusCircle className="h-6 w-6" />} label="Improdutivo" onClick={() => { toast.info("Formulário Improdutivo em breve"); }} disabled />
+              <TipoButton icon={<Users className="h-6 w-6" />} label="Ordem 2" onClick={() => setTipo("ORDEM_2")} />
+              <TipoButton icon={<MinusCircle className="h-6 w-6" />} label="Improdutivo" onClick={() => setTipo("IMPRODUTIVO")} />
             </div>
           </>
         ) : tipo === "ATENDIMENTO_INDIVIDUAL" ? (
           <AtendimentoIndividualForm onBack={reset} onDone={close} />
+        ) : tipo === "ORDEM_2" ? (
+          <Ordem2Form onBack={reset} onDone={close} />
+        ) : tipo === "IMPRODUTIVO" ? (
+          <ImprodutivoForm onBack={reset} onDone={close} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -258,7 +263,7 @@ function RadioField({
   );
 }
 
-function EvidenciasPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
+function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)" }: { fotos: File[]; onChange: (f: File[]) => void; label?: string }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
 
@@ -272,7 +277,7 @@ function EvidenciasPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: Fi
   const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
 
   return (
-    <Field label="Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)" required>
+    <Field label={label} required>
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" onClick={() => cameraRef.current?.click()} className="h-12">
           <Camera className="mr-2 h-5 w-5" /> Câmera
@@ -305,5 +310,130 @@ function EvidenciasPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: Fi
       )}
       <p className="text-xs text-muted-foreground">{fotos.length} foto(s) anexada(s)</p>
     </Field>
+  );
+}
+
+/* ---------- Nº Incidente input (shared) ---------- */
+
+function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const valido = /^[A-Z0-9]{10}$/.test(value);
+  return (
+    <Field label="Nº Incidente" required>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+        placeholder="10 caracteres (A-Z, 0-9)"
+        className="font-mono uppercase"
+        autoCapitalize="characters"
+        inputMode="text"
+      />
+      <p className={`text-xs ${valido ? "text-green-700" : "text-muted-foreground"}`}>{value.length}/10</p>
+    </Field>
+  );
+}
+
+/* ---------- Ordem 2 ---------- */
+
+function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const [numero, setNumero] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
+    if (!motivo) return toast.error("Selecione o motivo");
+    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
+    setSubmitting(true);
+    try {
+      console.log("[Incidente/Ordem2]", { numero, motivo, observacao }, fotos);
+      toast.success(`Ordem 2 ${numero} registrada (envio ao backend em breve)`);
+      onDone();
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
+          <DialogTitle>Ordem 2</DialogTitle>
+        </div>
+      </DialogHeader>
+      <div className="space-y-5">
+        <NumeroIncidenteField value={numero} onChange={setNumero} />
+        <RadioField label="Motivo" required value={motivo} onChange={setMotivo}
+          options={["Necessário Cesto Aéreo", "Necessário poda", "Gerar OSM"]} />
+        <Field label="Observação">
+          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
+        </Field>
+        <EvidenciasPicker label="Registro Fotográfico" fotos={fotos} onChange={setFotos} />
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
+          <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ---------- Improdutivo ---------- */
+
+const IMPRODUTIVO_MOTIVOS = [
+  "CASA FECHADA",
+  "DEFEITO INTERNO CLIENTE",
+  "ENDEREÇO NÃO LOCALIZADO",
+  "ESTAVA NORMAL",
+  "GRANDE CLIENTE DEFEITO INTERNO",
+  "INCIDENCIA SEM AFETAÇÃO",
+  "LUZ CORTADA",
+  "NIVEL DE TENSÃO NORMAL",
+  "OSCILAÇÃO",
+  "OSCILAÇÃO PROVOCADA POR TERCEIROS",
+  "OUTRAS CAUSAS DE TERCEIROS",
+  "REGISTRO INDEVIDO DA RECLAMAÇÃO",
+];
+
+function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const [numero, setNumero] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
+    if (!motivo) return toast.error("Selecione o motivo");
+    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
+    setSubmitting(true);
+    try {
+      console.log("[Incidente/Improdutivo]", { numero, motivo, observacao }, fotos);
+      toast.success(`Improdutivo ${numero} registrado (envio ao backend em breve)`);
+      onDone();
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
+          <DialogTitle>Improdutivo</DialogTitle>
+        </div>
+      </DialogHeader>
+      <div className="space-y-5">
+        <NumeroIncidenteField value={numero} onChange={setNumero} />
+        <RadioField label="Motivo" required value={motivo} onChange={setMotivo} options={IMPRODUTIVO_MOTIVOS} />
+        <Field label="Observação">
+          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
+        </Field>
+        <EvidenciasPicker label="Evidência Fotográfica" fotos={fotos} onChange={setFotos} />
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
+          <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
+        </div>
+      </div>
+    </>
   );
 }
