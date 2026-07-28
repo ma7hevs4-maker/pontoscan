@@ -127,6 +127,37 @@ export const Route = createFileRoute("/api/admin-users")({
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
           }
+          if (action === "update-nome") {
+            const userId = String(body?.userId ?? "");
+            const nome = String(body?.nome ?? "").trim();
+            if (!userId || nome.length < 2) return new Response("Dados inválidos", { status: 400 });
+            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            const { error } = await supabaseAdmin.from("profiles").update({ nome }).eq("id", userId);
+            if (error) return new Response(error.message, { status: 400 });
+            return Response.json({ ok: true });
+          }
+          if (action === "delete-user") {
+            const userId = String(body?.userId ?? "");
+            if (!userId) return new Response("Dados inválidos", { status: 400 });
+            if (!(await ensureSamePolo(userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            // Não permitir exclusão de administradores por esta rota
+            const { data: adminRoles } = await supabaseAdmin
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", userId)
+              .in("role", ["ADMIN_POLO", "ADMIN_DISPATCH"]);
+            if (adminRoles && adminRoles.length > 0 && !isDispatch) {
+              return new Response("Não é possível excluir administradores", { status: 403 });
+            }
+            if (userId === auth.userId) return new Response("Você não pode excluir a si mesmo", { status: 400 });
+            // Remove registros vinculados para evitar violação de FK (se existir)
+            await supabaseAdmin.from("registros").delete().eq("usuario_id", userId);
+            await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+            await supabaseAdmin.from("profiles").delete().eq("id", userId);
+            const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+            if (error) return new Response(error.message, { status: 400 });
+            return Response.json({ ok: true });
+          }
           return new Response("Ação desconhecida", { status: 400 });
         } catch (e: any) {
           console.error("admin-users error", e);
