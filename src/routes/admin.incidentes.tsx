@@ -14,7 +14,7 @@ import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
 
-const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"] as const;
+const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"] as const;
 
 type Incidente = {
   id: string;
