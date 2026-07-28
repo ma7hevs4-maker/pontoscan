@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck } from "lucide-react";
+import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -68,6 +68,7 @@ function AdminLayout() {
     { to: "/admin", label: "Registros", icon: FileSpreadsheet, exact: true },
     { to: "/admin/metricas", label: "Métricas", icon: BarChart3 },
     { to: "/admin/bases", label: "Bases & QR", icon: MapPin },
+    { to: "/admin/incidentes", label: "Incidentes", icon: AlertTriangle },
   ];
   if (role === "ADMIN_DISPATCH" || role === "ADMIN_POLO") {
     tabs.push({ to: "/admin/contas", label: "Contas", icon: ShieldCheck } as any);

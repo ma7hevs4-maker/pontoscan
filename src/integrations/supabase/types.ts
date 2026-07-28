@@ -50,6 +50,57 @@ export type Database = {
         }
         Relationships: []
       }
+      incidentes: {
+        Row: {
+          created_at: string
+          dados: Json
+          fotos: string[]
+          id: string
+          latitude: number | null
+          longitude: number | null
+          numero_incidente: string
+          origem: Database["public"]["Enums"]["origem_incidente_enum"]
+          polo_eletricista: Database["public"]["Enums"]["polo_enum"] | null
+          polo_geo: Database["public"]["Enums"]["polo_enum"] | null
+          polo_prefixo: Database["public"]["Enums"]["polo_enum"] | null
+          prefixo: string
+          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dados?: Json
+          fotos?: string[]
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          numero_incidente: string
+          origem?: Database["public"]["Enums"]["origem_incidente_enum"]
+          polo_eletricista?: Database["public"]["Enums"]["polo_enum"] | null
+          polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
+          polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null
+          prefixo: string
+          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          fotos?: string[]
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          numero_incidente?: string
+          origem?: Database["public"]["Enums"]["origem_incidente_enum"]
+          polo_eletricista?: Database["public"]["Enums"]["polo_enum"] | null
+          polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
+          polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null
+          prefixo?: string
+          tipo?: Database["public"]["Enums"]["tipo_incidente_enum"]
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -239,6 +290,7 @@ export type Database = {
     Enums: {
       app_role: "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH"
       etapa_enum: "PONTO" | "POS_DDS" | "SAIDA_BASE"
+      origem_incidente_enum: "INSOURCING" | "PARCEIRA"
       polo_enum:
         | "Magé"
         | "Niterói"
@@ -251,6 +303,7 @@ export type Database = {
         | "Noroeste"
         | "Perdas"
         | "Comercial"
+      tipo_incidente_enum: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -380,6 +433,7 @@ export const Constants = {
     Enums: {
       app_role: ["ELETRICISTA", "ADMIN_POLO", "ADMIN_DISPATCH"],
       etapa_enum: ["PONTO", "POS_DDS", "SAIDA_BASE"],
+      origem_incidente_enum: ["INSOURCING", "PARCEIRA"],
       polo_enum: [
         "Magé",
         "Niterói",
@@ -393,6 +447,7 @@ export const Constants = {
         "Perdas",
         "Comercial",
       ],
+      tipo_incidente_enum: ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"],
     },
   },
 } as const

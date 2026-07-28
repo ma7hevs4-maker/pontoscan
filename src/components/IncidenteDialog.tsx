@@ -7,8 +7,58 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronLeft, Camera, ImageIcon, X, User, Users, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
+import { getPosition } from "@/lib/geo";
 
 type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+
+async function submitIncidente(args: {
+  tipo: TipoIncidente;
+  numero: string;
+  dados: Record<string, any>;
+  fotos: File[];
+  userId: string;
+  prefixo: string;
+  polo: string;
+}): Promise<void> {
+  let lat: number | null = null, lng: number | null = null;
+  try {
+    const pos = await getPosition();
+    lat = pos.coords.latitude; lng = pos.coords.longitude;
+  } catch { /* GPS opcional */ }
+
+  const poloPrefixo = poloFromPrefixo(args.prefixo);
+  const poloGeo = await poloFromGeo(lat, lng);
+
+  // Upload fotos primeiro (pasta = userId, para bater com RLS do storage)
+  const paths: string[] = [];
+  for (let i = 0; i < args.fotos.length; i++) {
+    const f = args.fotos[i];
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+    const path = `${args.userId}/${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("incidentes-fotos").upload(path, f, { contentType: f.type || "image/jpeg", upsert: false });
+    if (error) throw new Error(`Falha ao enviar foto ${i + 1}: ${error.message}`);
+    paths.push(path);
+  }
+
+  const { error: iErr } = await (supabase as any).from("incidentes").insert({
+    usuario_id: args.userId,
+    prefixo: args.prefixo,
+    polo_eletricista: args.polo,
+    polo_prefixo: poloPrefixo,
+    polo_geo: poloGeo,
+    origem: "INSOURCING",
+    tipo: args.tipo,
+    numero_incidente: args.numero,
+    latitude: lat,
+    longitude: lng,
+    dados: args.dados,
+    fotos: paths,
+  });
+  if (iErr) throw new Error(iErr.message);
+}
 
 export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [tipo, setTipo] = useState<TipoIncidente | null>(null);
@@ -88,6 +138,7 @@ const emptyAI: AIForm = {
 };
 
 function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const { user, profile } = useAuth();
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -121,10 +172,19 @@ function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onD
     if (err) { toast.error(err); return; }
     setSubmitting(true);
     try {
-      // TODO: backend + roteamento por polo (prefixo + geolocalização)
-      console.log("[Incidente/AtendimentoIndividual]", f, fotos);
-      toast.success(`Incidente ${f.numeroIncidente} registrado (envio ao backend em breve)`);
+      await submitIncidente({
+        tipo: "ATENDIMENTO_INDIVIDUAL",
+        numero: f.numeroIncidente,
+        dados: f,
+        fotos,
+        userId: user!.id,
+        prefixo: profile!.prefixo,
+        polo: profile!.polo,
+      });
+      toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao registrar incidente");
     } finally {
       setSubmitting(false);
     }
@@ -335,6 +395,7 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
 /* ---------- Ordem 2 ---------- */
 
 function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const { user, profile } = useAuth();
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -347,9 +408,19 @@ function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
     setSubmitting(true);
     try {
-      console.log("[Incidente/Ordem2]", { numero, motivo, observacao }, fotos);
-      toast.success(`Ordem 2 ${numero} registrada (envio ao backend em breve)`);
+      await submitIncidente({
+        tipo: "ORDEM_2",
+        numero,
+        dados: { motivo, observacao },
+        fotos,
+        userId: user!.id,
+        prefixo: profile!.prefixo,
+        polo: profile!.polo,
+      });
+      toast.success(`Ordem 2 ${numero} registrada`);
       onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao registrar");
     } finally { setSubmitting(false); }
   };
 
@@ -396,6 +467,7 @@ const IMPRODUTIVO_MOTIVOS = [
 ];
 
 function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const { user, profile } = useAuth();
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -408,9 +480,19 @@ function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () =>
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
     setSubmitting(true);
     try {
-      console.log("[Incidente/Improdutivo]", { numero, motivo, observacao }, fotos);
-      toast.success(`Improdutivo ${numero} registrado (envio ao backend em breve)`);
+      await submitIncidente({
+        tipo: "IMPRODUTIVO",
+        numero,
+        dados: { motivo, observacao },
+        fotos,
+        userId: user!.id,
+        prefixo: profile!.prefixo,
+        polo: profile!.polo,
+      });
+      toast.success(`Improdutivo ${numero} registrado`);
       onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao registrar");
     } finally { setSubmitting(false); }
   };
 
