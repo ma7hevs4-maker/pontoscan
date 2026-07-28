@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
+import { Route as AdminDashFormsRouteImport } from './routes/admin.dash-forms'
 import { Route as AdminContasRouteImport } from './routes/admin.contas'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
 import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
@@ -67,6 +68,11 @@ const AdminIncidentesRoute = AdminIncidentesRouteImport.update({
   path: '/incidentes',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDashFormsRoute = AdminDashFormsRouteImport.update({
+  id: '/dash-forms',
+  path: '/dash-forms',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminContasRoute = AdminContasRouteImport.update({
   id: '/contas',
   path: '/contas',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/parceira': typeof ParceiraRoute
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
+  '/admin/dash-forms': typeof AdminDashFormsRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/parceira': typeof ParceiraRoute
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
+  '/admin/dash-forms': typeof AdminDashFormsRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/parceira': typeof ParceiraRoute
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
+  '/admin/dash-forms': typeof AdminDashFormsRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/parceira'
     | '/admin/bases'
     | '/admin/contas'
+    | '/admin/dash-forms'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/parceira'
     | '/admin/bases'
     | '/admin/contas'
+    | '/admin/dash-forms'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/parceira'
     | '/admin/bases'
     | '/admin/contas'
+    | '/admin/dash-forms'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -248,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIncidentesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/dash-forms': {
+      id: '/admin/dash-forms'
+      path: '/dash-forms'
+      fullPath: '/admin/dash-forms'
+      preLoaderRoute: typeof AdminDashFormsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/contas': {
       id: '/admin/contas'
       path: '/contas'
@@ -275,6 +294,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminBasesRoute: typeof AdminBasesRoute
   AdminContasRoute: typeof AdminContasRoute
+  AdminDashFormsRoute: typeof AdminDashFormsRoute
   AdminIncidentesRoute: typeof AdminIncidentesRoute
   AdminMetricasRoute: typeof AdminMetricasRoute
 }
@@ -282,6 +302,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBasesRoute: AdminBasesRoute,
   AdminContasRoute: AdminContasRoute,
+  AdminDashFormsRoute: AdminDashFormsRoute,
   AdminIncidentesRoute: AdminIncidentesRoute,
   AdminMetricasRoute: AdminMetricasRoute,
 }
