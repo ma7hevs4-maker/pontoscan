@@ -208,6 +208,8 @@ function BaseFormDialog({ open, onClose, onSaved }: { open: boolean; onClose: ()
 
 function QrDialog({ base, onClose }: { base: Base | null; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const escapeHtml = (s: string) =>
+    String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
   const print = () => {
     if (!base || !ref.current) return;
     const canvases = ref.current.querySelectorAll("canvas");
@@ -216,13 +218,13 @@ function QrDialog({ base, onClose }: { base: Base | null; onClose: () => void })
     if (!w) return;
     const pages = ETAPAS.map((e, i) => `
       <div class="qr">
-        <h1>${base.nome}</h1>
-        <h2>Polo ${base.polo} · PontoScan</h2>
-        <div class="etapa">${e.label}</div>
+        <h1>${escapeHtml(base.nome)}</h1>
+        <h2>Polo ${escapeHtml(base.polo)} · PontoScan</h2>
+        <div class="etapa">${escapeHtml(e.label)}</div>
         <img src="${images[i]}" width="320" height="320" />
-        <div class="code">${base.codigo_qr}|${e.key}</div>
+        <div class="code">${escapeHtml(base.codigo_qr)}|${escapeHtml(e.key)}</div>
       </div>`).join("");
-    w.document.write(`<html><head><title>QR ${base.nome}</title>
+    w.document.write(`<html><head><title>QR ${escapeHtml(base.nome)}</title>
       <style>
         @page { margin: 20mm; }
         body{font-family:sans-serif;text-align:center;margin:0;padding:0}

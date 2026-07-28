@@ -19,6 +19,7 @@ type Etapa = "PONTO" | "POS_DDS" | "SAIDA_BASE";
 const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pré DDS", SAIDA_BASE: "Sair da Base" };
 
 const PROV_KEY = "pontoscan.prefixo_provisorio";
+const PREFIXO_PROV_RE = /^[A-Z]{2}[0-9]{3}[A-Z]{3}-[A-Z]$/;
 
 function getProvisorio(): string | null {
   if (typeof window === "undefined") return null;
@@ -28,6 +29,10 @@ function getProvisorio(): string | null {
     const { prefixo, date } = JSON.parse(raw) as { prefixo: string; date: string };
     const today = new Date().toISOString().slice(0, 10);
     if (date !== today) { localStorage.removeItem(PROV_KEY); return null; }
+    if (typeof prefixo !== "string" || !PREFIXO_PROV_RE.test(prefixo)) {
+      localStorage.removeItem(PROV_KEY);
+      return null;
+    }
     return prefixo;
   } catch { return null; }
 }
@@ -101,7 +106,10 @@ function EletricistaPage() {
 
   const ativarProvisorio = () => {
     const p = provPrefixo.trim().toUpperCase();
-    if (!p) { toast.error("Informe um prefixo"); return; }
+    if (!PREFIXO_PROV_RE.test(p)) {
+      toast.error("Formato inválido. Ex: SG010SOE-A");
+      return;
+    }
     const today = new Date().toISOString().slice(0, 10);
     localStorage.setItem(PROV_KEY, JSON.stringify({ prefixo: p, date: today }));
     setProvAtivo(p);

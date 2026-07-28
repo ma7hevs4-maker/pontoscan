@@ -124,8 +124,20 @@ async function searchEletricistas(supabaseAdmin: SupabaseClient<Database>, q: st
   if (q?.trim()) query = query.or(`nome.ilike.%${q}%,prefixo.ilike.%${q}%`);
   const { data: profs, error } = await query;
   if (error) throw new Error(error.message);
+  // Exclude any profile that holds an admin role so peers cannot be enumerated/targeted.
+  const ids = (profs ?? []).map((p: any) => p.id);
+  let adminIds = new Set<string>();
+  if (ids.length > 0) {
+    const { data: adminRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .in("user_id", ids)
+      .in("role", ["ADMIN_POLO", "ADMIN_DISPATCH"]);
+    adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
+  }
+  const eletricistas = (profs ?? []).filter((p: any) => !adminIds.has(p.id));
   const users: any[] = [];
-  for (const p of profs ?? []) {
+  for (const p of eletricistas) {
     const { data: u } = await supabaseAdmin.auth.admin.getUserById(p.id);
     users.push({ ...p, email: u?.user?.email ?? null });
   }
@@ -136,6 +148,21 @@ async function ensureSamePolo(supabaseAdmin: SupabaseClient<Database>, userId: s
   if (!restrictPolo) return true;
   const { data: p } = await supabaseAdmin.from("profiles").select("polo").eq("id", userId).maybeSingle();
   return p?.polo === restrictPolo;
+}
+
+// Ensure a non-dispatch admin cannot target another admin (peer or higher).
+async function ensureTargetIsEletricista(
+  supabaseAdmin: SupabaseClient<Database>,
+  userId: string,
+  callerIsDispatch: boolean,
+) {
+  if (callerIsDispatch) return true;
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["ADMIN_POLO", "ADMIN_DISPATCH"]);
+  return !roles || roles.length === 0;
 }
 
 export const Route = createFileRoute("/api/admin-users")({
@@ -163,6 +190,7 @@ export const Route = createFileRoute("/api/admin-users")({
             const password = String(body?.password ?? "");
             if (!userId || password.length < 6) return new Response("Dados inválidos", { status: 400 });
             if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureTargetIsEletricista(supabaseAdmin, userId, isDispatch))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
             if (error) return new Response(error.message, { status: 400 });
             return Response.json({ ok: true });
@@ -181,6 +209,7 @@ export const Route = createFileRoute("/api/admin-users")({
             const prefixo = String(body?.prefixo ?? "").trim().toUpperCase();
             if (!userId || prefixo.length < 3) return new Response("Dados inválidos", { status: 400 });
             if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureTargetIsEletricista(supabaseAdmin, userId, isDispatch))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ prefixo }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
             try { await syncEletricistaEmail(supabaseAdmin, userId); } catch (e) { console.error("sync email", e); }
@@ -191,6 +220,7 @@ export const Route = createFileRoute("/api/admin-users")({
             const nome = String(body?.nome ?? "").trim();
             if (!userId || nome.length < 2) return new Response("Dados inválidos", { status: 400 });
             if (!(await ensureSamePolo(supabaseAdmin, userId, restrictPolo))) return new Response("Forbidden", { status: 403 });
+            if (!(await ensureTargetIsEletricista(supabaseAdmin, userId, isDispatch))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ nome }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
             try { await syncEletricistaEmail(supabaseAdmin, userId); } catch (e) { console.error("sync email", e); }
@@ -220,7 +250,7 @@ export const Route = createFileRoute("/api/admin-users")({
           return new Response("Ação desconhecida", { status: 400 });
         } catch (e: any) {
           console.error("admin-users error", e);
-          return new Response(e?.message ?? "Erro interno", { status: 500 });
+          return new Response("Erro interno no servidor", { status: 500 });
         }
       },
     },
