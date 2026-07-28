@@ -105,7 +105,10 @@ const FIELDS: Record<Row["tipo"], FieldDef[]> = {
     { key: "ligacaoCliente", label: "Ligação para o cliente" },
   ],
   ORDEM_2: [{ key: "motivo", label: "Motivo" }],
-  IMPRODUTIVO: [{ key: "motivo", label: "Motivo" }],
+  IMPRODUTIVO: [
+    { key: "motivo", label: "Motivo" },
+    { key: "ligacaoCliente", label: "Ligação para o cliente" },
+  ],
 };
 
 function DashForms() {
