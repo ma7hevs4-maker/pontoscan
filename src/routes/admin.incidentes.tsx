@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download } from "lucide-react";
+import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
@@ -40,6 +40,8 @@ function IncidentesFeed() {
   const [rows, setRows] = useState<Incidente[]>([]);
   const [nomes, setNomes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [novosIds, setNovosIds] = useState<Set<string>>(new Set());
+  const [aoVivo, setAoVivo] = useState(false);
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<string>("all");
   const [origem, setOrigem] = useState<string>("all");
@@ -75,11 +77,46 @@ function IncidentesFeed() {
 
   // Realtime
   useEffect(() => {
-    const ch = supabase.channel("admin-incidentes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "incidentes" }, () => load())
+    const ch = supabase
+      .channel("admin-incidentes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "incidentes" }, async (payload) => {
+        const novo = payload.new as Incidente;
+        // Evita duplicatas se o INSERT vier antes do reload inicial
+        setRows((prev) => (prev.some((r) => r.id === novo.id) ? prev : [novo, ...prev]));
+        setNovosIds((prev) => {
+          const next = new Set(prev);
+          next.add(novo.id);
+          return next;
+        });
+        // Busca o nome do colaborador vinculado, se houver
+        if (novo.usuario_id && !nomes[novo.usuario_id]) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("id, nome")
+            .eq("id", novo.usuario_id)
+            .maybeSingle();
+          if (prof) setNomes((m) => ({ ...m, [prof.id]: (prof as any).nome }));
+        }
+        // Pequeno "beep" visual: pisca o indicador
+        setAoVivo(true);
+        setTimeout(() => setAoVivo(false), 1200);
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  const abrirDetalhe = (inc: Incidente) => {
+    setDetalhe(inc);
+    if (novosIds.has(inc.id)) {
+      setNovosIds((prev) => {
+        const next = new Set(prev);
+        next.delete(inc.id);
+        return next;
+      });
+    }
+  };
+
+  const marcarTodosVistos = () => setNovosIds(new Set());
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toUpperCase();
@@ -154,9 +191,24 @@ function IncidentesFeed() {
             <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
           </div>
           <div className="flex items-end justify-between gap-2 md:col-span-2">
-            <span className="text-xs text-muted-foreground">
-              {role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)
-            </span>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className={`relative inline-flex h-2 w-2 rounded-full ${aoVivo ? "bg-primary" : "bg-emerald-500"}`}>
+                  <span className={`absolute inset-0 rounded-full ${aoVivo ? "bg-primary" : "bg-emerald-500"} opacity-75 animate-ping`} />
+                </span>
+                Ao vivo
+              </span>
+              <span>·</span>
+              <span>{role === "ADMIN_POLO" ? `Polo: ${adminPolo}` : "Todos os polos"} · {filtradas.length} incidente(s)</span>
+              {novosIds.size > 0 && (
+                <>
+                  <span>·</span>
+                  <button onClick={marcarTodosVistos} className="text-primary underline underline-offset-2 hover:opacity-80">
+                    {novosIds.size} novo(s) — marcar como visto
+                  </button>
+                </>
+              )}
+            </div>
             <Button variant="outline" size="sm" onClick={() => exportarCSV(filtradas, nomes)} disabled={filtradas.length === 0}>
               <Download className="mr-2 h-4 w-4" />Exportar CSV
             </Button>
@@ -171,7 +223,7 @@ function IncidentesFeed() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map(inc => (
-            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => setDetalhe(inc)} />
+            <IncidenteCard key={inc.id} inc={inc} isNovo={novosIds.has(inc.id)} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => abrirDetalhe(inc)} />
           ))}
         </div>
       )}
@@ -181,7 +233,7 @@ function IncidentesFeed() {
   );
 }
 
-function IncidenteCard({ inc, nome, onOpen }: { inc: Incidente; nome?: string; onOpen: () => void }) {
+function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: string; onOpen: () => void; isNovo?: boolean }) {
   const [thumb, setThumb] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -197,9 +249,14 @@ function IncidenteCard({ inc, nome, onOpen }: { inc: Incidente; nome?: string; o
     : null;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden transition-shadow ${isNovo ? "ring-2 ring-primary shadow-lg" : ""}`}>
       <button onClick={onOpen} className="block w-full text-left">
         <div className="relative aspect-video bg-muted">
+          {isNovo && (
+            <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow">
+              <Radio className="h-3 w-3 animate-pulse" /> Novo
+            </span>
+          )}
           {thumb ? (
             <img src={thumb} alt="Evidência" className="h-full w-full object-cover" />
           ) : (
