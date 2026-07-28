@@ -37,15 +37,19 @@ function AdminLayout() {
             .eq("id", reg.usuario_id)
             .maybeSingle();
           if (!prof) return;
-          if (role === "ADMIN_POLO" && prof.polo !== adminPolo) return;
 
           let baseNome = "";
+          let basePolo: string | null = null;
           if (reg.base_id) {
-            const { data: b } = await supabase.from("bases").select("nome").eq("id", reg.base_id).maybeSingle();
+            const { data: b } = await supabase.from("bases").select("nome, polo").eq("id", reg.base_id).maybeSingle();
             baseNome = b?.nome ?? "";
+            basePolo = (b?.polo as string) ?? null;
           }
+          if (role === "ADMIN_POLO" && prof.polo !== adminPolo && basePolo !== adminPolo) return;
+
+          const poloLabel = basePolo && basePolo !== prof.polo ? `${prof.polo} @ ${basePolo}` : prof.polo;
           toast.success(`${reg.etapa.replace("_", " ")} · ${prof.nome}`, {
-            description: `${prof.prefixo} · ${prof.polo}${baseNome ? ` · ${baseNome}` : ""}`,
+            description: `${prof.prefixo} · ${poloLabel}${baseNome ? ` · ${baseNome}` : ""}`,
             duration: 6000,
           });
         }
