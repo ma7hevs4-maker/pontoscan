@@ -58,8 +58,10 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          nome_colaborador: string | null
           numero_incidente: string
           origem: Database["public"]["Enums"]["origem_incidente_enum"]
+          parceira: string | null
           polo_eletricista: Database["public"]["Enums"]["polo_enum"] | null
           polo_geo: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo: Database["public"]["Enums"]["polo_enum"] | null
@@ -74,8 +76,10 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          nome_colaborador?: string | null
           numero_incidente: string
           origem?: Database["public"]["Enums"]["origem_incidente_enum"]
+          parceira?: string | null
           polo_eletricista?: Database["public"]["Enums"]["polo_enum"] | null
           polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null
@@ -90,8 +94,10 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          nome_colaborador?: string | null
           numero_incidente?: string
           origem?: Database["public"]["Enums"]["origem_incidente_enum"]
+          parceira?: string | null
           polo_eletricista?: Database["public"]["Enums"]["polo_enum"] | null
           polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null

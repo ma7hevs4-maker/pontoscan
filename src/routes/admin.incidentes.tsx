@@ -31,6 +31,8 @@ type Incidente = {
   dados: Record<string, any>;
   fotos: string[];
   created_at: string;
+  parceira: string | null;
+  nome_colaborador: string | null;
 };
 
 function IncidentesFeed() {
@@ -93,8 +95,8 @@ function IncidentesFeed() {
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
       if (q) {
-        const nome = (r.usuario_id && nomes[r.usuario_id]) ? nomes[r.usuario_id].toUpperCase() : "";
-        if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q)) return false;
+        const nome = ((r.usuario_id && nomes[r.usuario_id]) || r.nome_colaborador || "").toUpperCase();
+        if (!r.numero_incidente.includes(q) && !r.prefixo.toUpperCase().includes(q) && !nome.includes(q) && !(r.parceira ?? "").toUpperCase().includes(q)) return false;
       }
       return true;
     });
@@ -164,12 +166,12 @@ function IncidentesFeed() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map(inc => (
-            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : undefined} onOpen={() => setDetalhe(inc)} />
+            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => setDetalhe(inc)} />
           ))}
         </div>
       )}
 
-      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : undefined} onClose={() => setDetalhe(null)} />
+      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : (detalhe?.nome_colaborador ?? undefined)} onClose={() => setDetalhe(null)} />
     </div>
   );
 }
@@ -210,7 +212,7 @@ function IncidenteCard({ inc, nome, onOpen }: { inc: Incidente; nome?: string; o
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-sm font-bold">{inc.numero_incidente}</span>
             <Badge variant={inc.origem === "INSOURCING" ? "default" : "secondary"}>
-              {inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"}
+              {inc.origem === "INSOURCING" ? "Insourcing" : (inc.parceira ?? "Parceira")}
             </Badge>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -261,7 +263,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
           <div className="grid grid-cols-2 gap-3">
             <Info label="Colaborador" value={nome ?? "—"} />
             <Info label="Equipe" value={inc.prefixo} mono />
-            <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : "Parceira"} />
+            <Info label="Origem" value={inc.origem === "INSOURCING" ? "Insourcing" : `Parceira · ${inc.parceira ?? "—"}`} />
             <Info label="Polo (eletricista)" value={inc.polo_eletricista ?? "—"} />
             <Info label="Polo (prefixo)" value={inc.polo_prefixo ?? "—"} />
             <Info label="Polo (GPS)" value={inc.polo_geo ?? "—"} />

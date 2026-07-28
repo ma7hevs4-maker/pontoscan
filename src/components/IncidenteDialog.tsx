@@ -14,14 +14,25 @@ import { getPosition } from "@/lib/geo";
 
 type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
 
+export type IncidenteActor =
+  | { mode: "insourcing"; userId: string; prefixo: string; polo: string }
+  | { mode: "parceira"; prefixo: string; nome: string; parceira: string };
+
+function fileToDataUrl(f: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(f);
+  });
+}
+
 async function submitIncidente(args: {
   tipo: TipoIncidente;
   numero: string;
   dados: Record<string, any>;
   fotos: File[];
-  userId: string;
-  prefixo: string;
-  polo: string;
+  actor: IncidenteActor;
 }): Promise<void> {
   let lat: number | null = null, lng: number | null = null;
   try {
@@ -29,7 +40,28 @@ async function submitIncidente(args: {
     lat = pos.coords.latitude; lng = pos.coords.longitude;
   } catch { /* GPS opcional */ }
 
-  const poloPrefixo = poloFromPrefixo(args.prefixo);
+  if (args.actor.mode === "parceira") {
+    const fotos = await Promise.all(args.fotos.map(fileToDataUrl));
+    const res = await fetch("/api/public/incidente-parceira", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prefixo: args.actor.prefixo,
+        nome: args.actor.nome,
+        parceira: args.actor.parceira,
+        tipo: args.tipo,
+        numero: args.numero,
+        dados: args.dados,
+        fotos,
+        latitude: lat,
+        longitude: lng,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => "Falha ao enviar"));
+    return;
+  }
+
+  const poloPrefixo = poloFromPrefixo(args.actor.prefixo);
   const poloGeo = await poloFromGeo(lat, lng);
 
   // Upload fotos primeiro (pasta = userId, para bater com RLS do storage)
@@ -37,16 +69,16 @@ async function submitIncidente(args: {
   for (let i = 0; i < args.fotos.length; i++) {
     const f = args.fotos[i];
     const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
-    const path = `${args.userId}/${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${args.actor.userId}/${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await supabase.storage.from("incidentes-fotos").upload(path, f, { contentType: f.type || "image/jpeg", upsert: false });
     if (error) throw new Error(`Falha ao enviar foto ${i + 1}: ${error.message}`);
     paths.push(path);
   }
 
   const { error: iErr } = await (supabase as any).from("incidentes").insert({
-    usuario_id: args.userId,
-    prefixo: args.prefixo,
-    polo_eletricista: args.polo,
+    usuario_id: args.actor.userId,
+    prefixo: args.actor.prefixo,
+    polo_eletricista: args.actor.polo,
     polo_prefixo: poloPrefixo,
     polo_geo: poloGeo,
     origem: "INSOURCING",
@@ -60,8 +92,13 @@ async function submitIncidente(args: {
   if (iErr) throw new Error(iErr.message);
 }
 
-export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function IncidenteDialog({ open, onOpenChange, actor: actorProp }: { open: boolean; onOpenChange: (o: boolean) => void; actor?: IncidenteActor }) {
   const [tipo, setTipo] = useState<TipoIncidente | null>(null);
+  const auth = useAuth();
+  const actor: IncidenteActor | null = actorProp
+    ?? (auth.user && auth.profile
+      ? { mode: "insourcing", userId: auth.user.id, prefixo: auth.profile.prefixo, polo: auth.profile.polo }
+      : null);
 
   const reset = () => setTipo(null);
   const close = () => { onOpenChange(false); setTimeout(reset, 300); };
@@ -69,7 +106,9 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
-        {!tipo ? (
+        {!actor ? (
+          <p className="text-sm text-muted-foreground">Sessão indisponível.</p>
+        ) : !tipo ? (
           <>
             <DialogHeader>
               <DialogTitle>Registrar incidente</DialogTitle>
@@ -82,11 +121,11 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
             </div>
           </>
         ) : tipo === "ATENDIMENTO_INDIVIDUAL" ? (
-          <AtendimentoIndividualForm onBack={reset} onDone={close} />
+          <AtendimentoIndividualForm actor={actor} onBack={reset} onDone={close} />
         ) : tipo === "ORDEM_2" ? (
-          <Ordem2Form onBack={reset} onDone={close} />
+          <Ordem2Form actor={actor} onBack={reset} onDone={close} />
         ) : tipo === "IMPRODUTIVO" ? (
-          <ImprodutivoForm onBack={reset} onDone={close} />
+          <ImprodutivoForm actor={actor} onBack={reset} onDone={close} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -137,8 +176,7 @@ const emptyAI: AIForm = {
   correlacaoDefeito: "", correlacaoDefeitoOutro: "",
 };
 
-function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -177,9 +215,7 @@ function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onD
         numero: f.numeroIncidente,
         dados: f,
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
@@ -394,8 +430,7 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
 
 /* ---------- Ordem 2 ---------- */
 
-function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -413,9 +448,7 @@ function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void
         numero,
         dados: { motivo, observacao },
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Ordem 2 ${numero} registrada`);
       onDone();
@@ -466,8 +499,7 @@ const IMPRODUTIVO_MOTIVOS = [
   "REGISTRO INDEVIDO DA RECLAMAÇÃO",
 ];
 
-function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -485,9 +517,7 @@ function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () =>
         numero,
         dados: { motivo, observacao },
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Improdutivo ${numero} registrado`);
       onDone();
