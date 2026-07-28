@@ -442,6 +442,39 @@ function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (fot
   );
 }
 
+function PrintLigacaoPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
+  const albumRef = useRef<HTMLInputElement>(null);
+  const add = (list: FileList | null) => {
+    if (!list) return;
+    const arr = Array.from(list).filter(f => f.type.startsWith("image/"));
+    onChange([...fotos, ...arr]);
+  };
+  const remove = (i: number) => onChange(fotos.filter((_, idx) => idx !== i));
+  const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
+  return (
+    <Field label="Print da ligação para o cliente" required>
+      <Button type="button" variant="outline" onClick={() => albumRef.current?.click()} className="h-12 w-full">
+        <ImageIcon className="mr-2 h-5 w-5" /> Álbum
+      </Button>
+      <input ref={albumRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+      {previews.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          {previews.map((p, i) => (
+            <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
+              <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+              <button type="button" onClick={() => remove(i)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white" aria-label="Remover">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">{fotos.length} print(s) anexado(s)</p>
+    </Field>
+  );
+}
+
 /* ---------- Nº Incidente input (shared) ---------- */
 
 function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
