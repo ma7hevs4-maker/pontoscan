@@ -342,3 +342,47 @@ function fieldLabel(k: string): string {
   };
   return map[k] ?? k;
 }
+
+function escapeCSV(v: string): string {
+  const s = String(v ?? "").replace(/\r?\n/g, " ");
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, "\"\"")}"`;
+  return s;
+}
+
+function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
+  const dadosKeys = Array.from(new Set(incidentes.flatMap(i => Object.keys(i.dados ?? {}))));
+  const headers = [
+    "Data/Hora", "Tipo", "Nº Incidente", "Origem", "Parceira", "Colaborador",
+    "Equipe", "Polo (eletricista)", "Polo (prefixo)", "Polo (GPS)", "Latitude", "Longitude",
+    ...dadosKeys.map(fieldLabel),
+  ];
+  const rows = incidentes.map(i => {
+    const nome = i.usuario_id ? nomes[i.usuario_id] : (i.nome_colaborador ?? "");
+    const base = [
+      new Date(i.created_at).toLocaleString("pt-BR"),
+      TIPO_LABEL[i.tipo],
+      i.numero_incidente,
+      i.origem,
+      i.parceira ?? "",
+      nome,
+      i.prefixo,
+      i.polo_eletricista ?? "",
+      i.polo_prefixo ?? "",
+      i.polo_geo ?? "",
+      i.latitude ?? "",
+      i.longitude ?? "",
+    ];
+    const dados = dadosKeys.map(k => i.dados?.[k] ?? "");
+    return [...base, ...dados].map(escapeCSV).join(",");
+  });
+  const csv = [headers.map(escapeCSV).join(","), ...rows].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `incidentes_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
