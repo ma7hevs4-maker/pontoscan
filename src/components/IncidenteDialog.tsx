@@ -554,6 +554,8 @@ const IMPRODUTIVO_MOTIVOS = [
 function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [ligacaoCliente, setLigacaoCliente] = useState("");
+  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -561,15 +563,18 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
     if (!motivo) return toast.error("Selecione o motivo");
+    if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
+    if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "IMPRODUTIVO",
         numero,
-        dados: { motivo, observacao },
+        dados: { motivo, ligacaoCliente, observacao },
         fotos,
         actor,
+        extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
       });
       toast.success(`Improdutivo ${numero} registrado`);
       onDone();
@@ -589,6 +594,12 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
       <div className="space-y-5">
         <NumeroIncidenteField value={numero} onChange={setNumero} />
         <RadioField label="Motivo" required value={motivo} onChange={setMotivo} options={IMPRODUTIVO_MOTIVOS} />
+        <RadioField label="Foi efetuada ligação para o cliente?" required value={ligacaoCliente} onChange={setLigacaoCliente}
+          options={["Sim", "Não"]}
+        />
+        {ligacaoCliente === "Sim" && (
+          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+        )}
         <Field label="Observação">
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
