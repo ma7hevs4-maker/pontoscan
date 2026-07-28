@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronLeft, Camera, ImageIcon, X, User, Users, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -26,12 +27,16 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
             <p className="text-sm text-muted-foreground">Selecione o tipo de atendimento:</p>
             <div className="grid gap-3">
               <TipoButton icon={<User className="h-6 w-6" />} label="Atendimento Individual" onClick={() => setTipo("ATENDIMENTO_INDIVIDUAL")} />
-              <TipoButton icon={<Users className="h-6 w-6" />} label="Ordem 2" onClick={() => { toast.info("Formulário Ordem 2 em breve"); }} disabled />
-              <TipoButton icon={<MinusCircle className="h-6 w-6" />} label="Improdutivo" onClick={() => { toast.info("Formulário Improdutivo em breve"); }} disabled />
+              <TipoButton icon={<Users className="h-6 w-6" />} label="Ordem 2" onClick={() => setTipo("ORDEM_2")} />
+              <TipoButton icon={<MinusCircle className="h-6 w-6" />} label="Improdutivo" onClick={() => setTipo("IMPRODUTIVO")} />
             </div>
           </>
         ) : tipo === "ATENDIMENTO_INDIVIDUAL" ? (
           <AtendimentoIndividualForm onBack={reset} onDone={close} />
+        ) : tipo === "ORDEM_2" ? (
+          <Ordem2Form onBack={reset} onDone={close} />
+        ) : tipo === "IMPRODUTIVO" ? (
+          <ImprodutivoForm onBack={reset} onDone={close} />
         ) : null}
       </DialogContent>
     </Dialog>
