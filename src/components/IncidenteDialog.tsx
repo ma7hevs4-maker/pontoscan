@@ -92,8 +92,13 @@ async function submitIncidente(args: {
   if (iErr) throw new Error(iErr.message);
 }
 
-export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function IncidenteDialog({ open, onOpenChange, actor: actorProp }: { open: boolean; onOpenChange: (o: boolean) => void; actor?: IncidenteActor }) {
   const [tipo, setTipo] = useState<TipoIncidente | null>(null);
+  const auth = useAuth();
+  const actor: IncidenteActor | null = actorProp
+    ?? (auth.user && auth.profile
+      ? { mode: "insourcing", userId: auth.user.id, prefixo: auth.profile.prefixo, polo: auth.profile.polo }
+      : null);
 
   const reset = () => setTipo(null);
   const close = () => { onOpenChange(false); setTimeout(reset, 300); };
@@ -101,7 +106,9 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
-        {!tipo ? (
+        {!actor ? (
+          <p className="text-sm text-muted-foreground">Sessão indisponível.</p>
+        ) : !tipo ? (
           <>
             <DialogHeader>
               <DialogTitle>Registrar incidente</DialogTitle>
@@ -114,11 +121,11 @@ export function IncidenteDialog({ open, onOpenChange }: { open: boolean; onOpenC
             </div>
           </>
         ) : tipo === "ATENDIMENTO_INDIVIDUAL" ? (
-          <AtendimentoIndividualForm onBack={reset} onDone={close} />
+          <AtendimentoIndividualForm actor={actor} onBack={reset} onDone={close} />
         ) : tipo === "ORDEM_2" ? (
-          <Ordem2Form onBack={reset} onDone={close} />
+          <Ordem2Form actor={actor} onBack={reset} onDone={close} />
         ) : tipo === "IMPRODUTIVO" ? (
-          <ImprodutivoForm onBack={reset} onDone={close} />
+          <ImprodutivoForm actor={actor} onBack={reset} onDone={close} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -169,8 +176,7 @@ const emptyAI: AIForm = {
   correlacaoDefeito: "", correlacaoDefeitoOutro: "",
 };
 
-function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -209,9 +215,7 @@ function AtendimentoIndividualForm({ onBack, onDone }: { onBack: () => void; onD
         numero: f.numeroIncidente,
         dados: f,
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
@@ -426,8 +430,7 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
 
 /* ---------- Ordem 2 ---------- */
 
-function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -445,9 +448,7 @@ function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void
         numero,
         dados: { motivo, observacao },
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Ordem 2 ${numero} registrada`);
       onDone();
@@ -498,8 +499,7 @@ const IMPRODUTIVO_MOTIVOS = [
   "REGISTRO INDEVIDO DA RECLAMAÇÃO",
 ];
 
-function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const { user, profile } = useAuth();
+function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -517,9 +517,7 @@ function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () =>
         numero,
         dados: { motivo, observacao },
         fotos,
-        userId: user!.id,
-        prefixo: profile!.prefixo,
-        polo: profile!.polo,
+        actor,
       });
       toast.success(`Improdutivo ${numero} registrado`);
       onDone();
