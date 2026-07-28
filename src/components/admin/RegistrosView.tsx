@@ -195,18 +195,23 @@ export function RegistrosView() {
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
-                  <TableCell>{r.profiles?.nome}</TableCell>
+                  <TableCell>{r.nome}</TableCell>
                   <TableCell className="font-mono">
                     {r.prefixo_override ? (
-                      <span title={`Original: ${r.profiles?.prefixo}`}>
+                      <span title={`Original: ${r.prefixo}`}>
                         {r.prefixo_override}
                         <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">prov.</span>
                       </span>
-                    ) : r.profiles?.prefixo}
+                    ) : r.prefixo}
                   </TableCell>
-                  <TableCell>{r.profiles?.polo}</TableCell>
+                  <TableCell>
+                    {r.user_polo}
+                    {r.base_polo && r.base_polo !== r.user_polo && (
+                      <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] font-semibold text-blue-800" title={`Base do polo ${r.base_polo}`}>@{r.base_polo}</span>
+                    )}
+                  </TableCell>
                   <TableCell><span className="rounded-full bg-secondary px-2 py-1 text-xs font-semibold">{ETAPA_LABEL[r.etapa] ?? r.etapa}</span></TableCell>
-                  <TableCell>{r.bases?.nome ?? "—"}</TableCell>
+                  <TableCell>{r.base_nome ?? "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
