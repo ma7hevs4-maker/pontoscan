@@ -139,7 +139,9 @@ function DashForms() {
                     <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {c.data.map((_, i) => <Cell key={i} fill="hsl(var(--primary))" />)}
+                      {c.data.map((_, i) => (
+                        <Cell key={i} fill="var(--primary)" />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
