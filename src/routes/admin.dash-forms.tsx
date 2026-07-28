@@ -15,6 +15,30 @@ export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms
 
 const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas","Comercial"] as const;
 
+function exportarCSV(tipo: string, charts: { field: { label: string }; data: { name: string; value: number }[]; total: number }[]) {
+  const sep = ";";
+  const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines: string[] = [];
+  lines.push(["Pergunta", "Resposta", "Quantidade", "Total", "%"].map(esc).join(sep));
+  for (const c of charts) {
+    if (c.data.length === 0) {
+      lines.push([c.field.label, "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
+      continue;
+    }
+    for (const d of c.data) {
+      const pct = c.total ? ((d.value / c.total) * 100).toFixed(1) + "%" : "0%";
+      lines.push([c.field.label, d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
+    }
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dash-forms-${tipo}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 type Row = {
   tipo: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
   dados: Record<string, any>;
