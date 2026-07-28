@@ -15,8 +15,11 @@ interface Row {
   id: string; etapa: string; timestamp: string; usuario_id: string;
   latitude: number | null; longitude: number | null;
   prefixo_override: string | null;
-  profiles: { nome: string; prefixo: string; polo: string } | null;
-  bases: { nome: string } | null;
+  nome: string | null;
+  prefixo: string | null;
+  user_polo: string | null;
+  base_nome: string | null;
+  base_polo: string | null;
 }
 
 export function RegistrosView() {
@@ -45,12 +48,12 @@ export function RegistrosView() {
     let all: any[] = [];
     let offset = 0;
     while (true) {
-      let q = supabase.from("registros")
-        .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, profiles!inner(nome, prefixo, polo), bases(nome)")
+      let q = supabase.from("vw_registros_admin")
+        .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, nome, prefixo, user_polo, base_nome, base_polo")
         .gte("timestamp", start).lte("timestamp", end)
         .order("timestamp", { ascending: false })
         .range(offset, offset + pageSize - 1);
-      if (polo && polo !== "all") q = q.eq("profiles.polo", polo as any);
+      if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
       const { data, error } = await q;
       if (error) break;
       const batch = (data as any[]) ?? [];
@@ -65,7 +68,7 @@ export function RegistrosView() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
   const filteredBase = rows.filter(r => {
-    const prefEfetivo = r.prefixo_override ?? r.profiles?.prefixo ?? "";
+    const prefEfetivo = r.prefixo_override ?? r.prefixo ?? "";
     if (turno !== "all") {
       const letra = prefEfetivo.split("-")[1]?.[0]?.toUpperCase();
       if (letra !== turno) return false;
@@ -73,7 +76,7 @@ export function RegistrosView() {
     if (etapa !== "all" && r.etapa !== etapa) return false;
     if (usuario.trim()) {
       const s = usuario.trim().toLowerCase();
-      const n = (r.profiles?.nome ?? "").toLowerCase();
+      const n = (r.nome ?? "").toLowerCase();
       const p = prefEfetivo.toLowerCase();
       if (!n.includes(s) && !p.includes(s)) return false;
     }
@@ -81,14 +84,14 @@ export function RegistrosView() {
   });
 
   const getVal = (r: Row, k: string): string | number => {
-    const pref = r.prefixo_override ?? r.profiles?.prefixo ?? "";
+    const pref = r.prefixo_override ?? r.prefixo ?? "";
     switch (k) {
       case "timestamp": return new Date(r.timestamp).getTime();
-      case "nome": return (r.profiles?.nome ?? "").toLowerCase();
+      case "nome": return (r.nome ?? "").toLowerCase();
       case "prefixo": return pref.toLowerCase();
-      case "polo": return (r.profiles?.polo ?? "").toLowerCase();
+      case "polo": return (r.user_polo ?? "").toLowerCase();
       case "etapa": return (ETAPA_LABEL[r.etapa] ?? r.etapa).toLowerCase();
-      case "base": return (r.bases?.nome ?? "").toLowerCase();
+      case "base": return (r.base_nome ?? "").toLowerCase();
       default: return 0;
     }
   };
@@ -107,11 +110,11 @@ export function RegistrosView() {
   );
 
   const exportCsv = () => {
-    const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Lat","Lng"];
+    const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Polo da base","Lat","Lng"];
     const lines = filtered.map(r => {
       const d = new Date(r.timestamp);
-      const pref = r.prefixo_override ? `${r.prefixo_override} (prov.)` : r.profiles?.prefixo;
-      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.profiles?.nome, pref, r.profiles?.polo, ETAPA_LABEL[r.etapa] ?? r.etapa, r.bases?.nome ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
+      const pref = r.prefixo_override ? `${r.prefixo_override} (prov.)` : r.prefixo;
+      return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.nome, pref, r.user_polo, ETAPA_LABEL[r.etapa] ?? r.etapa, r.base_nome ?? "", r.base_polo ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
     });
     const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
