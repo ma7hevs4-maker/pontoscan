@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrScanner } from "@/components/QrScanner";
+import { IncidenteDialog } from "@/components/IncidenteDialog";
 import { getPosition, distanceMeters } from "@/lib/geo";
 import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ function EletricistaPage() {
   const [provOpen, setProvOpen] = useState(false);
   const [provPrefixo, setProvPrefixo] = useState("");
   const [provAtivo, setProvAtivo] = useState<string | null>(null);
+  const [incidenteOpen, setIncidenteOpen] = useState(false);
 
   useEffect(() => { setProvAtivo(getProvisorio()); }, []);
 
@@ -170,7 +172,7 @@ function EletricistaPage() {
             <span className="text-2xl font-bold">Escanear QR</span>
           </button>
           <button
-            onClick={() => toast.info("Formulário de incidente em breve")}
+            onClick={() => setIncidenteOpen(true)}
             className="mt-3 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-6 text-amber-900 shadow-sm transition-transform active:scale-95 hover:bg-amber-100"
           >
             <AlertTriangle className="h-8 w-8" />
@@ -178,6 +180,8 @@ function EletricistaPage() {
           </button>
         </Card>
       </main>
+
+      <IncidenteDialog open={incidenteOpen} onOpenChange={setIncidenteOpen} />
 
       <Dialog open={scanning} onOpenChange={(o) => !o && setScanning(false)}>
         <DialogContent className="max-w-md">
