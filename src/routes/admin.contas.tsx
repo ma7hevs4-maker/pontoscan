@@ -28,7 +28,7 @@ async function callAdmin(body: any) {
       Authorization: `Bearer ${token}`,
       "X-PontoScan-Auth": token,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, _authToken: token }),
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();

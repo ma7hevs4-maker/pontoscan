@@ -45,16 +45,27 @@ function createAdminClient() {
 }
 
 async function authorize(request: Request) {
-  const fallbackToken = request.headers.get("x-pontoscan-auth")?.trim();
-  if (fallbackToken) {
-    return authorizeToken(fallbackToken);
-  }
+  const tokens = new Set<string>();
+  const headerToken = request.headers.get("x-pontoscan-auth")?.trim();
+  if (headerToken) tokens.add(headerToken);
+
+  try {
+    const body = await request.clone().json();
+    const bodyToken = typeof body?._authToken === "string" ? body._authToken.trim() : "";
+    if (bodyToken) tokens.add(bodyToken);
+  } catch {}
+
   const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return { error: new Response("Unauthorized", { status: 401 }) };
+  if (authHeader.startsWith("Bearer ")) {
+    tokens.add(authHeader.slice(7));
   }
-  const token = authHeader.slice(7);
-  return authorizeToken(token);
+
+  for (const token of tokens) {
+    const auth = await authorizeToken(token);
+    if (!auth.error) return auth;
+  }
+
+  return { error: new Response("Unauthorized", { status: 401 }) };
 }
 
 async function authorizeToken(token: string) {
