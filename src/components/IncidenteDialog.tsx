@@ -263,7 +263,7 @@ function RadioField({
   );
 }
 
-function EvidenciasPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
+function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)" }: { fotos: File[]; onChange: (f: File[]) => void; label?: string }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
 
@@ -277,7 +277,7 @@ function EvidenciasPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: Fi
   const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
 
   return (
-    <Field label="Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)" required>
+    <Field label={label} required>
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" onClick={() => cameraRef.current?.click()} className="h-12">
           <Camera className="mr-2 h-5 w-5" /> Câmera
