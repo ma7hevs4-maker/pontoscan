@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, ImageOff, Image as ImgIcon } from "lucide-react";
+import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
