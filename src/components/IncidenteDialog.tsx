@@ -395,6 +395,7 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
 /* ---------- Ordem 2 ---------- */
 
 function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const { user, profile } = useAuth();
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -407,9 +408,19 @@ function Ordem2Form({ onBack, onDone }: { onBack: () => void; onDone: () => void
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
     setSubmitting(true);
     try {
-      console.log("[Incidente/Ordem2]", { numero, motivo, observacao }, fotos);
-      toast.success(`Ordem 2 ${numero} registrada (envio ao backend em breve)`);
+      await submitIncidente({
+        tipo: "ORDEM_2",
+        numero,
+        dados: { motivo, observacao },
+        fotos,
+        userId: user!.id,
+        prefixo: profile!.prefixo,
+        polo: profile!.polo,
+      });
+      toast.success(`Ordem 2 ${numero} registrada`);
       onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao registrar");
     } finally { setSubmitting(false); }
   };
 
@@ -456,6 +467,7 @@ const IMPRODUTIVO_MOTIVOS = [
 ];
 
 function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+  const { user, profile } = useAuth();
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -468,9 +480,19 @@ function ImprodutivoForm({ onBack, onDone }: { onBack: () => void; onDone: () =>
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
     setSubmitting(true);
     try {
-      console.log("[Incidente/Improdutivo]", { numero, motivo, observacao }, fotos);
-      toast.success(`Improdutivo ${numero} registrado (envio ao backend em breve)`);
+      await submitIncidente({
+        tipo: "IMPRODUTIVO",
+        numero,
+        dados: { motivo, observacao },
+        fotos,
+        userId: user!.id,
+        prefixo: profile!.prefixo,
+        polo: profile!.polo,
+      });
+      toast.success(`Improdutivo ${numero} registrado`);
       onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao registrar");
     } finally { setSubmitting(false); }
   };
 
