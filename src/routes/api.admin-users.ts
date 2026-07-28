@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { Database } from "@/integrations/supabase/types";
 
 async function authorize(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -9,12 +7,7 @@ async function authorize(request: Request) {
     return { error: new Response("Unauthorized", { status: 401 }) };
   }
   const token = authHeader.slice(7);
-  const client = createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
-  const { data, error } = await client.auth.getUser(token);
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data?.user) return { error: new Response("Unauthorized", { status: 401 }) };
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
