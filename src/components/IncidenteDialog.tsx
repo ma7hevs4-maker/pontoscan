@@ -179,7 +179,6 @@ type AIForm = {
   noKirchhoff: string;
   medicao: string;
   correlacaoDefeito: string; correlacaoDefeitoOutro: string;
-  ligacaoCliente: string;
 };
 
 const emptyAI: AIForm = {
@@ -194,13 +193,11 @@ const emptyAI: AIForm = {
   noKirchhoff: "",
   medicao: "",
   correlacaoDefeito: "", correlacaoDefeitoOutro: "",
-  ligacaoCliente: "",
 };
 
 function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
-  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
 
@@ -223,8 +220,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
     if (!f.medicao) return "Selecione a condição da medição";
     if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
     if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
-    if (!f.ligacaoCliente) return "Informe se foi efetuada ligação para o cliente";
-    if (f.ligacaoCliente === "Sim" && printLigacao.length === 0) return "Anexe o print da ligação para o cliente";
     if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
     return null;
   };
@@ -240,7 +235,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
         dados: f,
         fotos,
         actor,
-        extraFotos: f.ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
       });
       toast.success(`Incidente ${f.numeroIncidente} registrado`);
       onDone();
@@ -326,14 +320,6 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
           ]}
           outroValue={f.correlacaoDefeitoOutro} onOutroChange={(v) => set("correlacaoDefeitoOutro", v)}
         />
-
-        <RadioField label="Foi efetuada ligação para o cliente?" required value={f.ligacaoCliente} onChange={(v) => set("ligacaoCliente", v)}
-          options={["Sim", "Não"]}
-        />
-
-        {f.ligacaoCliente === "Sim" && (
-          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
-        )}
 
         <EvidenciasPicker fotos={fotos} onChange={setFotos} />
 
@@ -568,6 +554,8 @@ const IMPRODUTIVO_MOTIVOS = [
 function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
   const [numero, setNumero] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [ligacaoCliente, setLigacaoCliente] = useState("");
+  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -575,15 +563,18 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
     if (!motivo) return toast.error("Selecione o motivo");
+    if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
+    if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "IMPRODUTIVO",
         numero,
-        dados: { motivo, observacao },
+        dados: { motivo, ligacaoCliente, observacao },
         fotos,
         actor,
+        extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
       });
       toast.success(`Improdutivo ${numero} registrado`);
       onDone();
@@ -603,6 +594,12 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
       <div className="space-y-5">
         <NumeroIncidenteField value={numero} onChange={setNumero} />
         <RadioField label="Motivo" required value={motivo} onChange={setMotivo} options={IMPRODUTIVO_MOTIVOS} />
+        <RadioField label="Foi efetuada ligação para o cliente?" required value={ligacaoCliente} onChange={setLigacaoCliente}
+          options={["Sim", "Não"]}
+        />
+        {ligacaoCliente === "Sim" && (
+          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+        )}
         <Field label="Observação">
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
