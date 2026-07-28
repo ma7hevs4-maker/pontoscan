@@ -166,12 +166,12 @@ function IncidentesFeed() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map(inc => (
-            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : undefined} onOpen={() => setDetalhe(inc)} />
+            <IncidenteCard key={inc.id} inc={inc} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => setDetalhe(inc)} />
           ))}
         </div>
       )}
 
-      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : undefined} onClose={() => setDetalhe(null)} />
+      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : (detalhe?.nome_colaborador ?? undefined)} onClose={() => setDetalhe(null)} />
     </div>
   );
 }
