@@ -1,0 +1,1 @@
+ALTER TABLE public.incidentes REPLICA IDENTITY FULL; ALTER PUBLICATION supabase_realtime ADD TABLE public.incidentes;
