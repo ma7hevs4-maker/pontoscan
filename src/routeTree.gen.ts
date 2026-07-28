@@ -9,38 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ParceiraRouteImport } from './routes/parceira'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as EletricistaRouteImport } from './routes/eletricista'
-import { Route as CadastroRouteImport } from './routes/cadastro'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
-import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
-import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
-import { Route as AdminDashFormsRouteImport } from './routes/admin.dash-forms'
-import { Route as AdminContasRouteImport } from './routes/admin.contas'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CadastroRouteImport } from './routes/cadastro'
+import { Route as EletricistaRouteImport } from './routes/eletricista'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ParceiraRouteImport } from './routes/parceira'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
+import { Route as AdminContasRouteImport } from './routes/admin.contas'
+import { Route as AdminDashFormsRouteImport } from './routes/admin.dash-forms'
+import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
+import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
+import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
 import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
 
-const ParceiraRoute = ParceiraRouteImport.update({
-  id: '/parceira',
-  path: '/parceira',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EletricistaRoute = EletricistaRouteImport.update({
-  id: '/eletricista',
-  path: '/eletricista',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CadastroRoute = CadastroRouteImport.update({
-  id: '/cadastro',
-  path: '/cadastro',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -48,29 +33,29 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
-  id: '/api/admin-users',
-  path: '/api/admin-users',
+const EletricistaRoute = EletricistaRouteImport.update({
+  id: '/eletricista',
+  path: '/eletricista',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMetricasRoute = AdminMetricasRouteImport.update({
-  id: '/metricas',
-  path: '/metricas',
-  getParentRoute: () => AdminRoute,
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIncidentesRoute = AdminIncidentesRouteImport.update({
-  id: '/incidentes',
-  path: '/incidentes',
-  getParentRoute: () => AdminRoute,
+const ParceiraRoute = ParceiraRouteImport.update({
+  id: '/parceira',
+  path: '/parceira',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminDashFormsRoute = AdminDashFormsRouteImport.update({
-  id: '/dash-forms',
-  path: '/dash-forms',
+const AdminBasesRoute = AdminBasesRouteImport.update({
+  id: '/bases',
+  path: '/bases',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminContasRoute = AdminContasRouteImport.update({
@@ -78,10 +63,25 @@ const AdminContasRoute = AdminContasRouteImport.update({
   path: '/contas',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminBasesRoute = AdminBasesRouteImport.update({
-  id: '/bases',
-  path: '/bases',
+const AdminDashFormsRoute = AdminDashFormsRouteImport.update({
+  id: '/dash-forms',
+  path: '/dash-forms',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminIncidentesRoute = AdminIncidentesRouteImport.update({
+  id: '/incidentes',
+  path: '/incidentes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMetricasRoute = AdminMetricasRouteImport.update({
+  id: '/metricas',
+  path: '/metricas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
+  id: '/api/admin-users',
+  path: '/api/admin-users',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicIncidenteParceiraRoute =
   ApiPublicIncidenteParceiraRouteImport.update({
@@ -197,32 +197,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/parceira': {
-      id: '/parceira'
-      path: '/parceira'
-      fullPath: '/parceira'
-      preLoaderRoute: typeof ParceiraRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/eletricista': {
-      id: '/eletricista'
-      path: '/eletricista'
-      fullPath: '/eletricista'
-      preLoaderRoute: typeof EletricistaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cadastro': {
-      id: '/cadastro'
-      path: '/cadastro'
-      fullPath: '/cadastro'
-      preLoaderRoute: typeof CadastroRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -232,39 +211,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin-users': {
-      id: '/api/admin-users'
-      path: '/api/admin-users'
-      fullPath: '/api/admin-users'
-      preLoaderRoute: typeof ApiAdminUsersRouteImport
+    '/eletricista': {
+      id: '/eletricista'
+      path: '/eletricista'
+      fullPath: '/eletricista'
+      preLoaderRoute: typeof EletricistaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/metricas': {
-      id: '/admin/metricas'
-      path: '/metricas'
-      fullPath: '/admin/metricas'
-      preLoaderRoute: typeof AdminMetricasRouteImport
-      parentRoute: typeof AdminRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/incidentes': {
-      id: '/admin/incidentes'
-      path: '/incidentes'
-      fullPath: '/admin/incidentes'
-      preLoaderRoute: typeof AdminIncidentesRouteImport
-      parentRoute: typeof AdminRoute
+    '/parceira': {
+      id: '/parceira'
+      path: '/parceira'
+      fullPath: '/parceira'
+      preLoaderRoute: typeof ParceiraRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/dash-forms': {
-      id: '/admin/dash-forms'
-      path: '/dash-forms'
-      fullPath: '/admin/dash-forms'
-      preLoaderRoute: typeof AdminDashFormsRouteImport
+    '/admin/bases': {
+      id: '/admin/bases'
+      path: '/bases'
+      fullPath: '/admin/bases'
+      preLoaderRoute: typeof AdminBasesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/contas': {
@@ -274,12 +253,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminContasRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/bases': {
-      id: '/admin/bases'
-      path: '/bases'
-      fullPath: '/admin/bases'
-      preLoaderRoute: typeof AdminBasesRouteImport
+    '/admin/dash-forms': {
+      id: '/admin/dash-forms'
+      path: '/dash-forms'
+      fullPath: '/admin/dash-forms'
+      preLoaderRoute: typeof AdminDashFormsRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin/incidentes': {
+      id: '/admin/incidentes'
+      path: '/incidentes'
+      fullPath: '/admin/incidentes'
+      preLoaderRoute: typeof AdminIncidentesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/metricas': {
+      id: '/admin/metricas'
+      path: '/metricas'
+      fullPath: '/admin/metricas'
+      preLoaderRoute: typeof AdminMetricasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/admin-users': {
+      id: '/api/admin-users'
+      path: '/api/admin-users'
+      fullPath: '/api/admin-users'
+      preLoaderRoute: typeof ApiAdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/incidente-parceira': {
       id: '/api/public/incidente-parceira'
