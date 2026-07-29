@@ -2,8 +2,12 @@ import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { poloFromPrefixo, type Polo } from "@/lib/incidentes";
 
 type IncidenteLite = {
   numero_incidente: string;
@@ -13,13 +17,15 @@ type IncidenteLite = {
   created_at: string;
 };
 
-type LinhaXlsx = { numero: string; equipe: string; causa: string };
+type LinhaXlsx = { numero: string; equipe: string; causa: string; polo: Polo | null };
 
 const TIPO_LABEL: Record<string, string> = {
   ATENDIMENTO_INDIVIDUAL: "Atendimento Individual",
   ORDEM_2: "Ordem 2",
   IMPRODUTIVO: "Improdutivo",
 };
+
+const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"];
 
 function norm(s: any) {
   return String(s ?? "").trim();
@@ -43,10 +49,14 @@ function pickCol(row: Record<string, any>, alvos: string[]): string {
 }
 
 export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }) {
+  const { role, adminPolo } = useAuth();
   const [open, setOpen] = useState(false);
   const [linhas, setLinhas] = useState<LinhaXlsx[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const [fPolo, setFPolo] = useState<string>("all");
+  const [fEquipe, setFEquipe] = useState<string>("");
+  const [fTipo, setFTipo] = useState<string>("all");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (f: File) => {
@@ -83,10 +93,12 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
         const row = matrix[i] ?? [];
         const numero = normNum(row[idxNum]);
         if (!numero) continue;
+        const equipe = normUp(row[idxEq]);
         dados.push({
           numero,
-          equipe: normUp(row[idxEq]),
+          equipe,
           causa: norm(row[idxCa]),
+          polo: poloFromPrefixo(equipe),
         });
       }
       if (!dados.length) throw new Error("Nenhuma linha de dados encontrada após o cabeçalho.");
@@ -97,39 +109,69 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
     }
   };
 
+  // Escopo por polo: ADMIN_POLO só vê o próprio; ADMIN_DISPATCH filtra pelo select.
+  const poloAtivo: Polo | null = role === "ADMIN_DISPATCH"
+    ? (fPolo === "all" ? null : (fPolo as Polo))
+    : (adminPolo as Polo | null);
+
+  const equipeQ = fEquipe.trim().toUpperCase();
+
+  const incidentesEscopo = useMemo(() => {
+    return incidentes.filter((i) => {
+      if (fTipo !== "all" && i.tipo !== fTipo) return false;
+      if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
+      if (poloAtivo) {
+        const pi = poloFromPrefixo(i.prefixo);
+        if (pi !== poloAtivo) return false;
+      }
+      return true;
+    });
+  }, [incidentes, fTipo, equipeQ, poloAtivo]);
+
+  const linhasEscopo = useMemo(() => {
+    return linhas.filter((l) => {
+      if (equipeQ && !l.equipe.includes(equipeQ)) return false;
+      if (poloAtivo && l.polo !== poloAtivo) return false;
+      return true;
+    });
+  }, [linhas, equipeQ, poloAtivo]);
+
   const sistemaMap = useMemo(() => {
     const m = new Map<string, IncidenteLite>();
-    for (const i of incidentes) {
+    for (const i of incidentesEscopo) {
       const k = normNum(i.numero_incidente);
       if (k && !m.has(k)) m.set(k, i);
     }
     return m;
-  }, [incidentes]);
+  }, [incidentesEscopo]);
 
   const xlsxMap = useMemo(() => {
     const m = new Map<string, LinhaXlsx>();
-    for (const l of linhas) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
+    for (const l of linhasEscopo) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
     return m;
-  }, [linhas]);
+  }, [linhasEscopo]);
 
   const faltantes = useMemo(
-    () => linhas.filter((l) => !sistemaMap.has(l.numero)),
-    [linhas, sistemaMap]
+    () => linhasEscopo.filter((l) => !sistemaMap.has(l.numero)),
+    [linhasEscopo, sistemaMap]
   );
   const extras = useMemo(
-    () => incidentes.filter((i) => !xlsxMap.has(normNum(i.numero_incidente))),
-    [incidentes, xlsxMap]
+    () => incidentesEscopo.filter((i) => !xlsxMap.has(normNum(i.numero_incidente))),
+    [incidentesEscopo, xlsxMap]
   );
   const divergencias = useMemo(() => {
     const out: { numero: string; equipe_xlsx: string; equipe_sis: string; causa_xlsx: string; causa_sis: string; tipo: string }[] = [];
-    for (const l of linhas) {
+    for (const l of linhasEscopo) {
       const sis = sistemaMap.get(l.numero);
       if (!sis) continue;
       const causaSis = norm(
         sis.dados?.correlacaoDefeito || sis.dados?.correlacaoDefeitoOutro || sis.dados?.motivo
       );
       const eqSis = normUp(sis.prefixo);
-      const causaDif = l.causa && causaSis && normUp(l.causa) !== normUp(causaSis);
+      // Causas só são comparáveis para IMPRODUTIVO — os demais tipos usam
+      // taxonomias diferentes entre o sistema e a planilha externa.
+      const causaDif = sis.tipo === "IMPRODUTIVO"
+        && l.causa && causaSis && normUp(l.causa) !== normUp(causaSis);
       const eqDif = l.equipe && eqSis && l.equipe !== eqSis;
       if (causaDif || eqDif) {
         out.push({
@@ -143,7 +185,31 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
       }
     }
     return out;
-  }, [linhas, sistemaMap]);
+  }, [linhasEscopo, sistemaMap]);
+
+  // Comparativo de quantidade por equipe — foco principal do cruzamento.
+  const porEquipe = useMemo(() => {
+    const map = new Map<string, { sistema: number; xlsx: number }>();
+    for (const i of incidentesEscopo) {
+      const k = normUp(i.prefixo);
+      if (!k) continue;
+      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
+      cur.sistema++;
+      map.set(k, cur);
+    }
+    for (const l of linhasEscopo) {
+      const k = l.equipe;
+      if (!k) continue;
+      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
+      cur.xlsx++;
+      map.set(k, cur);
+    }
+    return Array.from(map.entries())
+      .map(([equipe, v]) => ({ equipe, ...v, dif: v.xlsx - v.sistema }))
+      .sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif) || b.xlsx - a.xlsx);
+  }, [incidentesEscopo, linhasEscopo]);
+
+  const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
 
   const reset = () => {
     setLinhas([]);
@@ -167,7 +233,10 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
 
           <div className="space-y-4 text-sm">
             <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              Envie um arquivo <b>.xlsx</b> contendo as colunas <b>Número</b>, <b>Equipe desl.</b> e <b>Causa</b>. O sistema compara com os incidentes atualmente carregados na aba ({incidentes.length} incidente(s)).
+              Envie um arquivo <b>.xlsx</b> contendo as colunas <b>Número</b>, <b>Equipe desl.</b> e <b>Causa</b>. O sistema compara com os incidentes atualmente carregados na aba ({incidentesEscopo.length} de {incidentes.length} no escopo atual).
+              {role !== "ADMIN_DISPATCH" && adminPolo && (
+                <> Escopo restrito ao polo <b>{adminPolo}</b>.</>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -188,6 +257,37 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
               )}
             </div>
 
+            <div className="grid gap-3 md:grid-cols-3">
+              {role === "ADMIN_DISPATCH" && (
+                <div>
+                  <Label className="text-xs">Polo</Label>
+                  <Select value={fPolo} onValueChange={setFPolo}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {POLOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <Label className="text-xs">Equipe (prefixo)</Label>
+                <Input value={fEquipe} onChange={(e) => setFEquipe(e.target.value)} placeholder="Ex.: SG010" />
+              </div>
+              <div>
+                <Label className="text-xs">Tipo (aplica ao sistema)</Label>
+                <Select value={fTipo} onValueChange={setFTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>
+                    <SelectItem value="ORDEM_2">Ordem 2</SelectItem>
+                    <SelectItem value="IMPRODUTIVO">Improdutivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {erro && (
               <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -197,11 +297,31 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
 
             {linhas.length > 0 && (
               <>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatCard label="Na planilha" value={linhas.length} />
+                <div className="grid grid-cols-4 gap-2">
+                  <StatCard label="Na planilha" value={linhasEscopo.length} />
+                  <StatCard label="Equipes com quantidade menor no sistema" value={equipesFaltando.length} tone="warn" />
                   <StatCard label="Faltantes no sistema" value={faltantes.length} tone="warn" />
                   <StatCard label="Com divergência" value={divergencias.length} tone="warn" />
                 </div>
+
+                <Section
+                  title={`Quantidade por equipe (${porEquipe.length})`}
+                  desc="Compara nº de incidentes por equipe entre planilha e sistema. Diferença positiva indica registros que a equipe deveria ter feito no sistema e não fez."
+                >
+                  {porEquipe.length === 0 ? (
+                    <Empty>Sem dados no escopo atual.</Empty>
+                  ) : (
+                    <Tabela
+                      headers={["Equipe", "Sistema", "Planilha", "Diferença"]}
+                      rows={porEquipe.map((e) => [
+                        e.equipe,
+                        e.sistema,
+                        e.xlsx,
+                        e.dif > 0 ? `+${e.dif}` : String(e.dif),
+                      ])}
+                    />
+                  )}
+                </Section>
 
                 <Section title={`Faltantes no sistema (${faltantes.length})`} desc="Presentes na planilha e sem registro no sistema.">
                   {faltantes.length === 0 ? (
@@ -214,7 +334,7 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
                   )}
                 </Section>
 
-                <Section title={`Divergências (${divergencias.length})`} desc="Existem em ambos, mas equipe e/ou causa diferem.">
+                <Section title={`Divergências (${divergencias.length})`} desc="Existem em ambos, mas equipe difere — ou, para Improdutivo, a causa difere. Causas de Atendimento Individual e Ordem 2 não são comparadas (taxonomias distintas).">
                   {divergencias.length === 0 ? (
                     <Empty>Nenhuma divergência.</Empty>
                   ) : (
