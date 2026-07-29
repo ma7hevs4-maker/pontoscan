@@ -50,6 +50,48 @@ export type Database = {
         }
         Relationships: []
       }
+      form_questions: {
+        Row: {
+          ativa: boolean
+          campo_tipo: string
+          chave: string
+          created_at: string
+          id: string
+          obrigatoria: boolean
+          opcoes: Json
+          ordem: number
+          rotulo: string
+          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          campo_tipo: string
+          chave: string
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json
+          ordem?: number
+          rotulo: string
+          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          campo_tipo?: string
+          chave?: string
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json
+          ordem?: number
+          rotulo?: string
+          tipo?: Database["public"]["Enums"]["tipo_incidente_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       incidentes: {
         Row: {
           created_at: string
