@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
+import { loadFormQuestions, type FormQuestion, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
 
-type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+type TipoIncidente = TipoIncidenteConfig;
 
 export type IncidenteActor =
   | { mode: "insourcing"; userId: string; prefixo: string; polo: string }
@@ -199,6 +200,9 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("ATENDIMENTO_INDIVIDUAL").then(setExtras); }, []);
   const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
 
   const numeroValido = /^[A-Z0-9]{10}$/.test(f.numeroIncidente);
@@ -221,6 +225,8 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
     if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
     if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
     if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return extraErr;
     return null;
   };
 
@@ -232,7 +238,7 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
       await submitIncidente({
         tipo: "ATENDIMENTO_INDIVIDUAL",
         numero: f.numeroIncidente,
-        dados: f,
+        dados: { ...f, ...extraVals },
         fotos,
         actor,
       });
@@ -323,6 +329,8 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
 
         <EvidenciasPicker fotos={fotos} onChange={setFotos} />
 
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
+
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>
@@ -331,6 +339,51 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
         </div>
       </div>
     </>
+  );
+}
+
+function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
+  for (const q of qs) {
+    if (!q.obrigatoria) continue;
+    const v = (vals[q.chave] ?? "").trim();
+    if (!v) return `Preencha: ${q.rotulo}`;
+  }
+  return null;
+}
+
+function ExtrasRenderer({
+  questions, values, onChange,
+}: {
+  questions: FormQuestion[];
+  values: Record<string, string>;
+  onChange: (v: Record<string, string>) => void;
+}) {
+  if (!questions.length) return null;
+  const set = (k: string, v: string) => onChange({ ...values, [k]: v });
+  return (
+    <div className="space-y-3 border-t pt-3">
+      {questions.map((q) => (
+        <div key={q.id}>
+          <Label>{q.rotulo}{q.obrigatoria && " *"}</Label>
+          {q.campo_tipo === "text" && (
+            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+          )}
+          {q.campo_tipo === "textarea" && (
+            <Textarea value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+          )}
+          {q.campo_tipo === "choice" && (
+            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)}>
+              {q.opcoes.map((op) => (
+                <label key={op} className="flex items-center gap-2 text-sm">
+                  <RadioGroupItem value={op} id={`${q.id}-${op}`} />
+                  <span>{op}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -488,17 +541,22 @@ function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: 
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("ORDEM_2").then(setExtras); }, []);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
     if (!motivo) return toast.error("Selecione o motivo");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return toast.error(extraErr);
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "ORDEM_2",
         numero,
-        dados: { motivo, observacao },
+        dados: { motivo, observacao, ...extraVals },
         fotos,
         actor,
       });
@@ -525,6 +583,7 @@ function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: 
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
         <EvidenciasPicker label="Registro Fotográfico" fotos={fotos} onChange={setFotos} />
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
@@ -559,6 +618,9 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("IMPRODUTIVO").then(setExtras); }, []);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
@@ -566,12 +628,14 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
     if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
     if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return toast.error(extraErr);
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "IMPRODUTIVO",
         numero,
-        dados: { motivo, ligacaoCliente, observacao },
+        dados: { motivo, ligacaoCliente, observacao, ...extraVals },
         fotos,
         actor,
         extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
@@ -604,6 +668,7 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
         <EvidenciasPicker label="Evidência Fotográfica" fotos={fotos} onChange={setFotos} />
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
