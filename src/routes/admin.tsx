@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart } from "lucide-react";
+import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { FormBuilder } from "@/components/admin/FormBuilder";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -13,6 +14,7 @@ function AdminLayout() {
   const { user, role, profile, adminPolo, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -90,6 +92,11 @@ function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {role === "ADMIN_DISPATCH" && (
+              <Button variant="ghost" size="icon" aria-label="Construtor de formulários" onClick={() => setBuilderOpen(true)}>
+                <Settings className="h-5 w-5" />
+              </Button>
+            )}
             {(role === "ADMIN_DISPATCH" || role === "ADMIN_POLO") && (
               <Button variant="ghost" size="icon" aria-label="Contas" onClick={() => navigate({ to: "/admin/contas" })}>
                 <ShieldCheck className="h-5 w-5" />
@@ -144,6 +151,7 @@ function AdminLayout() {
       <main className="mx-auto max-w-7xl p-4">
         {isRoot ? <RegistrosView /> : <Outlet />}
       </main>
+      {role === "ADMIN_DISPATCH" && <FormBuilder open={builderOpen} onOpenChange={setBuilderOpen} />}
     </div>
   );
 }
