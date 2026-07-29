@@ -56,24 +56,40 @@ export function CruzamentoImport({ incidentes }: { incidentes: IncidenteLite[] }
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
-      if (!json.length) throw new Error("Planilha vazia.");
-      const first = json[0];
-      const colNum = pickCol(first, ["Número", "Numero", "Nº", "N°"]);
-      const colEq = pickCol(first, ["Equipe desl", "Equipe desl.", "Equipe", "Prefixo"]);
-      const colCa = pickCol(first, ["Causa"]);
-      if (!colNum || !colEq || !colCa) {
-        throw new Error(
-          `Colunas não encontradas. Esperado: "Número", "Equipe desl.", "Causa". Encontrado: ${Object.keys(first).join(", ")}`
-        );
+      // Lê como matriz e detecta a linha de cabeçalho (planilha traz título nas 1-2 primeiras linhas)
+      const matrix = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" }) as any[][];
+      if (!matrix.length) throw new Error("Planilha vazia.");
+      const wantNum = ["número", "numero", "nº", "n°"];
+      const wantEq = ["equipe desl", "equipe desl.", "equipe", "prefixo"];
+      const wantCa = ["causa"];
+      const norm2 = (s: any) => String(s ?? "").trim().toLowerCase().replace(/\.$/, "");
+      let headerIdx = -1;
+      let idxNum = -1, idxEq = -1, idxCa = -1;
+      for (let i = 0; i < Math.min(matrix.length, 30); i++) {
+        const row = matrix[i] ?? [];
+        const cells = row.map(norm2);
+        const iNum = cells.findIndex((c) => wantNum.includes(c));
+        const iEq = cells.findIndex((c) => wantEq.includes(c));
+        const iCa = cells.findIndex((c) => wantCa.includes(c));
+        if (iNum >= 0 && iEq >= 0 && iCa >= 0) {
+          headerIdx = i; idxNum = iNum; idxEq = iEq; idxCa = iCa; break;
+        }
       }
-      const dados: LinhaXlsx[] = json
-        .map((r) => ({
-          numero: normNum(r[colNum]),
-          equipe: normUp(r[colEq]),
-          causa: norm(r[colCa]),
-        }))
-        .filter((r) => r.numero);
+      if (headerIdx < 0) {
+        throw new Error(`Cabeçalho não encontrado. A planilha precisa conter as colunas "Número", "Equipe Desl." e "Causa".`);
+      }
+      const dados: LinhaXlsx[] = [];
+      for (let i = headerIdx + 1; i < matrix.length; i++) {
+        const row = matrix[i] ?? [];
+        const numero = normNum(row[idxNum]);
+        if (!numero) continue;
+        dados.push({
+          numero,
+          equipe: normUp(row[idxEq]),
+          causa: norm(row[idxCa]),
+        });
+      }
+      if (!dados.length) throw new Error("Nenhuma linha de dados encontrada após o cabeçalho.");
       setLinhas(dados);
     } catch (e: any) {
       setLinhas([]);
