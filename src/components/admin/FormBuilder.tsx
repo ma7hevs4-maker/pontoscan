@@ -92,6 +92,7 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         campo_tipo: "text",
         opcoes: [],
         obrigatoria: false,
+        permite_outro: false,
         ordem: arr.length,
         ativa: true,
         dirty: true,
@@ -140,6 +141,7 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
             campo_tipo: q.campo_tipo,
             opcoes,
             obrigatoria: q.obrigatoria,
+            permite_outro: q.campo_tipo === "choice" ? q.permite_outro : false,
             ordem: q.ordem,
             ativa: q.ativa,
           };
