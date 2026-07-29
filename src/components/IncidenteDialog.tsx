@@ -496,17 +496,22 @@ function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: 
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("ORDEM_2").then(setExtras); }, []);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
     if (!motivo) return toast.error("Selecione o motivo");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return toast.error(extraErr);
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "ORDEM_2",
         numero,
-        dados: { motivo, observacao },
+        dados: { motivo, observacao, ...extraVals },
         fotos,
         actor,
       });
@@ -533,6 +538,7 @@ function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: 
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
         <EvidenciasPicker label="Registro Fotográfico" fotos={fotos} onChange={setFotos} />
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
