@@ -295,6 +295,10 @@ function QuestionCard({
               <Plus className="mr-2 h-3 w-3" /> Adicionar opção
             </Button>
           </div>
+          <label className="mt-2 flex items-center gap-2 text-sm">
+            <Switch checked={q.permite_outro} onCheckedChange={(v) => onChange({ permite_outro: v })} />
+            Permitir "Outro" (texto livre)
+          </label>
         </div>
       )}
 
