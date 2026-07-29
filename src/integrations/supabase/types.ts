@@ -60,6 +60,7 @@ export type Database = {
           obrigatoria: boolean
           opcoes: Json
           ordem: number
+          permite_outro: boolean
           rotulo: string
           tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
           updated_at: string
@@ -73,6 +74,7 @@ export type Database = {
           obrigatoria?: boolean
           opcoes?: Json
           ordem?: number
+          permite_outro?: boolean
           rotulo: string
           tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
           updated_at?: string
@@ -86,6 +88,7 @@ export type Database = {
           obrigatoria?: boolean
           opcoes?: Json
           ordem?: number
+          permite_outro?: boolean
           rotulo?: string
           tipo?: Database["public"]["Enums"]["tipo_incidente_enum"]
           updated_at?: string
