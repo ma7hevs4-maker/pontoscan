@@ -157,7 +157,7 @@ function MetricasPage() {
       };
     });
   }
-  ranking = ranking.sort((a,b) => a.tempo - b.tempo).slice(0, 10);
+  ranking = ranking.sort((a,b) => a.tempo - b.tempo);
 
   const getVal = (r: VRow, k: string): string | number => {
     switch (k) {
@@ -281,7 +281,7 @@ function MetricasPage() {
 
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-semibold">Top 10 — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
+              <h3 className="font-semibold">Ranking — Tempo PONTO → PRÉ DDS (mais rápidos)</h3>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={exportRankingCsv}>
                   <Download className="mr-2 h-4 w-4" />CSV
@@ -300,10 +300,12 @@ function MetricasPage() {
             {ranking.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={ranking}>
+              <div className="overflow-x-auto">
+                <div style={{ width: Math.max(ranking.length * 60, 600), height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={ranking}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" />
+                  <XAxis dataKey="nome" interval={0} angle={-40} textAnchor="end" height={70} />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip
                     content={({ active, payload }: any) => {
@@ -323,8 +325,10 @@ function MetricasPage() {
                   />
                   <Bar dataKey="tempoPonto" stackId="t" fill="#60a5fa" radius={[0,0,0,0]} name="PONTO → PRÉ DDS" />
                   <Bar dataKey="tempoSaida" stackId="t" fill="#1d4ed8" radius={[6,6,0,0]} name="PÓS DDS → SAÍDA" />
-                </BarChart>
-              </ResponsiveContainer>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             )}
           </Card>
 
