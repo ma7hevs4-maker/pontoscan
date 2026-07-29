@@ -573,6 +573,9 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
   const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("IMPRODUTIVO").then(setExtras); }, []);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
@@ -580,12 +583,14 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
     if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
     if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return toast.error(extraErr);
     setSubmitting(true);
     try {
       await submitIncidente({
         tipo: "IMPRODUTIVO",
         numero,
-        dados: { motivo, ligacaoCliente, observacao },
+        dados: { motivo, ligacaoCliente, observacao, ...extraVals },
         fotos,
         actor,
         extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
@@ -618,6 +623,7 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
           <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
         </Field>
         <EvidenciasPicker label="Evidência Fotográfica" fotos={fotos} onChange={setFotos} />
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
