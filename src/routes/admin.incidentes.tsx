@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
+import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
 
@@ -212,6 +213,7 @@ function IncidentesFeed() {
             <Button variant="outline" size="sm" onClick={() => exportarCSV(filtradas, nomes)} disabled={filtradas.length === 0}>
               <Download className="mr-2 h-4 w-4" />Exportar CSV
             </Button>
+            <CruzamentoImport incidentes={filtradas} />
           </div>
         </div>
       </Card>
