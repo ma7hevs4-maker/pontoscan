@@ -14,7 +14,7 @@ const PREFIX_MAP: Record<string, string> = {
   AN: "Sul", RE: "Sul",
 };
 
-const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELCA", "Ceneged"];
+const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELLCA", "Ceneged"];
 const TIPOS = ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"];
 
 function poloFromPrefixo(prefixo: string): string | null {

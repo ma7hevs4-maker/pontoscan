@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
-const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELCA", "Ceneged"] as const;
+const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELLCA", "Ceneged"] as const;
 const PARCEIRA_KEY = "pontoscan.parceira_session";
 
 function slug(p: string) {
