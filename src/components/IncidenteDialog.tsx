@@ -166,187 +166,30 @@ function TipoButton({ icon, label, onClick, disabled }: { icon: React.ReactNode;
   );
 }
 
-/* ---------- Atendimento Individual ---------- */
-
-type AIForm = {
-  numeroIncidente: string;
-  tipoRede: string; tipoRedeOutro: string;
-  tipoConexao: string; tipoConexaoOutro: string;
-  caixaDae: string;
-  materialRamal: string;
-  bitolaRamal: string; bitolaRamalOutro: string;
-  tipoRamal: string;
-  tipoDisjuntor: string; tipoDisjuntorOutro: string;
-  noKirchhoff: string;
-  medicao: string;
-  correlacaoDefeito: string; correlacaoDefeitoOutro: string;
-};
-
-const emptyAI: AIForm = {
-  numeroIncidente: "",
-  tipoRede: "", tipoRedeOutro: "",
-  tipoConexao: "", tipoConexaoOutro: "",
-  caixaDae: "",
-  materialRamal: "",
-  bitolaRamal: "", bitolaRamalOutro: "",
-  tipoRamal: "",
-  tipoDisjuntor: "", tipoDisjuntorOutro: "",
-  noKirchhoff: "",
-  medicao: "",
-  correlacaoDefeito: "", correlacaoDefeitoOutro: "",
-};
+/* ---------- Atendimento Individual (data-driven) ---------- */
 
 function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  const [f, setF] = useState<AIForm>(emptyAI);
-  const [fotos, setFotos] = useState<File[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("ATENDIMENTO_INDIVIDUAL").then(setExtras); }, []);
-  const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
-
-  const numeroValido = /^[A-Z0-9]{10}$/.test(f.numeroIncidente);
-
-  const validar = (): string | null => {
-    if (!numeroValido) return "Nº Incidente deve ter 10 caracteres (letras maiúsculas e números)";
-    if (!f.tipoRede) return "Selecione o Tipo de Rede";
-    if (f.tipoRede === "Outro" && !f.tipoRedeOutro.trim()) return "Preencha o 'Outro' de Tipo de Rede";
-    if (!f.tipoConexao) return "Selecione o Tipo de conexão";
-    if (f.tipoConexao === "Outro" && !f.tipoConexaoOutro.trim()) return "Preencha o 'Outro' de Tipo de conexão";
-    if (!f.caixaDae) return "Selecione a condição da caixa DAE";
-    if (!f.materialRamal) return "Selecione o Material do ramal";
-    if (!f.bitolaRamal) return "Selecione a Bitola do ramal";
-    if (f.bitolaRamal === "Outro" && !f.bitolaRamalOutro.trim()) return "Preencha o 'Outro' de Bitola";
-    if (!f.tipoRamal) return "Selecione o Tipo de ramal";
-    if (!f.tipoDisjuntor) return "Selecione o Tipo de disjuntor";
-    if (f.tipoDisjuntor === "Outro" && !f.tipoDisjuntorOutro.trim()) return "Preencha o 'Outro' de Disjuntor";
-    if (!f.noKirchhoff) return "Informe se é Nó de Kirchhoff";
-    if (!f.medicao) return "Selecione a condição da medição";
-    if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
-    if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
-    if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return extraErr;
-    return null;
-  };
-
-  const submit = async () => {
-    const err = validar();
-    if (err) { toast.error(err); return; }
-    setSubmitting(true);
-    try {
-      await submitIncidente({
-        tipo: "ATENDIMENTO_INDIVIDUAL",
-        numero: f.numeroIncidente,
-        dados: { ...f, ...extraVals },
-        fotos,
-        actor,
-      });
-      toast.success(`Incidente ${f.numeroIncidente} registrado`);
-      onDone();
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar incidente");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Atendimento Individual</DialogTitle>
-        </div>
-      </DialogHeader>
-
-      <div className="space-y-5">
-        <Field label="Nº Incidente" required>
-          <Input
-            value={f.numeroIncidente}
-            onChange={(e) => set("numeroIncidente", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
-            placeholder="10 caracteres (A-Z, 0-9)"
-            className="font-mono uppercase"
-            autoCapitalize="characters"
-            inputMode="text"
-          />
-          <p className={`text-xs ${numeroValido ? "text-green-700" : "text-muted-foreground"}`}>
-            {f.numeroIncidente.length}/10
-          </p>
-        </Field>
-
-        <RadioField label="Tipo de Rede" required value={f.tipoRede} onChange={(v) => set("tipoRede", v)}
-          options={["Pré-reunida", "Aberta"]}
-          outroValue={f.tipoRedeOutro} onOutroChange={(v) => set("tipoRedeOutro", v)}
-        />
-
-        <RadioField label="Qual o tipo de conexão do cliente na rede" required value={f.tipoConexao} onChange={(v) => set("tipoConexao", v)}
-          options={["Conector perfurante", "Charrua", "Caixa Dae", "Enel Chip"]}
-          outroValue={f.tipoConexaoOutro} onOutroChange={(v) => set("tipoConexaoOutro", v)}
-        />
-
-        <RadioField label="Em que condições está a caixa DAE" required value={f.caixaDae} onChange={(v) => set("caixaDae", v)}
-          options={["Não possui caixa DAE", "Fechada Padrão", "Aberta", "Aberta sem tampa", "Deteriorada aberta", "Deteriorada fechada", "Excesso de ligação na caixa"]}
-        />
-
-        <RadioField label="Qual o material do ramal?" required value={f.materialRamal} onChange={(v) => set("materialRamal", v)}
-          options={["Cobre", "Alumínio"]}
-        />
-
-        <RadioField label="Bitola do Ramal" required value={f.bitolaRamal} onChange={(v) => set("bitolaRamal", v)}
-          options={["6 mm", "10 mm", "16 mm", "25 mm", "35 mm"]}
-          outroValue={f.bitolaRamalOutro} onOutroChange={(v) => set("bitolaRamalOutro", v)}
-        />
-
-        <RadioField label="Qual o tipo de ramal do cliente?" required value={f.tipoRamal} onChange={(v) => set("tipoRamal", v)}
-          options={["Aberto", "Pré-reunido", "Concêntrico", "Próprio"]}
-        />
-
-        <RadioField label="Qual o tipo de disjuntor do cliente" required value={f.tipoDisjuntor} onChange={(v) => set("tipoDisjuntor", v)}
-          options={["40A", "50A", "63A", "70A", "100A", "200A"]}
-          outroValue={f.tipoDisjuntorOutro} onOutroChange={(v) => set("tipoDisjuntorOutro", v)}
-        />
-
-        <RadioField label="Nó de Kirchhoff" required value={f.noKirchhoff} onChange={(v) => set("noKirchhoff", v)}
-          options={["Sim", "Não"]}
-        />
-
-        <RadioField label="Como está a medição do cliente" required value={f.medicao} onChange={(v) => set("medicao", v)}
-          options={["Dentro do Padrão", "Aberta", "Caixa Suja", "Caixa de Ferro", "Borne Queimado"]}
-        />
-
-        <RadioField label="A que você correlaciona o último defeito do cliente" required value={f.correlacaoDefeito} onChange={(v) => set("correlacaoDefeito", v)}
-          options={[
-            "Problemas na conexão da rede",
-            "Problemas no bornes do medidor",
-            "Problemas na conexão do disjuntor",
-            "Problemas na instalação do medidor",
-            "Caixa de passagem (Defeito interno do Cliente)",
-            "Ramal de entrada não compatível com o medidor",
-          ]}
-          outroValue={f.correlacaoDefeitoOutro} onOutroChange={(v) => set("correlacaoDefeitoOutro", v)}
-        />
-
-        <EvidenciasPicker fotos={fotos} onChange={setFotos} />
-
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
-
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
-          <Button className="flex-1" onClick={submit} disabled={submitting}>
-            {submitting ? "Enviando…" : "Enviar"}
-          </Button>
-        </div>
-      </div>
-    </>
+    <DynamicForm
+      tipo="ATENDIMENTO_INDIVIDUAL"
+      title="Atendimento Individual"
+      fotosLabel="Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)"
+      successMsg={(n) => `Incidente ${n} registrado`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+    />
   );
 }
 
 function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
   for (const q of qs) {
-    if (!q.obrigatoria) continue;
     const v = (vals[q.chave] ?? "").trim();
-    if (!v) return `Preencha: ${q.rotulo}`;
+    if (q.obrigatoria && !v) return `Preencha: ${q.rotulo}`;
+    if (q.campo_tipo === "choice" && q.permite_outro && v === "Outro") {
+      const outro = (vals[`${q.chave}Outro`] ?? "").trim();
+      if (!outro) return `Preencha o "Outro" de: ${q.rotulo}`;
+    }
   }
   return null;
 }
@@ -361,27 +204,42 @@ function ExtrasRenderer({
   if (!questions.length) return null;
   const set = (k: string, v: string) => onChange({ ...values, [k]: v });
   return (
-    <div className="space-y-3 border-t pt-3">
+    <div className="space-y-5">
       {questions.map((q) => (
-        <div key={q.id}>
-          <Label>{q.rotulo}{q.obrigatoria && " *"}</Label>
+        <Field key={q.id} label={q.rotulo} required={q.obrigatoria}>
           {q.campo_tipo === "text" && (
-            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} placeholder="Texto de resposta" />
           )}
           {q.campo_tipo === "textarea" && (
-            <Textarea value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+            <Textarea rows={4} value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} placeholder="Texto de resposta longa" />
           )}
           {q.campo_tipo === "choice" && (
-            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)}>
+            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)} className="gap-2">
               {q.opcoes.map((op) => (
-                <label key={op} className="flex items-center gap-2 text-sm">
+                <label key={op} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                   <RadioGroupItem value={op} id={`${q.id}-${op}`} />
                   <span>{op}</span>
                 </label>
               ))}
+              {q.permite_outro && (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                  <RadioGroupItem value="Outro" id={`${q.id}-outro`} />
+                  <Label htmlFor={`${q.id}-outro`} className="text-sm">Outro:</Label>
+                  <Input
+                    value={values[`${q.chave}Outro`] ?? ""}
+                    onChange={(e) => {
+                      const next = { ...values, [`${q.chave}Outro`]: e.target.value };
+                      if (values[q.chave] !== "Outro") next[q.chave] = "Outro";
+                      onChange(next);
+                    }}
+                    className="h-8 flex-1"
+                    placeholder="especifique"
+                  />
+                </div>
+              )}
             </RadioGroup>
           )}
-        </div>
+        </Field>
       ))}
     </div>
   );
@@ -533,117 +391,89 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
   );
 }
 
-/* ---------- Ordem 2 ---------- */
+/* ---------- Ordem 2 & Improdutivo (data-driven) ---------- */
 
 function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  const [numero, setNumero] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [fotos, setFotos] = useState<File[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("ORDEM_2").then(setExtras); }, []);
-
-  const submit = async () => {
-    if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
-    if (!motivo) return toast.error("Selecione o motivo");
-    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return toast.error(extraErr);
-    setSubmitting(true);
-    try {
-      await submitIncidente({
-        tipo: "ORDEM_2",
-        numero,
-        dados: { motivo, observacao, ...extraVals },
-        fotos,
-        actor,
-      });
-      toast.success(`Ordem 2 ${numero} registrada`);
-      onDone();
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar");
-    } finally { setSubmitting(false); }
-  };
-
   return (
-    <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Ordem 2</DialogTitle>
-        </div>
-      </DialogHeader>
-      <div className="space-y-5">
-        <NumeroIncidenteField value={numero} onChange={setNumero} />
-        <RadioField label="Motivo" required value={motivo} onChange={setMotivo}
-          options={["Necessário Cesto Aéreo", "Necessário poda", "Gerar OSM"]} />
-        <Field label="Observação">
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
-        </Field>
-        <EvidenciasPicker label="Registro Fotográfico" fotos={fotos} onChange={setFotos} />
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
-          <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
-        </div>
-      </div>
-    </>
+    <DynamicForm
+      tipo="ORDEM_2"
+      title="Ordem 2"
+      fotosLabel="Registro Fotográfico"
+      successMsg={(n) => `Ordem 2 ${n} registrada`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+    />
   );
 }
 
-/* ---------- Improdutivo ---------- */
-
-const IMPRODUTIVO_MOTIVOS = [
-  "CASA FECHADA",
-  "DEFEITO INTERNO CLIENTE",
-  "ENDEREÇO NÃO LOCALIZADO",
-  "ESTAVA NORMAL",
-  "GRANDE CLIENTE DEFEITO INTERNO",
-  "INCIDENCIA SEM AFETAÇÃO",
-  "LUZ CORTADA",
-  "NIVEL DE TENSÃO NORMAL",
-  "OSCILAÇÃO",
-  "OSCILAÇÃO PROVOCADA POR TERCEIROS",
-  "OUTRAS CAUSAS DE TERCEIROS",
-  "REGISTRO INDEVIDO DA RECLAMAÇÃO",
-];
-
 function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
+  return (
+    <DynamicForm
+      tipo="IMPRODUTIVO"
+      title="Improdutivo"
+      fotosLabel="Evidência Fotográfica"
+      successMsg={(n) => `Improdutivo ${n} registrado`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+      withLigacaoCliente
+    />
+  );
+}
+
+function DynamicForm({
+  tipo, title, fotosLabel, successMsg, actor, onBack, onDone, withLigacaoCliente,
+}: {
+  tipo: TipoIncidente;
+  title: string;
+  fotosLabel: string;
+  successMsg: (n: string) => string;
+  actor: IncidenteActor;
+  onBack: () => void;
+  onDone: () => void;
+  withLigacaoCliente?: boolean;
+}) {
   const [numero, setNumero] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [ligacaoCliente, setLigacaoCliente] = useState("");
-  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
-  const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("IMPRODUTIVO").then(setExtras); }, []);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [ligacaoCliente, setLigacaoCliente] = useState("");
+  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
+
+  useEffect(() => {
+    loadFormQuestions(tipo).then((qs) => { setQuestions(qs); setLoading(false); });
+  }, [tipo]);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
-    if (!motivo) return toast.error("Selecione o motivo");
-    if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-    if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
-    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return toast.error(extraErr);
+    const err = validarExtras(questions, vals);
+    if (err) return toast.error(err);
+    if (withLigacaoCliente) {
+      if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
+      if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
+    }
+    if (fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
     try {
+      const dados: Record<string, any> = { ...vals };
+      if (withLigacaoCliente) dados.ligacaoCliente = ligacaoCliente;
       await submitIncidente({
-        tipo: "IMPRODUTIVO",
+        tipo,
         numero,
-        dados: { motivo, ligacaoCliente, observacao, ...extraVals },
+        dados,
         fotos,
         actor,
-        extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
+        extraFotos: withLigacaoCliente && ligacaoCliente === "Sim"
+          ? [{ key: "ligacaoPrint", files: printLigacao }]
+          : [],
       });
-      toast.success(`Improdutivo ${numero} registrado`);
+      toast.success(successMsg(numero));
       onDone();
     } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar");
+      toast.error(e.message ?? "Erro ao registrar incidente");
     } finally { setSubmitting(false); }
   };
 
@@ -652,23 +482,34 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
       <DialogHeader>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Improdutivo</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </div>
       </DialogHeader>
       <div className="space-y-5">
         <NumeroIncidenteField value={numero} onChange={setNumero} />
-        <RadioField label="Motivo" required value={motivo} onChange={setMotivo} options={IMPRODUTIVO_MOTIVOS} />
-        <RadioField label="Foi efetuada ligação para o cliente?" required value={ligacaoCliente} onChange={setLigacaoCliente}
-          options={["Sim", "Não"]}
-        />
-        {ligacaoCliente === "Sim" && (
-          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Carregando perguntas…</p>
+        ) : (
+          <ExtrasRenderer questions={questions} values={vals} onChange={setVals} />
         )}
-        <Field label="Observação">
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
-        </Field>
-        <EvidenciasPicker label="Evidência Fotográfica" fotos={fotos} onChange={setFotos} />
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
+        {withLigacaoCliente && (
+          <>
+            <Field label="Foi efetuada ligação para o cliente?" required>
+              <RadioGroup value={ligacaoCliente} onValueChange={setLigacaoCliente} className="gap-2">
+                {["Sim", "Não"].map((opt) => (
+                  <label key={opt} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                    <RadioGroupItem value={opt} id={`lig-${opt}`} />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </Field>
+            {ligacaoCliente === "Sim" && (
+              <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+            )}
+          </>
+        )}
+        <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>

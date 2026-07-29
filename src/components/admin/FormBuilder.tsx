@@ -92,6 +92,7 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         campo_tipo: "text",
         opcoes: [],
         obrigatoria: false,
+        permite_outro: false,
         ordem: arr.length,
         ativa: true,
         dirty: true,
@@ -140,6 +141,7 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
             campo_tipo: q.campo_tipo,
             opcoes,
             obrigatoria: q.obrigatoria,
+            permite_outro: q.campo_tipo === "choice" ? q.permite_outro : false,
             ordem: q.ordem,
             ativa: q.ativa,
           };
@@ -293,6 +295,10 @@ function QuestionCard({
               <Plus className="mr-2 h-3 w-3" /> Adicionar opção
             </Button>
           </div>
+          <label className="mt-2 flex items-center gap-2 text-sm">
+            <Switch checked={q.permite_outro} onCheckedChange={(v) => onChange({ permite_outro: v })} />
+            Permitir "Outro" (texto livre)
+          </label>
         </div>
       )}
 

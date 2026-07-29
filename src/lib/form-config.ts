@@ -11,6 +11,7 @@ export interface FormQuestion {
   campo_tipo: CampoTipo;
   opcoes: string[];
   obrigatoria: boolean;
+  permite_outro: boolean;
   ordem: number;
   ativa: boolean;
 }
@@ -42,6 +43,7 @@ export async function loadFormQuestions(tipo: TipoIncidente): Promise<FormQuesti
   if (error) return [];
   return ((data as any[]) ?? []).map((r) => ({
     ...r,
+    permite_outro: !!r.permite_outro,
     opcoes: Array.isArray(r.opcoes) ? r.opcoes : [],
   }));
 }
@@ -57,7 +59,7 @@ export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, Form
     IMPRODUTIVO: [],
   };
   for (const r of ((data as any[]) ?? [])) {
-    const q: FormQuestion = { ...r, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
+    const q: FormQuestion = { ...r, permite_outro: !!r.permite_outro, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
     if (out[q.tipo]) out[q.tipo].push(q);
   }
   return out;
