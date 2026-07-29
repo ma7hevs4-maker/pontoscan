@@ -33,6 +33,25 @@ function fmtMin(m: number | null) {
   return sec === 0 ? `${min}min` : `${min}min${String(sec).padStart(2, "0")}`;
 }
 
+function abreviarNome(nome: string, maxChars = 16) {
+  const parts = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return nome;
+  const first = parts[0];
+  const rest = parts.slice(1);
+  // Sempre abrevia sobrenomes (primeira letra + ".")
+  const abreviados = rest.map(p => {
+    const lower = p.toLowerCase();
+    if (["de", "da", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return p[0].toUpperCase() + ".";
+  });
+  let label = `${first} ${abreviados.join(" ")}`;
+  // Se ainda passar do limite, trunca mantendo o primeiro nome
+  if (label.length > maxChars) {
+    label = `${first} ${abreviados.map(a => a[0].toUpperCase()).join(".")}.`;
+  }
+  return label;
+}
+
 function MetricasPage() {
   const { role, adminPolo } = useAuth();
   const today = new Date().toISOString().slice(0,10);
@@ -114,7 +133,7 @@ function MetricasPage() {
         const tp = g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length;
         const ts = g.saidas.length ? g.saidas.reduce((a,b)=>a+b,0) / g.saidas.length : 0;
         return {
-          nome: g.label,
+          nome: abreviarNome(g.label),
           fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
           tempoPonto: tp,
           tempoSaida: ts,
