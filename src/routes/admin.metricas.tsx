@@ -33,21 +33,29 @@ function fmtMin(m: number | null) {
   return sec === 0 ? `${min}min` : `${min}min${String(sec).padStart(2, "0")}`;
 }
 
-function abreviarNome(nome: string, maxChars = 16) {
+function abreviarNome(nome: string, maxChars = 22) {
   const parts = (nome ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return nome;
-  const first = parts[0];
-  const rest = parts.slice(1);
-  // Sempre abrevia sobrenomes (primeira letra + ".")
-  const abreviados = rest.map(p => {
+  const [first, ...rest] = parts;
+  // Mantém o primeiro nome e o primeiro sobrenome; abrevia os demais.
+  const apelidos = ["de", "da", "do", "das", "dos", "e"];
+  const formatted = rest.map((p, idx) => {
     const lower = p.toLowerCase();
-    if (["de", "da", "do", "das", "dos", "e"].includes(lower)) return lower;
+    if (apelidos.includes(lower)) return lower;
+    // Primeiro sobrenome fica completo; os seguintes viram iniciais.
+    if (idx === 0) return p;
     return p[0].toUpperCase() + ".";
   });
-  let label = `${first} ${abreviados.join(" ")}`;
-  // Se ainda passar do limite, trunca mantendo o primeiro nome
+  let label = `${first} ${formatted.join(" ")}`;
+  // Se ainda estourar, abrevia a partir do segundo sobrenome.
   if (label.length > maxChars) {
-    label = `${first} ${abreviados.map(a => a[0].toUpperCase()).join(".")}.`;
+    const compact = rest.map((p, idx) => {
+      if (idx === 0) return p;
+      const lower = p.toLowerCase();
+      if (apelidos.includes(lower)) return lower;
+      return p[0].toUpperCase() + ".";
+    });
+    label = `${first} ${compact.join(" ")}`;
   }
   return label;
 }
@@ -320,11 +328,11 @@ function MetricasPage() {
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
               <div className="overflow-x-auto">
-                <div style={{ width: Math.max(ranking.length * 60, 600), height: 300 }}>
+                <div style={{ width: Math.max(ranking.length * 90, 600), height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={ranking}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" interval={0} angle={-40} textAnchor="end" height={70} />
+                  <XAxis dataKey="nome" interval={0} angle={-40} textAnchor="end" height={90} tick={{ fontSize: 11 }} />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip
                     content={({ active, payload }: any) => {
