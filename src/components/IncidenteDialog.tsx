@@ -342,6 +342,51 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
   );
 }
 
+function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
+  for (const q of qs) {
+    if (!q.obrigatoria) continue;
+    const v = (vals[q.chave] ?? "").trim();
+    if (!v) return `Preencha: ${q.rotulo}`;
+  }
+  return null;
+}
+
+function ExtrasRenderer({
+  questions, values, onChange,
+}: {
+  questions: FormQuestion[];
+  values: Record<string, string>;
+  onChange: (v: Record<string, string>) => void;
+}) {
+  if (!questions.length) return null;
+  const set = (k: string, v: string) => onChange({ ...values, [k]: v });
+  return (
+    <div className="space-y-3 border-t pt-3">
+      {questions.map((q) => (
+        <div key={q.id}>
+          <Label>{q.rotulo}{q.obrigatoria && " *"}</Label>
+          {q.campo_tipo === "text" && (
+            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+          )}
+          {q.campo_tipo === "textarea" && (
+            <Textarea value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+          )}
+          {q.campo_tipo === "choice" && (
+            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)}>
+              {q.opcoes.map((op) => (
+                <label key={op} className="flex items-center gap-2 text-sm">
+                  <RadioGroupItem value={op} id={`${q.id}-${op}`} />
+                  <span>{op}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
