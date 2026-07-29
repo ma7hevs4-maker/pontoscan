@@ -328,11 +328,11 @@ function MetricasPage() {
               <p className="py-8 text-center text-sm text-muted-foreground">Sem dados no período</p>
             ) : (
               <div className="overflow-x-auto">
-                <div style={{ width: Math.max(ranking.length * 60, 600), height: 300 }}>
+                <div style={{ width: Math.max(ranking.length * 90, 600), height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={ranking}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" interval={0} angle={-40} textAnchor="end" height={70} />
+                  <XAxis dataKey="nome" interval={0} angle={-40} textAnchor="end" height={90} tick={{ fontSize: 11 }} />
                   <YAxis label={{ value: "min", angle: -90, position: "insideLeft" }} />
                   <Tooltip
                     content={({ active, payload }: any) => {
