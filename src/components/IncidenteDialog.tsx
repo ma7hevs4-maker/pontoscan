@@ -391,117 +391,89 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
   );
 }
 
-/* ---------- Ordem 2 ---------- */
+/* ---------- Ordem 2 & Improdutivo (data-driven) ---------- */
 
 function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  const [numero, setNumero] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [fotos, setFotos] = useState<File[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("ORDEM_2").then(setExtras); }, []);
-
-  const submit = async () => {
-    if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
-    if (!motivo) return toast.error("Selecione o motivo");
-    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto no Registro Fotográfico");
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return toast.error(extraErr);
-    setSubmitting(true);
-    try {
-      await submitIncidente({
-        tipo: "ORDEM_2",
-        numero,
-        dados: { motivo, observacao, ...extraVals },
-        fotos,
-        actor,
-      });
-      toast.success(`Ordem 2 ${numero} registrada`);
-      onDone();
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar");
-    } finally { setSubmitting(false); }
-  };
-
   return (
-    <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Ordem 2</DialogTitle>
-        </div>
-      </DialogHeader>
-      <div className="space-y-5">
-        <NumeroIncidenteField value={numero} onChange={setNumero} />
-        <RadioField label="Motivo" required value={motivo} onChange={setMotivo}
-          options={["Necessário Cesto Aéreo", "Necessário poda", "Gerar OSM"]} />
-        <Field label="Observação">
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
-        </Field>
-        <EvidenciasPicker label="Registro Fotográfico" fotos={fotos} onChange={setFotos} />
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
-          <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
-        </div>
-      </div>
-    </>
+    <DynamicForm
+      tipo="ORDEM_2"
+      title="Ordem 2"
+      fotosLabel="Registro Fotográfico"
+      successMsg={(n) => `Ordem 2 ${n} registrada`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+    />
   );
 }
 
-/* ---------- Improdutivo ---------- */
-
-const IMPRODUTIVO_MOTIVOS = [
-  "CASA FECHADA",
-  "DEFEITO INTERNO CLIENTE",
-  "ENDEREÇO NÃO LOCALIZADO",
-  "ESTAVA NORMAL",
-  "GRANDE CLIENTE DEFEITO INTERNO",
-  "INCIDENCIA SEM AFETAÇÃO",
-  "LUZ CORTADA",
-  "NIVEL DE TENSÃO NORMAL",
-  "OSCILAÇÃO",
-  "OSCILAÇÃO PROVOCADA POR TERCEIROS",
-  "OUTRAS CAUSAS DE TERCEIROS",
-  "REGISTRO INDEVIDO DA RECLAMAÇÃO",
-];
-
 function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
+  return (
+    <DynamicForm
+      tipo="IMPRODUTIVO"
+      title="Improdutivo"
+      fotosLabel="Evidência Fotográfica"
+      successMsg={(n) => `Improdutivo ${n} registrado`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+      withLigacaoCliente
+    />
+  );
+}
+
+function DynamicForm({
+  tipo, title, fotosLabel, successMsg, actor, onBack, onDone, withLigacaoCliente,
+}: {
+  tipo: TipoIncidente;
+  title: string;
+  fotosLabel: string;
+  successMsg: (n: string) => string;
+  actor: IncidenteActor;
+  onBack: () => void;
+  onDone: () => void;
+  withLigacaoCliente?: boolean;
+}) {
   const [numero, setNumero] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [ligacaoCliente, setLigacaoCliente] = useState("");
-  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
-  const [observacao, setObservacao] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("IMPRODUTIVO").then(setExtras); }, []);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [ligacaoCliente, setLigacaoCliente] = useState("");
+  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
+
+  useEffect(() => {
+    loadFormQuestions(tipo).then((qs) => { setQuestions(qs); setLoading(false); });
+  }, [tipo]);
 
   const submit = async () => {
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
-    if (!motivo) return toast.error("Selecione o motivo");
-    if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-    if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
-    if (fotos.length === 0) return toast.error("Anexe ao menos uma foto na Evidência Fotográfica");
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return toast.error(extraErr);
+    const err = validarExtras(questions, vals);
+    if (err) return toast.error(err);
+    if (withLigacaoCliente) {
+      if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
+      if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
+    }
+    if (fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
     try {
+      const dados: Record<string, any> = { ...vals };
+      if (withLigacaoCliente) dados.ligacaoCliente = ligacaoCliente;
       await submitIncidente({
-        tipo: "IMPRODUTIVO",
+        tipo,
         numero,
-        dados: { motivo, ligacaoCliente, observacao, ...extraVals },
+        dados,
         fotos,
         actor,
-        extraFotos: ligacaoCliente === "Sim" ? [{ key: "ligacaoPrint", files: printLigacao }] : [],
+        extraFotos: withLigacaoCliente && ligacaoCliente === "Sim"
+          ? [{ key: "ligacaoPrint", files: printLigacao }]
+          : [],
       });
-      toast.success(`Improdutivo ${numero} registrado`);
+      toast.success(successMsg(numero));
       onDone();
     } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar");
+      toast.error(e.message ?? "Erro ao registrar incidente");
     } finally { setSubmitting(false); }
   };
 
@@ -510,23 +482,34 @@ function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onB
       <DialogHeader>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Improdutivo</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </div>
       </DialogHeader>
       <div className="space-y-5">
         <NumeroIncidenteField value={numero} onChange={setNumero} />
-        <RadioField label="Motivo" required value={motivo} onChange={setMotivo} options={IMPRODUTIVO_MOTIVOS} />
-        <RadioField label="Foi efetuada ligação para o cliente?" required value={ligacaoCliente} onChange={setLigacaoCliente}
-          options={["Sim", "Não"]}
-        />
-        {ligacaoCliente === "Sim" && (
-          <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Carregando perguntas…</p>
+        ) : (
+          <ExtrasRenderer questions={questions} values={vals} onChange={setVals} />
         )}
-        <Field label="Observação">
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={4} placeholder="Texto de resposta longa" />
-        </Field>
-        <EvidenciasPicker label="Evidência Fotográfica" fotos={fotos} onChange={setFotos} />
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
+        {withLigacaoCliente && (
+          <>
+            <Field label="Foi efetuada ligação para o cliente?" required>
+              <RadioGroup value={ligacaoCliente} onValueChange={setLigacaoCliente} className="gap-2">
+                {["Sim", "Não"].map((opt) => (
+                  <label key={opt} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                    <RadioGroupItem value={opt} id={`lig-${opt}`} />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </Field>
+            {ligacaoCliente === "Sim" && (
+              <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
+            )}
+          </>
+        )}
+        <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
