@@ -344,9 +344,12 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
 
 function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
   for (const q of qs) {
-    if (!q.obrigatoria) continue;
     const v = (vals[q.chave] ?? "").trim();
-    if (!v) return `Preencha: ${q.rotulo}`;
+    if (q.obrigatoria && !v) return `Preencha: ${q.rotulo}`;
+    if (q.campo_tipo === "choice" && q.permite_outro && v === "Outro") {
+      const outro = (vals[`${q.chave}Outro`] ?? "").trim();
+      if (!outro) return `Preencha o "Outro" de: ${q.rotulo}`;
+    }
   }
   return null;
 }
