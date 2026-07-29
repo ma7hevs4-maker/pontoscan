@@ -166,179 +166,19 @@ function TipoButton({ icon, label, onClick, disabled }: { icon: React.ReactNode;
   );
 }
 
-/* ---------- Atendimento Individual ---------- */
-
-type AIForm = {
-  numeroIncidente: string;
-  tipoRede: string; tipoRedeOutro: string;
-  tipoConexao: string; tipoConexaoOutro: string;
-  caixaDae: string;
-  materialRamal: string;
-  bitolaRamal: string; bitolaRamalOutro: string;
-  tipoRamal: string;
-  tipoDisjuntor: string; tipoDisjuntorOutro: string;
-  noKirchhoff: string;
-  medicao: string;
-  correlacaoDefeito: string; correlacaoDefeitoOutro: string;
-};
-
-const emptyAI: AIForm = {
-  numeroIncidente: "",
-  tipoRede: "", tipoRedeOutro: "",
-  tipoConexao: "", tipoConexaoOutro: "",
-  caixaDae: "",
-  materialRamal: "",
-  bitolaRamal: "", bitolaRamalOutro: "",
-  tipoRamal: "",
-  tipoDisjuntor: "", tipoDisjuntorOutro: "",
-  noKirchhoff: "",
-  medicao: "",
-  correlacaoDefeito: "", correlacaoDefeitoOutro: "",
-};
+/* ---------- Atendimento Individual (data-driven) ---------- */
 
 function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  const [f, setF] = useState<AIForm>(emptyAI);
-  const [fotos, setFotos] = useState<File[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [extras, setExtras] = useState<FormQuestion[]>([]);
-  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
-  useEffect(() => { loadFormQuestions("ATENDIMENTO_INDIVIDUAL").then(setExtras); }, []);
-  const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
-
-  const numeroValido = /^[A-Z0-9]{10}$/.test(f.numeroIncidente);
-
-  const validar = (): string | null => {
-    if (!numeroValido) return "Nº Incidente deve ter 10 caracteres (letras maiúsculas e números)";
-    if (!f.tipoRede) return "Selecione o Tipo de Rede";
-    if (f.tipoRede === "Outro" && !f.tipoRedeOutro.trim()) return "Preencha o 'Outro' de Tipo de Rede";
-    if (!f.tipoConexao) return "Selecione o Tipo de conexão";
-    if (f.tipoConexao === "Outro" && !f.tipoConexaoOutro.trim()) return "Preencha o 'Outro' de Tipo de conexão";
-    if (!f.caixaDae) return "Selecione a condição da caixa DAE";
-    if (!f.materialRamal) return "Selecione o Material do ramal";
-    if (!f.bitolaRamal) return "Selecione a Bitola do ramal";
-    if (f.bitolaRamal === "Outro" && !f.bitolaRamalOutro.trim()) return "Preencha o 'Outro' de Bitola";
-    if (!f.tipoRamal) return "Selecione o Tipo de ramal";
-    if (!f.tipoDisjuntor) return "Selecione o Tipo de disjuntor";
-    if (f.tipoDisjuntor === "Outro" && !f.tipoDisjuntorOutro.trim()) return "Preencha o 'Outro' de Disjuntor";
-    if (!f.noKirchhoff) return "Informe se é Nó de Kirchhoff";
-    if (!f.medicao) return "Selecione a condição da medição";
-    if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
-    if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
-    if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
-    const extraErr = validarExtras(extras, extraVals);
-    if (extraErr) return extraErr;
-    return null;
-  };
-
-  const submit = async () => {
-    const err = validar();
-    if (err) { toast.error(err); return; }
-    setSubmitting(true);
-    try {
-      await submitIncidente({
-        tipo: "ATENDIMENTO_INDIVIDUAL",
-        numero: f.numeroIncidente,
-        dados: { ...f, ...extraVals },
-        fotos,
-        actor,
-      });
-      toast.success(`Incidente ${f.numeroIncidente} registrado`);
-      onDone();
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao registrar incidente");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-          <DialogTitle>Atendimento Individual</DialogTitle>
-        </div>
-      </DialogHeader>
-
-      <div className="space-y-5">
-        <Field label="Nº Incidente" required>
-          <Input
-            value={f.numeroIncidente}
-            onChange={(e) => set("numeroIncidente", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
-            placeholder="10 caracteres (A-Z, 0-9)"
-            className="font-mono uppercase"
-            autoCapitalize="characters"
-            inputMode="text"
-          />
-          <p className={`text-xs ${numeroValido ? "text-green-700" : "text-muted-foreground"}`}>
-            {f.numeroIncidente.length}/10
-          </p>
-        </Field>
-
-        <RadioField label="Tipo de Rede" required value={f.tipoRede} onChange={(v) => set("tipoRede", v)}
-          options={["Pré-reunida", "Aberta"]}
-          outroValue={f.tipoRedeOutro} onOutroChange={(v) => set("tipoRedeOutro", v)}
-        />
-
-        <RadioField label="Qual o tipo de conexão do cliente na rede" required value={f.tipoConexao} onChange={(v) => set("tipoConexao", v)}
-          options={["Conector perfurante", "Charrua", "Caixa Dae", "Enel Chip"]}
-          outroValue={f.tipoConexaoOutro} onOutroChange={(v) => set("tipoConexaoOutro", v)}
-        />
-
-        <RadioField label="Em que condições está a caixa DAE" required value={f.caixaDae} onChange={(v) => set("caixaDae", v)}
-          options={["Não possui caixa DAE", "Fechada Padrão", "Aberta", "Aberta sem tampa", "Deteriorada aberta", "Deteriorada fechada", "Excesso de ligação na caixa"]}
-        />
-
-        <RadioField label="Qual o material do ramal?" required value={f.materialRamal} onChange={(v) => set("materialRamal", v)}
-          options={["Cobre", "Alumínio"]}
-        />
-
-        <RadioField label="Bitola do Ramal" required value={f.bitolaRamal} onChange={(v) => set("bitolaRamal", v)}
-          options={["6 mm", "10 mm", "16 mm", "25 mm", "35 mm"]}
-          outroValue={f.bitolaRamalOutro} onOutroChange={(v) => set("bitolaRamalOutro", v)}
-        />
-
-        <RadioField label="Qual o tipo de ramal do cliente?" required value={f.tipoRamal} onChange={(v) => set("tipoRamal", v)}
-          options={["Aberto", "Pré-reunido", "Concêntrico", "Próprio"]}
-        />
-
-        <RadioField label="Qual o tipo de disjuntor do cliente" required value={f.tipoDisjuntor} onChange={(v) => set("tipoDisjuntor", v)}
-          options={["40A", "50A", "63A", "70A", "100A", "200A"]}
-          outroValue={f.tipoDisjuntorOutro} onOutroChange={(v) => set("tipoDisjuntorOutro", v)}
-        />
-
-        <RadioField label="Nó de Kirchhoff" required value={f.noKirchhoff} onChange={(v) => set("noKirchhoff", v)}
-          options={["Sim", "Não"]}
-        />
-
-        <RadioField label="Como está a medição do cliente" required value={f.medicao} onChange={(v) => set("medicao", v)}
-          options={["Dentro do Padrão", "Aberta", "Caixa Suja", "Caixa de Ferro", "Borne Queimado"]}
-        />
-
-        <RadioField label="A que você correlaciona o último defeito do cliente" required value={f.correlacaoDefeito} onChange={(v) => set("correlacaoDefeito", v)}
-          options={[
-            "Problemas na conexão da rede",
-            "Problemas no bornes do medidor",
-            "Problemas na conexão do disjuntor",
-            "Problemas na instalação do medidor",
-            "Caixa de passagem (Defeito interno do Cliente)",
-            "Ramal de entrada não compatível com o medidor",
-          ]}
-          outroValue={f.correlacaoDefeitoOutro} onOutroChange={(v) => set("correlacaoDefeitoOutro", v)}
-        />
-
-        <EvidenciasPicker fotos={fotos} onChange={setFotos} />
-
-        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
-
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
-          <Button className="flex-1" onClick={submit} disabled={submitting}>
-            {submitting ? "Enviando…" : "Enviar"}
-          </Button>
-        </div>
-      </div>
-    </>
+    <DynamicForm
+      tipo="ATENDIMENTO_INDIVIDUAL"
+      title="Atendimento Individual"
+      fotosLabel="Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)"
+      successMsg={(n) => `Incidente ${n} registrado`}
+      actor={actor}
+      onBack={onBack}
+      onDone={onDone}
+    />
   );
 }
 
