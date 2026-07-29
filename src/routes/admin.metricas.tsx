@@ -133,7 +133,7 @@ function MetricasPage() {
         const tp = g.tempos.reduce((a,b)=>a+b,0) / g.tempos.length;
         const ts = g.saidas.length ? g.saidas.reduce((a,b)=>a+b,0) / g.saidas.length : 0;
         return {
-          nome: g.label,
+          nome: abreviarNome(g.label),
           fullName: `${g.full} — média de ${g.tempos.length} jornada${g.tempos.length > 1 ? "s" : ""}`,
           tempoPonto: tp,
           tempoSaida: ts,
