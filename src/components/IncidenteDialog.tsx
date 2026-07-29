@@ -361,27 +361,42 @@ function ExtrasRenderer({
   if (!questions.length) return null;
   const set = (k: string, v: string) => onChange({ ...values, [k]: v });
   return (
-    <div className="space-y-3 border-t pt-3">
+    <div className="space-y-5">
       {questions.map((q) => (
-        <div key={q.id}>
-          <Label>{q.rotulo}{q.obrigatoria && " *"}</Label>
+        <Field key={q.id} label={q.rotulo} required={q.obrigatoria}>
           {q.campo_tipo === "text" && (
-            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+            <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} placeholder="Texto de resposta" />
           )}
           {q.campo_tipo === "textarea" && (
-            <Textarea value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} />
+            <Textarea rows={4} value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} placeholder="Texto de resposta longa" />
           )}
           {q.campo_tipo === "choice" && (
-            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)}>
+            <RadioGroup value={values[q.chave] ?? ""} onValueChange={(v) => set(q.chave, v)} className="gap-2">
               {q.opcoes.map((op) => (
-                <label key={op} className="flex items-center gap-2 text-sm">
+                <label key={op} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                   <RadioGroupItem value={op} id={`${q.id}-${op}`} />
                   <span>{op}</span>
                 </label>
               ))}
+              {q.permite_outro && (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                  <RadioGroupItem value="Outro" id={`${q.id}-outro`} />
+                  <Label htmlFor={`${q.id}-outro`} className="text-sm">Outro:</Label>
+                  <Input
+                    value={values[`${q.chave}Outro`] ?? ""}
+                    onChange={(e) => {
+                      const next = { ...values, [`${q.chave}Outro`]: e.target.value };
+                      if (values[q.chave] !== "Outro") next[q.chave] = "Outro";
+                      onChange(next);
+                    }}
+                    className="h-8 flex-1"
+                    placeholder="especifique"
+                  />
+                </div>
+              )}
             </RadioGroup>
           )}
-        </div>
+        </Field>
       ))}
     </div>
   );
