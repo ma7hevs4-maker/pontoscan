@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
+import { loadFormQuestions, type FormQuestion, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
 
-type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+type TipoIncidente = TipoIncidenteConfig;
 
 export type IncidenteActor =
   | { mode: "insourcing"; userId: string; prefixo: string; polo: string }
@@ -199,6 +200,9 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
   const [f, setF] = useState<AIForm>(emptyAI);
   const [fotos, setFotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [extras, setExtras] = useState<FormQuestion[]>([]);
+  const [extraVals, setExtraVals] = useState<Record<string, string>>({});
+  useEffect(() => { loadFormQuestions("ATENDIMENTO_INDIVIDUAL").then(setExtras); }, []);
   const set = <K extends keyof AIForm>(k: K, v: AIForm[K]) => setF(prev => ({ ...prev, [k]: v }));
 
   const numeroValido = /^[A-Z0-9]{10}$/.test(f.numeroIncidente);
@@ -221,6 +225,8 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
     if (!f.correlacaoDefeito) return "Selecione a correlação do último defeito";
     if (f.correlacaoDefeito === "Outro" && !f.correlacaoDefeitoOutro.trim()) return "Preencha o 'Outro' de correlação";
     if (fotos.length === 0) return "Anexe ao menos uma evidência (foto)";
+    const extraErr = validarExtras(extras, extraVals);
+    if (extraErr) return extraErr;
     return null;
   };
 
@@ -232,7 +238,7 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
       await submitIncidente({
         tipo: "ATENDIMENTO_INDIVIDUAL",
         numero: f.numeroIncidente,
-        dados: f,
+        dados: { ...f, ...extraVals },
         fotos,
         actor,
       });
@@ -322,6 +328,8 @@ function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: Incidente
         />
 
         <EvidenciasPicker fotos={fotos} onChange={setFotos} />
+
+        <ExtrasRenderer questions={extras} values={extraVals} onChange={setExtraVals} />
 
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
