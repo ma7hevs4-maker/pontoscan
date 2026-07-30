@@ -10,7 +10,19 @@ import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { POLOS, type Polo } from "@/lib/auth-context";
 
-export const Route = createFileRoute("/cadastro")({ component: SignupPage });
+export const Route = createFileRoute("/cadastro")({
+  component: SignupPage,
+  head: () => ({
+    meta: [
+      { title: "Criar conta · PontoScan" },
+      { name: "description", content: "Cadastro de eletricistas no PontoScan: nome, polo, prefixo da equipe e senha." },
+      { property: "og:title", content: "Criar conta · PontoScan" },
+      { property: "og:description", content: "Cadastro de eletricistas no PontoScan." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+});
 
 const PREFIXO_RE = /^[A-Z]{2}[0-9]{3}[A-Z]{3}-[A-Z]$/;
 
