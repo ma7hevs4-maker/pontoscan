@@ -213,7 +213,7 @@ function IncidentesFeed() {
             <Button variant="outline" size="sm" onClick={() => exportarCSV(filtradas, nomes)} disabled={filtradas.length === 0}>
               <Download className="mr-2 h-4 w-4" />Exportar CSV
             </Button>
-            <CruzamentoImport incidentes={filtradas} />
+            <CruzamentoImport incidentes={filtradas} dataDe={dataDe} dataAte={dataAte} />
           </div>
         </div>
       </Card>
