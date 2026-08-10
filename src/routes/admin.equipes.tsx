@@ -424,7 +424,7 @@ function EquipesView() {
                 <div className="flex items-center gap-2">
                   <Label htmlFor="incidente" className="text-sm text-muted-foreground">Incidente atribuído:</Label>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-end gap-2">
                   <Input
                     id="incidente"
                     value={novoIncidente}
@@ -433,18 +433,38 @@ function EquipesView() {
                     className="w-48"
                     onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
                   />
+                  <Input
+                    value={novoPonto}
+                    onChange={(ev) => setNovoPonto(ev.target.value)}
+                    placeholder="Ponto elétrico *"
+                    className="w-40"
+                    onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
+                  />
+                  <Input
+                    value={novoAlim}
+                    onChange={(ev) => setNovoAlim(ev.target.value)}
+                    placeholder="Alimentador *"
+                    className="w-40"
+                    onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
+                  />
                   <Button size="sm" onClick={() => adicionarIncidente(aberta)} disabled={salvando}>
                     <Plus className="mr-2 h-4 w-4" />Atribuir
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {aberta.incidentes.length === 0 && <span className="text-sm text-muted-foreground">Nenhum incidente atribuído</span>}
-                  {aberta.incidentes.map(num => (
-                    <span key={num} className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                      {num}
-                      <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, num)} title="Remover"><Trash2 className="h-3 w-3" /></button>
-                    </span>
-                  ))}
+                  {aberta.incidentes.map((inc, idx) => {
+                    const atual = idx === aberta.incidentes.length - 1;
+                    return (
+                      <span key={inc.numero}
+                        className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
+                        {inc.numero}
+                        {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
+                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"}</span>
+                        <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, inc.numero)} title="Remover"><Trash2 className="h-3 w-3" /></button>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
