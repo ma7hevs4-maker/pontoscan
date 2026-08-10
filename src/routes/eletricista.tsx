@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrScanner } from "@/components/QrScanner";
 import { IncidenteDialog } from "@/components/IncidenteDialog";
+import { loadFormsEnabled } from "@/lib/form-config";
 import { getPosition, distanceMeters } from "@/lib/geo";
 import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -48,8 +49,13 @@ function EletricistaPage() {
   const [provPrefixo, setProvPrefixo] = useState("");
   const [provAtivo, setProvAtivo] = useState<string | null>(null);
   const [incidenteOpen, setIncidenteOpen] = useState(false);
+  const [formsEnabled, setFormsEnabled] = useState(false);
 
   useEffect(() => { setProvAtivo(getProvisorio()); }, []);
+
+  useEffect(() => {
+    loadFormsEnabled().then(setFormsEnabled).catch(() => setFormsEnabled(false));
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -179,17 +185,19 @@ function EletricistaPage() {
             <QrCode className="h-10 w-10" />
             <span className="text-2xl font-bold">Escanear QR</span>
           </button>
-          <button
-            onClick={() => setIncidenteOpen(true)}
-            className="mt-3 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-6 text-amber-900 shadow-sm transition-transform active:scale-95 hover:bg-amber-100"
-          >
-            <AlertTriangle className="h-8 w-8" />
-            <span className="text-xl font-bold">Incidente</span>
-          </button>
+          {formsEnabled && (
+            <button
+              onClick={() => setIncidenteOpen(true)}
+              className="mt-3 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-6 text-amber-900 shadow-sm transition-transform active:scale-95 hover:bg-amber-100"
+            >
+              <AlertTriangle className="h-8 w-8" />
+              <span className="text-xl font-bold">Incidente</span>
+            </button>
+          )}
         </Card>
       </main>
 
-      <IncidenteDialog open={incidenteOpen} onOpenChange={setIncidenteOpen} />
+      {formsEnabled && <IncidenteDialog open={incidenteOpen} onOpenChange={setIncidenteOpen} />}
 
       <Dialog open={scanning} onOpenChange={(o) => !o && setScanning(false)}>
         <DialogContent className="max-w-md">
