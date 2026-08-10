@@ -68,6 +68,36 @@ export type Database = {
         }
         Relationships: []
       }
+      equipe_areas: {
+        Row: {
+          area: Database["public"]["Enums"]["area_atuacao_enum"]
+          created_at: string
+          dia: string
+          id: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          updated_at: string
+        }
+        Insert: {
+          area: Database["public"]["Enums"]["area_atuacao_enum"]
+          created_at?: string
+          dia?: string
+          id?: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          updated_at?: string
+        }
+        Update: {
+          area?: Database["public"]["Enums"]["area_atuacao_enum"]
+          created_at?: string
+          dia?: string
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_questions: {
         Row: {
           ativa: boolean
@@ -358,6 +388,7 @@ export type Database = {
     }
     Enums: {
       app_role: "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH"
+      area_atuacao_enum: "BT" | "MT_RAMAL" | "MT_TRONCO"
       etapa_enum: "PONTO" | "POS_DDS" | "SAIDA_BASE"
       origem_incidente_enum: "INSOURCING" | "PARCEIRA"
       polo_enum:
@@ -501,6 +532,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["ELETRICISTA", "ADMIN_POLO", "ADMIN_DISPATCH"],
+      area_atuacao_enum: ["BT", "MT_RAMAL", "MT_TRONCO"],
       etapa_enum: ["PONTO", "POS_DDS", "SAIDA_BASE"],
       origem_incidente_enum: ["INSOURCING", "PARCEIRA"],
       polo_enum: [
