@@ -51,13 +51,19 @@ interface Membro {
   marcacoes: Record<string, string>; // etapa -> timestamp
 }
 
+interface Inc {
+  numero: string;
+  ponto_eletrico: string;
+  alimentador: string;
+}
+
 interface Equipe {
   key: string; prefixo: string; polo: string;
   membros: Membro[];
   bases: string[];
   area: Area | null;
   gerada: boolean;
-  incidentes: string[];
+  incidentes: Inc[];
 }
 
 function hoje() {
@@ -71,7 +77,7 @@ function EquipesView() {
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
   const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
-  const [incidentesMap, setIncidentesMap] = useState<Record<string, string[]>>({});
+  const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
   const [areaFiltro, setAreaFiltro] = useState<string>("all");
   const [novaOpen, setNovaOpen] = useState(false);
   const [novoPrefixo, setNovoPrefixo] = useState("");
@@ -84,6 +90,8 @@ function EquipesView() {
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<Equipe | null>(null);
   const [novoIncidente, setNovoIncidente] = useState("");
+  const [novoPonto, setNovoPonto] = useState("");
+  const [novoAlim, setNovoAlim] = useState("");
 
   useEffect(() => {
     if (role === "ADMIN_POLO" && adminPolo) setPolo(adminPolo);
@@ -101,18 +109,20 @@ function EquipesView() {
     const [{ data, error }, { data: ar }, { data: inc }] = await Promise.all([
       q,
       supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
-      supabase.from("equipe_incidentes").select("prefixo, polo, numero_incidente").eq("dia", dia),
+      supabase.from("equipe_incidentes")
+        .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
+        .eq("dia", dia).order("created_at", { ascending: true }),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
     setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
-    const imap: Record<string, string[]> = {};
+    const imap: Record<string, Inc[]> = {};
     (inc ?? []).forEach((i: any) => {
       const key = `${i.prefixo}|${i.polo}`;
       if (!imap[key]) imap[key] = [];
-      imap[key].push(i.numero_incidente);
+      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "" });
     });
     setIncidentesMap(imap);
     setLoading(false);
@@ -183,16 +193,23 @@ function EquipesView() {
 
   const adicionarIncidente = async (e: Equipe) => {
     const num = novoIncidente.trim().replace(/\s+/g, " ").toUpperCase();
+    const ponto = novoPonto.trim().toUpperCase();
+    const alim = novoAlim.trim().toUpperCase();
     if (!num) return toast.error("Digite o número do incidente");
-    if (e.incidentes.includes(num)) return toast.error("Incidente já atribuído a esta equipe");
+    if (!ponto) return toast.error("Informe o ponto elétrico");
+    if (!alim) return toast.error("Informe o alimentador");
+    if (e.incidentes.some(i => i.numero === num)) return toast.error("Incidente já atribuído a esta equipe");
     setSalvando(true);
     const { error } = await supabase.from("equipe_incidentes")
-      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num });
+      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim });
     setSalvando(false);
     if (error) return toast.error("Não foi possível atribuir o incidente");
-    setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), num] }));
-    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, num] } : prev);
+    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim };
+    setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), novo] }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, novo] } : prev);
     setNovoIncidente("");
+    setNovoPonto("");
+    setNovoAlim("");
     toast.success(`Incidente ${num} atribuído`);
   };
 
@@ -200,8 +217,8 @@ function EquipesView() {
     const { error } = await supabase.from("equipe_incidentes")
       .delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any).eq("numero_incidente", num);
     if (error) return toast.error("Não foi possível remover o incidente");
-    setIncidentesMap(prev => ({ ...prev, [e.key]: (prev[e.key] ?? []).filter(x => x !== num) }));
-    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: prev.incidentes.filter(x => x !== num) } : prev);
+    setIncidentesMap(prev => ({ ...prev, [e.key]: (prev[e.key] ?? []).filter(x => x.numero !== num) }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: prev.incidentes.filter(x => x.numero !== num) } : prev);
     toast.success(`Incidente ${num} removido`);
   };
 
