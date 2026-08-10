@@ -128,9 +128,12 @@ function EquipesView() {
     // apenas equipes com pelo menos o primeiro ponto
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
-      .filter(e => areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro)
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo, areaFiltro]);
+  }, [regs, areas, manuais, polo]);
+
+  const visiveis = useMemo(() => equipes.filter(e =>
+    areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro
+  ), [equipes, areas, areaFiltro]);
 
   const kpis = useMemo(() => ({
     total: equipes.length,
@@ -247,10 +250,10 @@ function EquipesView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {equipes.length === 0 && (
+              {visiveis.length === 0 && (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
               )}
-              {equipes.map(e => {
+              {visiveis.map(e => {
                 const ok = completos(e);
                 const pend = e.membros.length - ok;
                 return (
