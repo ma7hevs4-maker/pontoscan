@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -35,6 +35,8 @@ const ACAO_LABEL: Record<string, string> = {
   AREA_DEFINIDA: "Área definida",
   AREA_ALTERADA: "Área alterada",
   AREA_REMOVIDA: "Área removida",
+  INCIDENTE_ATRIBUIDO: "Incidente atribuído",
+  INCIDENTE_REMOVIDO: "Incidente removido",
 };
 const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO" };
 
@@ -55,6 +57,7 @@ interface Equipe {
   bases: string[];
   area: Area | null;
   gerada: boolean;
+  incidentes: string[];
 }
 
 function hoje() {
@@ -68,6 +71,7 @@ function EquipesView() {
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
   const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
+  const [incidentesMap, setIncidentesMap] = useState<Record<string, string[]>>({});
   const [areaFiltro, setAreaFiltro] = useState<string>("all");
   const [novaOpen, setNovaOpen] = useState(false);
   const [novoPrefixo, setNovoPrefixo] = useState("");
@@ -79,6 +83,7 @@ function EquipesView() {
   const [logLoading, setLogLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<Equipe | null>(null);
+  const [novoIncidente, setNovoIncidente] = useState("");
 
   useEffect(() => {
     if (role === "ADMIN_POLO" && adminPolo) setPolo(adminPolo);
@@ -93,15 +98,23 @@ function EquipesView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
-    const [{ data, error }, { data: ar }] = await Promise.all([
+    const [{ data, error }, { data: ar }, { data: inc }] = await Promise.all([
       q,
       supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
+      supabase.from("equipe_incidentes").select("prefixo, polo, numero_incidente").eq("dia", dia),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
     setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
+    const imap: Record<string, string[]> = {};
+    (inc ?? []).forEach((i: any) => {
+      const key = `${i.prefixo}|${i.polo}`;
+      if (!imap[key]) imap[key] = [];
+      imap[key].push(i.numero_incidente);
+    });
+    setIncidentesMap(imap);
     setLoading(false);
   }, [dia, polo]);
 
@@ -119,7 +132,7 @@ function EquipesView() {
     for (const m of manuais) {
       if (polo !== "all" && m.polo !== polo) continue;
       const key = `${m.prefixo}|${m.polo}`;
-      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true });
+      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, incidentes: incidentesMap[key] ?? [] });
     }
     for (const r of regs) {
       const prefixo = (r.prefixo_override ?? r.prefixo ?? "").trim();
@@ -128,7 +141,7 @@ function EquipesView() {
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, incidentes: incidentesMap[key] ?? [] };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
@@ -136,11 +149,10 @@ function EquipesView() {
       if (!m.marcacoes[r.etapa]) m.marcacoes[r.etapa] = r.timestamp;
       if (r.base_nome && !e.bases.includes(r.base_nome)) e.bases.push(r.base_nome);
     }
-    // apenas equipes com pelo menos o primeiro ponto
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo]);
+  }, [regs, areas, manuais, polo, incidentesMap]);
 
   const visiveis = useMemo(() => equipes.filter(e =>
     areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro
@@ -169,22 +181,39 @@ function EquipesView() {
     setAberta(prev => prev && prev.key === e.key ? { ...prev, area } : prev);
   };
 
+  const adicionarIncidente = async (e: Equipe) => {
+    const num = novoIncidente.trim().replace(/\s+/g, " ").toUpperCase();
+    if (!num) return toast.error("Digite o número do incidente");
+    if (e.incidentes.includes(num)) return toast.error("Incidente já atribuído a esta equipe");
+    setSalvando(true);
+    const { error } = await supabase.from("equipe_incidentes")
+      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num });
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível atribuir o incidente");
+    setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), num] }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, num] } : prev);
+    setNovoIncidente("");
+    toast.success(`Incidente ${num} atribuído`);
+  };
+
+  const removerIncidente = async (e: Equipe, num: string) => {
+    const { error } = await supabase.from("equipe_incidentes")
+      .delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any).eq("numero_incidente", num);
+    if (error) return toast.error("Não foi possível remover o incidente");
+    setIncidentesMap(prev => ({ ...prev, [e.key]: (prev[e.key] ?? []).filter(x => x !== num) }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: prev.incidentes.filter(x => x !== num) } : prev);
+    toast.success(`Incidente ${num} removido`);
+  };
+
   const carregarLogs = useCallback(async () => {
     setLogLoading(true);
     let q = supabase.from("equipe_area_logs")
-      .select("id, dia, prefixo, polo, acao, area_anterior, area_nova, usuario_id, created_at")
+      .select("id, dia, prefixo, polo, acao, area_anterior, area_nova, numero_incidente, created_at")
       .order("created_at", { ascending: false })
       .limit(500);
     if (logPolo !== "all") q = q.eq("polo", logPolo as any);
     const { data } = await q;
-    const rows = (data as any[]) ?? [];
-    const ids = [...new Set(rows.map(r => r.usuario_id).filter(Boolean))];
-    let nomes: Record<string, string> = {};
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", ids);
-      (profs ?? []).forEach((p: any) => { nomes[p.id] = p.nome; });
-    }
-    setLogs(rows.map(r => ({ ...r, autor: nomes[r.usuario_id] ?? "—" })));
+    setLogs((data as any[]) ?? []);
     setLogLoading(false);
   }, [logPolo]);
 
@@ -232,29 +261,29 @@ function EquipesView() {
       <Card className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
-          <div className="min-w-0 sm:w-48">
-            <Label>Polo</Label>
-            <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0 sm:w-48">
-            <Label>Área</Label>
-            <Select value={areaFiltro} onValueChange={setAreaFiltro}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="BT">BT</SelectItem>
-                <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
-                <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
-                <SelectItem value="none">Sem área</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="min-w-0 sm:w-48">
+              <Label>Polo</Label>
+              <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0 sm:w-48">
+              <Label>Área</Label>
+              <Select value={areaFiltro} onValueChange={setAreaFiltro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="BT">BT</SelectItem>
+                  <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
+                  <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
+                  <SelectItem value="none">Sem área</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -287,11 +316,12 @@ function EquipesView() {
                 <TableHead>Jornada completa</TableHead>
                 <TableHead>Base</TableHead>
                 <TableHead>Área</TableHead>
+                <TableHead>Incidentes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {visiveis.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
               )}
               {visiveis.map(e => {
                 const ok = completos(e);
@@ -323,6 +353,19 @@ function EquipesView() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell onClick={(ev) => ev.stopPropagation()}>
+                      {e.incidentes.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {e.incidentes.map(num => (
+                            <span key={num} className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                              {num}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -331,7 +374,7 @@ function EquipesView() {
         )}
       </Card>
 
-      <Dialog open={!!aberta} onOpenChange={(o) => !o && setAberta(null)}>
+      <Dialog open={!!aberta} onOpenChange={(o) => { if (!o) setAberta(null); setNovoIncidente(""); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
@@ -354,6 +397,35 @@ function EquipesView() {
                 {areas[aberta.key] && <Button size="sm" variant="ghost" onClick={() => setArea(aberta, "none")}>Limpar</Button>}
                 {aberta.gerada && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => excluirGerada(aberta)}>Excluir equipe gerada</Button>}
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="incidente" className="text-sm text-muted-foreground">Incidente atribuído:</Label>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    id="incidente"
+                    value={novoIncidente}
+                    onChange={(ev) => setNovoIncidente(ev.target.value)}
+                    placeholder="Número do incidente"
+                    className="w-48"
+                    onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
+                  />
+                  <Button size="sm" onClick={() => adicionarIncidente(aberta)} disabled={salvando}>
+                    <Plus className="mr-2 h-4 w-4" />Atribuir
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {aberta.incidentes.length === 0 && <span className="text-sm text-muted-foreground">Nenhum incidente atribuído</span>}
+                  {aberta.incidentes.map(num => (
+                    <span key={num} className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                      {num}
+                      <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, num)} title="Remover"><Trash2 className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
               {aberta.membros.length === 0 && (
                 <p className="text-sm text-muted-foreground">Equipe gerada manualmente — nenhum colaborador bateu ponto com este prefixo hoje.</p>
               )}
@@ -393,7 +465,7 @@ function EquipesView() {
 
       <Dialog open={logOpen} onOpenChange={setLogOpen}>
         <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Log de equipes e áreas</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Log de equipes, áreas e incidentes</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="w-56">
               <Label>Polo</Label>
@@ -417,7 +489,7 @@ function EquipesView() {
                       <TableHead>Polo</TableHead>
                       <TableHead>Ação</TableHead>
                       <TableHead>De → Para</TableHead>
-                      <TableHead>Autor</TableHead>
+                      <TableHead>Incidente</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,7 +503,7 @@ function EquipesView() {
                         <TableCell className="text-sm text-muted-foreground">
                           {(l.area_anterior ? AREA_LABEL[l.area_anterior as Area] : "—")} → {(l.area_nova ? AREA_LABEL[l.area_nova as Area] : "—")}
                         </TableCell>
-                        <TableCell>{l.autor}</TableCell>
+                        <TableCell>{l.numero_incidente ?? "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

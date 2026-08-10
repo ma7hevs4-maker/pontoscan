@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.log_equipe_incidente() FROM PUBLIC, authenticated, anon;
