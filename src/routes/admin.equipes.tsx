@@ -51,13 +51,19 @@ interface Membro {
   marcacoes: Record<string, string>; // etapa -> timestamp
 }
 
+interface Inc {
+  numero: string;
+  ponto_eletrico: string;
+  alimentador: string;
+}
+
 interface Equipe {
   key: string; prefixo: string; polo: string;
   membros: Membro[];
   bases: string[];
   area: Area | null;
   gerada: boolean;
-  incidentes: string[];
+  incidentes: Inc[];
 }
 
 function hoje() {
@@ -71,7 +77,7 @@ function EquipesView() {
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
   const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
-  const [incidentesMap, setIncidentesMap] = useState<Record<string, string[]>>({});
+  const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
   const [areaFiltro, setAreaFiltro] = useState<string>("all");
   const [novaOpen, setNovaOpen] = useState(false);
   const [novoPrefixo, setNovoPrefixo] = useState("");
@@ -84,6 +90,8 @@ function EquipesView() {
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<Equipe | null>(null);
   const [novoIncidente, setNovoIncidente] = useState("");
+  const [novoPonto, setNovoPonto] = useState("");
+  const [novoAlim, setNovoAlim] = useState("");
 
   useEffect(() => {
     if (role === "ADMIN_POLO" && adminPolo) setPolo(adminPolo);
@@ -101,18 +109,20 @@ function EquipesView() {
     const [{ data, error }, { data: ar }, { data: inc }] = await Promise.all([
       q,
       supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
-      supabase.from("equipe_incidentes").select("prefixo, polo, numero_incidente").eq("dia", dia),
+      supabase.from("equipe_incidentes")
+        .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
+        .eq("dia", dia).order("created_at", { ascending: true }),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
     setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
-    const imap: Record<string, string[]> = {};
+    const imap: Record<string, Inc[]> = {};
     (inc ?? []).forEach((i: any) => {
       const key = `${i.prefixo}|${i.polo}`;
       if (!imap[key]) imap[key] = [];
-      imap[key].push(i.numero_incidente);
+      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "" });
     });
     setIncidentesMap(imap);
     setLoading(false);
@@ -183,16 +193,23 @@ function EquipesView() {
 
   const adicionarIncidente = async (e: Equipe) => {
     const num = novoIncidente.trim().replace(/\s+/g, " ").toUpperCase();
+    const ponto = novoPonto.trim().toUpperCase();
+    const alim = novoAlim.trim().toUpperCase();
     if (!num) return toast.error("Digite o número do incidente");
-    if (e.incidentes.includes(num)) return toast.error("Incidente já atribuído a esta equipe");
+    if (!ponto) return toast.error("Informe o ponto elétrico");
+    if (!alim) return toast.error("Informe o alimentador");
+    if (e.incidentes.some(i => i.numero === num)) return toast.error("Incidente já atribuído a esta equipe");
     setSalvando(true);
     const { error } = await supabase.from("equipe_incidentes")
-      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num });
+      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim });
     setSalvando(false);
     if (error) return toast.error("Não foi possível atribuir o incidente");
-    setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), num] }));
-    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, num] } : prev);
+    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim };
+    setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), novo] }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, novo] } : prev);
     setNovoIncidente("");
+    setNovoPonto("");
+    setNovoAlim("");
     toast.success(`Incidente ${num} atribuído`);
   };
 
@@ -200,8 +217,8 @@ function EquipesView() {
     const { error } = await supabase.from("equipe_incidentes")
       .delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any).eq("numero_incidente", num);
     if (error) return toast.error("Não foi possível remover o incidente");
-    setIncidentesMap(prev => ({ ...prev, [e.key]: (prev[e.key] ?? []).filter(x => x !== num) }));
-    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: prev.incidentes.filter(x => x !== num) } : prev);
+    setIncidentesMap(prev => ({ ...prev, [e.key]: (prev[e.key] ?? []).filter(x => x.numero !== num) }));
+    setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: prev.incidentes.filter(x => x.numero !== num) } : prev);
     toast.success(`Incidente ${num} removido`);
   };
 
@@ -358,11 +375,16 @@ function EquipesView() {
                         <span className="text-sm text-muted-foreground">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
-                          {e.incidentes.map(num => (
-                            <span key={num} className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                              {num}
-                            </span>
-                          ))}
+                          {e.incidentes.map((inc, idx) => {
+                            const atual = idx === e.incidentes.length - 1;
+                            return (
+                              <span key={inc.numero} title={`Ponto elétrico: ${inc.ponto_eletrico || "—"} · Alimentador: ${inc.alimentador || "—"}`}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
+                                {inc.numero}
+                                {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </TableCell>
@@ -374,7 +396,7 @@ function EquipesView() {
         )}
       </Card>
 
-      <Dialog open={!!aberta} onOpenChange={(o) => { if (!o) setAberta(null); setNovoIncidente(""); }}>
+      <Dialog open={!!aberta} onOpenChange={(o) => { if (!o) setAberta(null); setNovoIncidente(""); setNovoPonto(""); setNovoAlim(""); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
@@ -402,7 +424,7 @@ function EquipesView() {
                 <div className="flex items-center gap-2">
                   <Label htmlFor="incidente" className="text-sm text-muted-foreground">Incidente atribuído:</Label>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-end gap-2">
                   <Input
                     id="incidente"
                     value={novoIncidente}
@@ -411,18 +433,38 @@ function EquipesView() {
                     className="w-48"
                     onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
                   />
+                  <Input
+                    value={novoPonto}
+                    onChange={(ev) => setNovoPonto(ev.target.value)}
+                    placeholder="Ponto elétrico *"
+                    className="w-40"
+                    onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
+                  />
+                  <Input
+                    value={novoAlim}
+                    onChange={(ev) => setNovoAlim(ev.target.value)}
+                    placeholder="Alimentador *"
+                    className="w-40"
+                    onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); adicionarIncidente(aberta); } }}
+                  />
                   <Button size="sm" onClick={() => adicionarIncidente(aberta)} disabled={salvando}>
                     <Plus className="mr-2 h-4 w-4" />Atribuir
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {aberta.incidentes.length === 0 && <span className="text-sm text-muted-foreground">Nenhum incidente atribuído</span>}
-                  {aberta.incidentes.map(num => (
-                    <span key={num} className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                      {num}
-                      <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, num)} title="Remover"><Trash2 className="h-3 w-3" /></button>
-                    </span>
-                  ))}
+                  {aberta.incidentes.map((inc, idx) => {
+                    const atual = idx === aberta.incidentes.length - 1;
+                    return (
+                      <span key={inc.numero}
+                        className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
+                        {inc.numero}
+                        {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
+                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"}</span>
+                        <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, inc.numero)} title="Remover"><Trash2 className="h-3 w-3" /></button>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
