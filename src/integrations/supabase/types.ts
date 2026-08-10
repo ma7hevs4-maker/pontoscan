@@ -70,27 +70,30 @@ export type Database = {
       }
       equipe_areas: {
         Row: {
-          area: Database["public"]["Enums"]["area_atuacao_enum"]
+          area: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at: string
           dia: string
+          gerada: boolean
           id: string
           polo: Database["public"]["Enums"]["polo_enum"]
           prefixo: string
           updated_at: string
         }
         Insert: {
-          area: Database["public"]["Enums"]["area_atuacao_enum"]
+          area?: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at?: string
           dia?: string
+          gerada?: boolean
           id?: string
           polo: Database["public"]["Enums"]["polo_enum"]
           prefixo: string
           updated_at?: string
         }
         Update: {
-          area?: Database["public"]["Enums"]["area_atuacao_enum"]
+          area?: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at?: string
           dia?: string
+          gerada?: boolean
           id?: string
           polo?: Database["public"]["Enums"]["polo_enum"]
           prefixo?: string
