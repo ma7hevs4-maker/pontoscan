@@ -149,29 +149,35 @@ export type Database = {
       }
       equipe_incidentes: {
         Row: {
+          alimentador: string | null
           created_at: string
           dia: string
           id: string
           numero_incidente: string
           polo: Database["public"]["Enums"]["polo_enum"]
+          ponto_eletrico: string | null
           prefixo: string
           usuario_id: string | null
         }
         Insert: {
+          alimentador?: string | null
           created_at?: string
           dia?: string
           id?: string
           numero_incidente: string
           polo: Database["public"]["Enums"]["polo_enum"]
+          ponto_eletrico?: string | null
           prefixo: string
           usuario_id?: string | null
         }
         Update: {
+          alimentador?: string | null
           created_at?: string
           dia?: string
           id?: string
           numero_incidente?: string
           polo?: Database["public"]["Enums"]["polo_enum"]
+          ponto_eletrico?: string | null
           prefixo?: string
           usuario_id?: string | null
         }
