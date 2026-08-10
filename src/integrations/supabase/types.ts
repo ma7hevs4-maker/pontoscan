@@ -473,7 +473,7 @@ export type Database = {
     }
     Enums: {
       app_role: "ELETRICISTA" | "ADMIN_POLO" | "ADMIN_DISPATCH"
-      area_atuacao_enum: "BT" | "MT_RAMAL" | "MT_TRONCO"
+      area_atuacao_enum: "BT" | "MT_RAMAL" | "MT_TRONCO" | "INATIVA"
       etapa_enum: "PONTO" | "POS_DDS" | "SAIDA_BASE"
       origem_incidente_enum: "INSOURCING" | "PARCEIRA"
       polo_enum:
@@ -617,7 +617,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["ELETRICISTA", "ADMIN_POLO", "ADMIN_DISPATCH"],
-      area_atuacao_enum: ["BT", "MT_RAMAL", "MT_TRONCO"],
+      area_atuacao_enum: ["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA"],
       etapa_enum: ["PONTO", "POS_DDS", "SAIDA_BASE"],
       origem_incidente_enum: ["INSOURCING", "PARCEIRA"],
       polo_enum: [

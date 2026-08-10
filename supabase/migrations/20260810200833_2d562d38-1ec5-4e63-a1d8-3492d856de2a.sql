@@ -1,0 +1,1 @@
+ALTER TYPE public.area_atuacao_enum ADD VALUE IF NOT EXISTS 'INATIVA';
