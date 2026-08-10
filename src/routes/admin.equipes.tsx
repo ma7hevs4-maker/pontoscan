@@ -28,7 +28,7 @@ export const Route = createFileRoute("/admin/equipes")({
 
 const ETAPAS = ["PONTO", "POS_DDS", "SAIDA_BASE"] as const;
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRÉ DDS", SAIDA_BASE: "SAÍDA BASE" };
-type Area = "BT" | "MT_RAMAL" | "MT_TRONCO";
+type Area = "BT" | "MT_RAMAL" | "MT_TRONCO" | "INATIVA";
 const ACAO_LABEL: Record<string, string> = {
   EQUIPE_GERADA: "Equipe gerada",
   EQUIPE_EXCLUIDA: "Equipe gerada excluída",
@@ -38,7 +38,7 @@ const ACAO_LABEL: Record<string, string> = {
   INCIDENTE_ATRIBUIDO: "Incidente atribuído",
   INCIDENTE_REMOVIDO: "Incidente removido",
 };
-const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO" };
+const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO", INATIVA: "INATIVA" };
 
 interface Reg {
   id: string; etapa: string; timestamp: string; usuario_id: string;
@@ -169,7 +169,7 @@ function EquipesView() {
   ), [equipes, areas, areaFiltro]);
 
   const kpis = useMemo(() => ({
-    total: equipes.length,
+    total: equipes.filter(e => e.area !== "INATIVA").length,
     BT: equipes.filter(e => e.area === "BT").length,
     MT_RAMAL: equipes.filter(e => e.area === "MT_RAMAL").length,
     MT_TRONCO: equipes.filter(e => e.area === "MT_TRONCO").length,
@@ -263,7 +263,7 @@ function EquipesView() {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Equipes totais", value: kpis.total },
+          { label: "Equipes totais (ativas)", value: kpis.total },
           { label: "Equipes BT", value: kpis.BT },
           { label: "Equipes MT Ramal", value: kpis.MT_RAMAL },
           { label: "Equipes MT Tronco", value: kpis.MT_TRONCO },
@@ -297,6 +297,7 @@ function EquipesView() {
                   <SelectItem value="BT">BT</SelectItem>
                   <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
                   <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
+                  <SelectItem value="INATIVA">INATIVA</SelectItem>
                   <SelectItem value="none">Sem área</SelectItem>
                 </SelectContent>
               </Select>
@@ -367,6 +368,7 @@ function EquipesView() {
                           <SelectItem value="BT">BT</SelectItem>
                           <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
                           <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
+                          <SelectItem value="INATIVA">INATIVA</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -411,7 +413,7 @@ function EquipesView() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">Área de atuação:</span>
-                {(["BT", "MT_RAMAL", "MT_TRONCO"] as Area[]).map(a => (
+                {(["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA"] as Area[]).map(a => (
                   <Button key={a} size="sm" variant={areas[aberta.key] === a ? "default" : "outline"} onClick={() => setArea(aberta, a)}>
                     {AREA_LABEL[a]}
                   </Button>
