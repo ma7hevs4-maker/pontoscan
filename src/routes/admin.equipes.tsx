@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -29,6 +29,13 @@ export const Route = createFileRoute("/admin/equipes")({
 const ETAPAS = ["PONTO", "POS_DDS", "SAIDA_BASE"] as const;
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRÉ DDS", SAIDA_BASE: "SAÍDA BASE" };
 type Area = "BT" | "MT_RAMAL" | "MT_TRONCO";
+const ACAO_LABEL: Record<string, string> = {
+  EQUIPE_GERADA: "Equipe gerada",
+  EQUIPE_EXCLUIDA: "Equipe gerada excluída",
+  AREA_DEFINIDA: "Área definida",
+  AREA_ALTERADA: "Área alterada",
+  AREA_REMOVIDA: "Área removida",
+};
 const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO" };
 
 interface Reg {
@@ -66,6 +73,10 @@ function EquipesView() {
   const [novoPrefixo, setNovoPrefixo] = useState("");
   const [novoPolo, setNovoPolo] = useState<string>("");
   const [salvando, setSalvando] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logPolo, setLogPolo] = useState<string>("all");
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<Equipe | null>(null);
 
@@ -158,6 +169,27 @@ function EquipesView() {
     setAberta(prev => prev && prev.key === e.key ? { ...prev, area } : prev);
   };
 
+  const carregarLogs = useCallback(async () => {
+    setLogLoading(true);
+    let q = supabase.from("equipe_area_logs")
+      .select("id, dia, prefixo, polo, acao, area_anterior, area_nova, usuario_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (logPolo !== "all") q = q.eq("polo", logPolo as any);
+    const { data } = await q;
+    const rows = (data as any[]) ?? [];
+    const ids = [...new Set(rows.map(r => r.usuario_id).filter(Boolean))];
+    let nomes: Record<string, string> = {};
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", ids);
+      (profs ?? []).forEach((p: any) => { nomes[p.id] = p.nome; });
+    }
+    setLogs(rows.map(r => ({ ...r, autor: nomes[r.usuario_id] ?? "—" })));
+    setLogLoading(false);
+  }, [logPolo]);
+
+  useEffect(() => { if (logOpen) carregarLogs(); }, [logOpen, carregarLogs]);
+
   const criarEquipe = async () => {
     const pref = novoPrefixo.trim().toUpperCase();
     const pol = role === "ADMIN_POLO" ? (adminPolo ?? "") : novoPolo;
@@ -224,6 +256,9 @@ function EquipesView() {
           </div>
           <div className="flex items-end gap-2">
             <Button variant="outline" onClick={load}>Atualizar</Button>
+            {role === "ADMIN_DISPATCH" && (
+              <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
+            )}
             <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
               <Plus className="mr-2 h-4 w-4" />Gerar equipe
             </Button>
@@ -348,6 +383,57 @@ function EquipesView() {
               </Table>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={logOpen} onOpenChange={setLogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader><DialogTitle>Log de equipes e áreas</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="w-56">
+              <Label>Polo</Label>
+              <Select value={logPolo} onValueChange={setLogPolo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="max-h-[60vh] overflow-auto">
+              {logLoading ? (
+                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quando</TableHead>
+                      <TableHead>Equipe</TableHead>
+                      <TableHead>Polo</TableHead>
+                      <TableHead>Ação</TableHead>
+                      <TableHead>De → Para</TableHead>
+                      <TableHead>Autor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
+                    {logs.map(l => (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-mono text-xs">{new Date(l.created_at).toLocaleString("pt-BR")}</TableCell>
+                        <TableCell className="font-mono">{l.prefixo}</TableCell>
+                        <TableCell>{l.polo}</TableCell>
+                        <TableCell>{ACAO_LABEL[l.acao] ?? l.acao}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {(l.area_anterior ? AREA_LABEL[l.area_anterior as Area] : "—")} → {(l.area_nova ? AREA_LABEL[l.area_nova as Area] : "—")}
+                        </TableCell>
+                        <TableCell>{l.autor}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

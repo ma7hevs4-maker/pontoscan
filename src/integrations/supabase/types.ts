@@ -68,6 +68,49 @@ export type Database = {
         }
         Relationships: []
       }
+      equipe_area_logs: {
+        Row: {
+          acao: string
+          area_anterior: Database["public"]["Enums"]["area_atuacao_enum"] | null
+          area_nova: Database["public"]["Enums"]["area_atuacao_enum"] | null
+          created_at: string
+          dia: string
+          gerada: boolean
+          id: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          area_anterior?:
+            | Database["public"]["Enums"]["area_atuacao_enum"]
+            | null
+          area_nova?: Database["public"]["Enums"]["area_atuacao_enum"] | null
+          created_at?: string
+          dia: string
+          gerada?: boolean
+          id?: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          area_anterior?:
+            | Database["public"]["Enums"]["area_atuacao_enum"]
+            | null
+          area_nova?: Database["public"]["Enums"]["area_atuacao_enum"] | null
+          created_at?: string
+          dia?: string
+          gerada?: boolean
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       equipe_areas: {
         Row: {
           area: Database["public"]["Enums"]["area_atuacao_enum"] | null
