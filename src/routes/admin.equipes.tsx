@@ -230,8 +230,9 @@ function EquipesView() {
       </div>
 
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-4">
-          <div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
+          <div className="min-w-0 sm:w-48">
             <Label>Polo</Label>
             <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -241,7 +242,7 @@ function EquipesView() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="min-w-0 sm:w-48">
             <Label>Área</Label>
             <Select value={areaFiltro} onValueChange={setAreaFiltro}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -254,17 +255,21 @@ function EquipesView() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-end gap-2">
-            <Button variant="outline" onClick={load}>Atualizar</Button>
-            {role === "ADMIN_DISPATCH" && (
-              <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
-            )}
-            <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
-              <Plus className="mr-2 h-4 w-4" />Gerar equipe
-            </Button>
           </div>
-          <div className="flex items-end text-sm text-muted-foreground">
-            Dia {new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR")} · as áreas resetam automaticamente todo dia
+
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <p className="text-xs text-muted-foreground sm:text-right">
+              Dia {new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR")} · as áreas resetam automaticamente todo dia
+            </p>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button variant="outline" onClick={load}>Atualizar</Button>
+              {role === "ADMIN_DISPATCH" && (
+                <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
+              )}
+              <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
+                <Plus className="mr-2 h-4 w-4" />Gerar equipe
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
