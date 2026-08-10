@@ -18,6 +18,7 @@ import { Route as ParceiraRouteImport } from './routes/parceira'
 import { Route as AdminBasesRouteImport } from './routes/admin.bases'
 import { Route as AdminContasRouteImport } from './routes/admin.contas'
 import { Route as AdminDashFormsRouteImport } from './routes/admin.dash-forms'
+import { Route as AdminEquipesRouteImport } from './routes/admin.equipes'
 import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
@@ -68,6 +69,11 @@ const AdminDashFormsRoute = AdminDashFormsRouteImport.update({
   path: '/dash-forms',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEquipesRoute = AdminEquipesRouteImport.update({
+  id: '/equipes',
+  path: '/equipes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminIncidentesRoute = AdminIncidentesRouteImport.update({
   id: '/incidentes',
   path: '/incidentes',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/dash-forms': typeof AdminDashFormsRoute
+  '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/dash-forms': typeof AdminDashFormsRoute
+  '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/admin/bases': typeof AdminBasesRoute
   '/admin/contas': typeof AdminContasRoute
   '/admin/dash-forms': typeof AdminDashFormsRoute
+  '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/dash-forms'
+    | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/dash-forms'
+    | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/admin/bases'
     | '/admin/contas'
     | '/admin/dash-forms'
+    | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-users'
@@ -260,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashFormsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/equipes': {
+      id: '/admin/equipes'
+      path: '/equipes'
+      fullPath: '/admin/equipes'
+      preLoaderRoute: typeof AdminEquipesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/incidentes': {
       id: '/admin/incidentes'
       path: '/incidentes'
@@ -295,6 +314,7 @@ interface AdminRouteChildren {
   AdminBasesRoute: typeof AdminBasesRoute
   AdminContasRoute: typeof AdminContasRoute
   AdminDashFormsRoute: typeof AdminDashFormsRoute
+  AdminEquipesRoute: typeof AdminEquipesRoute
   AdminIncidentesRoute: typeof AdminIncidentesRoute
   AdminMetricasRoute: typeof AdminMetricasRoute
 }
@@ -303,6 +323,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBasesRoute: AdminBasesRoute,
   AdminContasRoute: AdminContasRoute,
   AdminDashFormsRoute: AdminDashFormsRoute,
+  AdminEquipesRoute: AdminEquipesRoute,
   AdminIncidentesRoute: AdminIncidentesRoute,
   AdminMetricasRoute: AdminMetricasRoute,
 }
@@ -322,13 +343,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

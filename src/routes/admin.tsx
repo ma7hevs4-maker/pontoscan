@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tansta
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart, Settings } from "lucide-react";
+import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart, Settings, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -67,6 +67,7 @@ function AdminLayout() {
   const isRoot = location.pathname === "/admin" || location.pathname === "/admin/";
 
   const tabs = [
+    { to: "/admin/equipes", label: "Equipes", icon: Users },
     { to: "/admin", label: "Registros", icon: FileSpreadsheet, exact: true },
     { to: "/admin/metricas", label: "Métricas", icon: BarChart3 },
     { to: "/admin/incidentes", label: "Incidentes", icon: AlertTriangle },
