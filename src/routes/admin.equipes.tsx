@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/equipes")({
@@ -46,6 +47,7 @@ interface Equipe {
   membros: Membro[];
   bases: string[];
   area: Area | null;
+  gerada: boolean;
 }
 
 function hoje() {
@@ -58,6 +60,12 @@ function EquipesView() {
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
+  const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
+  const [areaFiltro, setAreaFiltro] = useState<string>("all");
+  const [novaOpen, setNovaOpen] = useState(false);
+  const [novoPrefixo, setNovoPrefixo] = useState("");
+  const [novoPolo, setNovoPolo] = useState<string>("");
+  const [salvando, setSalvando] = useState(false);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<Equipe | null>(null);
 
@@ -76,12 +84,13 @@ function EquipesView() {
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
     const [{ data, error }, { data: ar }] = await Promise.all([
       q,
-      supabase.from("equipe_areas").select("prefixo, polo, area").eq("dia", dia),
+      supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
-    (ar ?? []).forEach((a: any) => { map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
+    (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
+    setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
     setLoading(false);
   }, [dia, polo]);
 
@@ -96,6 +105,11 @@ function EquipesView() {
 
   const equipes: Equipe[] = useMemo(() => {
     const map = new Map<string, Equipe>();
+    for (const m of manuais) {
+      if (polo !== "all" && m.polo !== polo) continue;
+      const key = `${m.prefixo}|${m.polo}`;
+      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true });
+    }
     for (const r of regs) {
       const prefixo = (r.prefixo_override ?? r.prefixo ?? "").trim();
       if (!prefixo) continue;
@@ -103,7 +117,7 @@ function EquipesView() {
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
@@ -113,9 +127,10 @@ function EquipesView() {
     }
     // apenas equipes com pelo menos o primeiro ponto
     return [...map.values()]
-      .filter(e => e.membros.some(m => m.marcacoes["PONTO"]))
+      .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
+      .filter(e => areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro)
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas]);
+  }, [regs, areas, manuais, polo, areaFiltro]);
 
   const kpis = useMemo(() => ({
     total: equipes.length,
@@ -126,16 +141,39 @@ function EquipesView() {
 
   const setArea = async (e: Equipe, area: Area | "none") => {
     if (area === "none") {
-      const { error } = await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+      const { error } = e.gerada
+        ? await supabase.from("equipe_areas").update({ area: null }).eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any)
+        : await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
       if (error) return toast.error("Não foi possível remover a área");
       setAreas(prev => { const n = { ...prev }; delete n[e.key]; return n; });
       return;
     }
     const { error } = await supabase.from("equipe_areas")
-      .upsert({ dia, prefixo: e.prefixo, polo: e.polo as any, area }, { onConflict: "dia,prefixo,polo" });
+      .upsert({ dia, prefixo: e.prefixo, polo: e.polo as any, area, gerada: e.gerada }, { onConflict: "dia,prefixo,polo" });
     if (error) return toast.error("Não foi possível definir a área");
     setAreas(prev => ({ ...prev, [e.key]: area }));
     setAberta(prev => prev && prev.key === e.key ? { ...prev, area } : prev);
+  };
+
+  const criarEquipe = async () => {
+    const pref = novoPrefixo.trim().toUpperCase();
+    const pol = role === "ADMIN_POLO" ? (adminPolo ?? "") : novoPolo;
+    if (!pref || !pol) return toast.error("Informe prefixo e polo");
+    setSalvando(true);
+    const { error } = await supabase.from("equipe_areas")
+      .upsert({ dia, prefixo: pref, polo: pol as any, gerada: true }, { onConflict: "dia,prefixo,polo" });
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível gerar a equipe");
+    toast.success(`Equipe ${pref} gerada`);
+    setNovaOpen(false); setNovoPrefixo(""); setNovoPolo("");
+    load();
+  };
+
+  const excluirGerada = async (e: Equipe) => {
+    const { error } = await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+    if (error) return toast.error("Não foi possível excluir a equipe");
+    setAberta(null);
+    load();
   };
 
   const completos = (e: Equipe) => e.membros.filter(m => ETAPAS.every(et => m.marcacoes[et])).length;
@@ -168,10 +206,26 @@ function EquipesView() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-end">
-            <Button variant="outline" onClick={load}>Atualizar</Button>
+          <div>
+            <Label>Área</Label>
+            <Select value={areaFiltro} onValueChange={setAreaFiltro}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="BT">BT</SelectItem>
+                <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
+                <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
+                <SelectItem value="none">Sem área</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="col-span-2 flex items-end text-sm text-muted-foreground">
+          <div className="flex items-end gap-2">
+            <Button variant="outline" onClick={load}>Atualizar</Button>
+            <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
+              <Plus className="mr-2 h-4 w-4" />Gerar equipe
+            </Button>
+          </div>
+          <div className="flex items-end text-sm text-muted-foreground">
             Dia {new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR")} · as áreas resetam automaticamente todo dia
           </div>
         </div>
@@ -201,7 +255,10 @@ function EquipesView() {
                 const pend = e.membros.length - ok;
                 return (
                   <TableRow key={e.key} className="cursor-pointer" onClick={() => setAberta(e)}>
-                    <TableCell className="font-mono font-semibold">{e.prefixo}</TableCell>
+                    <TableCell className="font-mono font-semibold">
+                      {e.prefixo}
+                      {e.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
+                    </TableCell>
                     <TableCell>{e.polo}</TableCell>
                     <TableCell><span className="inline-flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{e.membros.length}</span></TableCell>
                     <TableCell>
@@ -236,6 +293,7 @@ function EquipesView() {
           <DialogHeader>
             <DialogTitle>
               {aberta?.prefixo} · {aberta?.polo}
+              {aberta?.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
               {aberta && areas[aberta.key] && (
                 <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{AREA_LABEL[areas[aberta.key]]}</span>
               )}
@@ -251,7 +309,11 @@ function EquipesView() {
                   </Button>
                 ))}
                 {areas[aberta.key] && <Button size="sm" variant="ghost" onClick={() => setArea(aberta, "none")}>Limpar</Button>}
+                {aberta.gerada && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => excluirGerada(aberta)}>Excluir equipe gerada</Button>}
               </div>
+              {aberta.membros.length === 0 && (
+                <p className="text-sm text-muted-foreground">Equipe gerada manualmente — nenhum colaborador bateu ponto com este prefixo hoje.</p>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -283,6 +345,30 @@ function EquipesView() {
               </Table>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={novaOpen} onOpenChange={setNovaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Gerar equipe</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Prefixo da equipe</Label>
+              <Input value={novoPrefixo} onChange={(ev) => setNovoPrefixo(ev.target.value)} placeholder="Ex.: NI200TST-A" />
+            </div>
+            <div>
+              <Label>Polo</Label>
+              <Select value={novoPolo} onValueChange={setNovoPolo} disabled={role === "ADMIN_POLO"}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" onClick={criarEquipe} disabled={salvando}>
+              {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Gerar equipe
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
