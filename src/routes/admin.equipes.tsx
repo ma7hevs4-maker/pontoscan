@@ -396,7 +396,7 @@ function EquipesView() {
         )}
       </Card>
 
-      <Dialog open={!!aberta} onOpenChange={(o) => { if (!o) setAberta(null); setNovoIncidente(""); }}>
+      <Dialog open={!!aberta} onOpenChange={(o) => { if (!o) setAberta(null); setNovoIncidente(""); setNovoPonto(""); setNovoAlim(""); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
