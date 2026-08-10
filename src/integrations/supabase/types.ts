@@ -77,6 +77,7 @@ export type Database = {
           dia: string
           gerada: boolean
           id: string
+          numero_incidente: string | null
           polo: Database["public"]["Enums"]["polo_enum"]
           prefixo: string
           usuario_id: string | null
@@ -91,6 +92,7 @@ export type Database = {
           dia: string
           gerada?: boolean
           id?: string
+          numero_incidente?: string | null
           polo: Database["public"]["Enums"]["polo_enum"]
           prefixo: string
           usuario_id?: string | null
@@ -105,6 +107,7 @@ export type Database = {
           dia?: string
           gerada?: boolean
           id?: string
+          numero_incidente?: string | null
           polo?: Database["public"]["Enums"]["polo_enum"]
           prefixo?: string
           usuario_id?: string | null
@@ -141,6 +144,36 @@ export type Database = {
           polo?: Database["public"]["Enums"]["polo_enum"]
           prefixo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      equipe_incidentes: {
+        Row: {
+          created_at: string
+          dia: string
+          id: string
+          numero_incidente: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dia?: string
+          id?: string
+          numero_incidente: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dia?: string
+          id?: string
+          numero_incidente?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+          usuario_id?: string | null
         }
         Relationships: []
       }
