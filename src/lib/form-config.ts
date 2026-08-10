@@ -17,6 +17,29 @@ export interface FormQuestion {
 }
 
 export function slugifyChave(label: string): string {
+  return slugifyChaveImpl(label);
+}
+
+export const FORMS_ENABLED_KEY = "forms_enabled";
+
+export async function loadFormsEnabled(): Promise<boolean> {
+  const { data, error } = await (supabase as any)
+    .from("app_settings")
+    .select("valor")
+    .eq("chave", FORMS_ENABLED_KEY)
+    .maybeSingle();
+  if (error || !data) return true;
+  return !!data.valor;
+}
+
+export async function saveFormsEnabled(valor: boolean): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("app_settings")
+    .upsert({ chave: FORMS_ENABLED_KEY, valor, updated_at: new Date().toISOString() }, { onConflict: "chave" });
+  if (error) throw new Error(error.message);
+}
+
+function slugifyChaveImpl(label: string): string {
   const base = label
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

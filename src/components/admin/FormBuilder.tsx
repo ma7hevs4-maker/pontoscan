@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { ArrowUp, ArrowDown, Plus, Save, Trash2, Loader2, X } from "lucide-react";
 import {
   loadAllFormQuestions,
+  loadFormsEnabled,
+  saveFormsEnabled,
   slugifyChave,
   type CampoTipo,
   type FormQuestion,
@@ -34,12 +36,15 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formsEnabled, setFormsEnabled] = useState(true);
+  const [togglingForms, setTogglingForms] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       setLoading(true);
-      const all = await loadAllFormQuestions();
+      const [all, enabled] = await Promise.all([loadAllFormQuestions(), loadFormsEnabled()]);
+      setFormsEnabled(enabled);
       const d: Record<TipoIncidente, Draft[]> = { ATENDIMENTO_INDIVIDUAL: [], ORDEM_2: [], IMPRODUTIVO: [] };
       for (const t of TIPOS) {
         d[t.key] = (all[t.key] ?? []).map((q) => ({ ...q, id: q.id, dirty: false }));
@@ -49,6 +54,21 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
       setLoading(false);
     })();
   }, [open]);
+
+  const toggleForms = async (v: boolean) => {
+    setTogglingForms(true);
+    const prev = formsEnabled;
+    setFormsEnabled(v);
+    try {
+      await saveFormsEnabled(v);
+      toast.success(v ? "Formulários ativados para os eletricistas" : "Formulários desativados para os eletricistas");
+    } catch (e: any) {
+      setFormsEnabled(prev);
+      toast.error(e.message ?? "Falha ao alterar");
+    } finally {
+      setTogglingForms(false);
+    }
+  };
 
   const current = drafts[tab];
 
@@ -175,6 +195,18 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         <DialogHeader>
           <DialogTitle>Construtor de formulários</DialogTitle>
         </DialogHeader>
+
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Função de formulários</p>
+            <p className="text-xs text-muted-foreground">
+              {formsEnabled
+                ? "Ligada — o botão Incidente aparece para os eletricistas."
+                : "Desligada — o botão Incidente fica oculto e a função permanece adormecida."}
+            </p>
+          </div>
+          <Switch checked={formsEnabled} disabled={togglingForms || loading} onCheckedChange={toggleForms} />
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Adicione perguntas extras por tipo de incidente. O núcleo estruturado (Nº do incidente, GPS, fotos e print da ligação) continua fixo — as perguntas abaixo aparecem após ele para eletricistas e parceiras.

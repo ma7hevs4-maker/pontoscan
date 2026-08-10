@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          chave: string
+          updated_at: string
+          valor: boolean
+        }
+        Insert: {
+          chave: string
+          updated_at?: string
+          valor?: boolean
+        }
+        Update: {
+          chave?: string
+          updated_at?: string
+          valor?: boolean
+        }
+        Relationships: []
+      }
       bases: {
         Row: {
           ativo: boolean
