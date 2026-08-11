@@ -106,6 +106,7 @@ function EquipesView() {
   const [salvando, setSalvando] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [logPolo, setLogPolo] = useState<string>("all");
+  const [logBusca, setLogBusca] = useState("");
   const [logs, setLogs] = useState<any[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [loading, setLoading] = useState(true);
