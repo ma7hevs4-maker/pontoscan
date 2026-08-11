@@ -499,6 +499,21 @@ function EquipesView() {
               <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
                 <Plus className="mr-2 h-4 w-4" />Gerar equipe
               </Button>
+              <input
+                ref={gridInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  ev.target.value = "";
+                  if (f) importarGrids(f);
+                }}
+              />
+              <Button variant="secondary" onClick={() => gridInputRef.current?.click()} disabled={importando}>
+                {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                Gerar via grids
+              </Button>
             </div>
           </div>
         </div>
