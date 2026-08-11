@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
 
