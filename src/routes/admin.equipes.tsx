@@ -296,6 +296,63 @@ function EquipesView() {
     load();
   };
 
+  const importarGrids = async (file: File) => {
+    setImportando(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const linhas = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, blankrows: false }) as any[][];
+      // dados a partir da linha 4 (A4)
+      const poloNorm = (v: string) =>
+        POLOS.find(p => p.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase() ===
+          String(v ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toUpperCase()) ?? null;
+
+      const vistos = new Set<string>();
+      const itens: { prefixo: string; polo: string }[] = [];
+      const ignoradas: string[] = [];
+      for (const l of linhas.slice(3)) {
+        const pref = String(l?.[0] ?? "").trim().toUpperCase();
+        if (!pref) continue;
+        const pol = poloNorm(l?.[2]) ?? poloFromPrefixo(pref) ?? (role === "ADMIN_POLO" ? adminPolo : polo !== "all" ? polo : null);
+        if (!pol) { ignoradas.push(pref); continue; }
+        if (role === "ADMIN_POLO" && adminPolo && pol !== adminPolo) { ignoradas.push(pref); continue; }
+        const key = `${pref}|${pol}`;
+        if (vistos.has(key)) continue;
+        vistos.add(key);
+        itens.push({ prefixo: pref, polo: pol });
+      }
+
+      const { data: existentesDb } = await supabase.from("equipe_areas").select("prefixo, polo").eq("dia", dia);
+      const jaExiste = new Set<string>();
+      (existentesDb ?? []).forEach((a: any) => jaExiste.add(`${a.prefixo}|${a.polo}`));
+      equipes.forEach(e => jaExiste.add(e.key));
+
+      const novas = itens.filter(i => !jaExiste.has(`${i.prefixo}|${i.polo}`));
+      const existentes = itens.filter(i => jaExiste.has(`${i.prefixo}|${i.polo}`)).map(i => i.prefixo);
+
+      if (novas.length > 0) {
+        const { error } = await supabase.from("equipe_areas").upsert(
+          novas.map(i => ({ dia, prefixo: i.prefixo, polo: i.polo as any, gerada: true })),
+          { onConflict: "dia,prefixo,polo" },
+        );
+        if (error) { toast.error("Não foi possível importar as equipes"); setImportando(false); return; }
+      }
+      setResultado({ criadas: novas.map(i => i.prefixo), existentes, ignoradas });
+      await load();
+    } catch {
+      toast.error("Não foi possível ler o arquivo");
+    }
+    setImportando(false);
+  };
+
+  const excluirGeradaLegacy = async (e: Equipe) => {
+    const { error } = await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+    if (error) return toast.error("Não foi possível excluir a equipe");
+    setAberta(null);
+    load();
+  };
+
   const moverMembros = async (usuarios: string[], prefixo: string, poloAlvo: string) => {
     if (usuarios.length === 0) return null;
     return supabase.from("equipe_membros_override").upsert(
