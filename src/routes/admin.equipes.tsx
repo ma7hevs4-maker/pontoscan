@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -8,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { poloFromPrefixo } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/equipes")({
   component: EquipesView,
@@ -111,6 +113,9 @@ function EquipesView() {
   const [novoIncidente, setNovoIncidente] = useState("");
   const [novoPonto, setNovoPonto] = useState("");
   const [novoAlim, setNovoAlim] = useState("");
+  const gridInputRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultado, setResultado] = useState<{ criadas: string[]; existentes: string[]; ignoradas: string[] } | null>(null);
 
   useEffect(() => {
     if (role === "ADMIN_POLO" && adminPolo) setPolo(adminPolo);
@@ -291,6 +296,56 @@ function EquipesView() {
     load();
   };
 
+  const importarGrids = async (file: File) => {
+    setImportando(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const linhas = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, blankrows: false }) as any[][];
+      // dados a partir da linha 4 (A4)
+      const poloNorm = (v: string) =>
+        POLOS.find(p => p.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase() ===
+          String(v ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toUpperCase()) ?? null;
+
+      const vistos = new Set<string>();
+      const itens: { prefixo: string; polo: string }[] = [];
+      const ignoradas: string[] = [];
+      for (const l of linhas.slice(3)) {
+        const pref = String(l?.[0] ?? "").trim().toUpperCase();
+        if (!pref) continue;
+        const pol = poloNorm(l?.[2]) ?? poloFromPrefixo(pref) ?? (role === "ADMIN_POLO" ? adminPolo : polo !== "all" ? polo : null);
+        if (!pol) { ignoradas.push(pref); continue; }
+        if (role === "ADMIN_POLO" && adminPolo && pol !== adminPolo) { ignoradas.push(pref); continue; }
+        const key = `${pref}|${pol}`;
+        if (vistos.has(key)) continue;
+        vistos.add(key);
+        itens.push({ prefixo: pref, polo: pol });
+      }
+
+      const { data: existentesDb } = await supabase.from("equipe_areas").select("prefixo, polo").eq("dia", dia);
+      const jaExiste = new Set<string>();
+      (existentesDb ?? []).forEach((a: any) => jaExiste.add(`${a.prefixo}|${a.polo}`));
+      equipes.forEach(e => jaExiste.add(e.key));
+
+      const novas = itens.filter(i => !jaExiste.has(`${i.prefixo}|${i.polo}`));
+      const existentes = itens.filter(i => jaExiste.has(`${i.prefixo}|${i.polo}`)).map(i => i.prefixo);
+
+      if (novas.length > 0) {
+        const { error } = await supabase.from("equipe_areas").upsert(
+          novas.map(i => ({ dia, prefixo: i.prefixo, polo: i.polo as any, gerada: true })),
+          { onConflict: "dia,prefixo,polo" },
+        );
+        if (error) { toast.error("Não foi possível importar as equipes"); setImportando(false); return; }
+      }
+      setResultado({ criadas: novas.map(i => i.prefixo), existentes, ignoradas });
+      await load();
+    } catch {
+      toast.error("Não foi possível ler o arquivo");
+    }
+    setImportando(false);
+  };
+
   const moverMembros = async (usuarios: string[], prefixo: string, poloAlvo: string) => {
     if (usuarios.length === 0) return null;
     return supabase.from("equipe_membros_override").upsert(
@@ -443,6 +498,21 @@ function EquipesView() {
               </Button>
               <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
                 <Plus className="mr-2 h-4 w-4" />Gerar equipe
+              </Button>
+              <input
+                ref={gridInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  ev.target.value = "";
+                  if (f) importarGrids(f);
+                }}
+              />
+              <Button variant="secondary" onClick={() => gridInputRef.current?.click()} disabled={importando}>
+                {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                Gerar via grids
               </Button>
             </div>
           </div>
@@ -803,6 +873,35 @@ function EquipesView() {
               {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Gerar equipe
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!resultado} onOpenChange={(o) => { if (!o) setResultado(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Importação concluída</DialogTitle></DialogHeader>
+          {resultado && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium text-emerald-600">{resultado.criadas.length} equipe(s) importada(s)</p>
+                <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">
+                  {resultado.criadas.length ? resultado.criadas.join(", ") : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium">{resultado.existentes.length} equipe(s) já existiam na aba</p>
+                <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">
+                  {resultado.existentes.length ? resultado.existentes.join(", ") : "—"}
+                </p>
+              </div>
+              {resultado.ignoradas.length > 0 && (
+                <div>
+                  <p className="font-medium text-amber-600">{resultado.ignoradas.length} equipe(s) ignorada(s) (fora do seu polo ou polo não identificado)</p>
+                  <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">{resultado.ignoradas.join(", ")}</p>
+                </div>
+              )}
+              <Button className="w-full" onClick={() => setResultado(null)}>Fechar</Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
