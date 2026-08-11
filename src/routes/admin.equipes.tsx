@@ -274,6 +274,15 @@ function EquipesView() {
     setLogLoading(false);
   }, [logPolo]);
 
+  const logsFiltrados = useMemo(() => {
+    const termo = logBusca.trim().toLowerCase();
+    if (!termo) return logs;
+    return logs.filter(l =>
+      (l.prefixo ?? "").toLowerCase().includes(termo) ||
+      (l.numero_incidente ?? "").toLowerCase().includes(termo)
+    );
+  }, [logs, logBusca]);
+
   useEffect(() => { if (logOpen) carregarLogs(); }, [logOpen, carregarLogs]);
 
   const criarEquipe = async () => {
