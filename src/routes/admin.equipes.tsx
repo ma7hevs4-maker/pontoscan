@@ -291,6 +291,78 @@ function EquipesView() {
     load();
   };
 
+  const moverMembros = async (usuarios: string[], prefixo: string, poloAlvo: string) => {
+    if (usuarios.length === 0) return null;
+    return supabase.from("equipe_membros_override").upsert(
+      usuarios.map(u => ({ dia, usuario_id: u, prefixo, polo: poloAlvo as any })),
+      { onConflict: "dia,usuario_id" },
+    );
+  };
+
+  const ajustarPrefixo = async () => {
+    if (!aberta) return;
+    const novo = prefixoEdit.trim().toUpperCase();
+    if (!novo) return toast.error("Informe o novo prefixo");
+    if (novo === aberta.prefixo) { setEditarOpen(false); return; }
+    setSalvando(true);
+    const res = await moverMembros(aberta.membros.map(m => m.usuario_id), novo, aberta.polo);
+    if (res?.error) { setSalvando(false); return toast.error("Não foi possível ajustar o prefixo"); }
+    await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", aberta.prefixo).eq("polo", aberta.polo as any);
+    const { error } = await supabase.from("equipe_areas").upsert(
+      { dia, prefixo: novo, polo: aberta.polo as any, area: aberta.area, gerada: aberta.gerada, ajustado: true },
+      { onConflict: "dia,prefixo,polo" },
+    );
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível ajustar o prefixo");
+    toast.success(`Prefixo ajustado para ${novo}`);
+    setEditarOpen(false);
+    setAberta(null);
+    load();
+  };
+
+  const equipesMescla = useMemo(() => equipes.filter(e => selEquipes.includes(e.key)), [equipes, selEquipes]);
+
+  const toggleEquipeMescla = (e: Equipe) => {
+    setSelEquipes(prev => {
+      const on = prev.includes(e.key);
+      const next = on ? prev.filter(k => k !== e.key) : [...prev, e.key];
+      setSelMembros(ms => on
+        ? ms.filter(id => !e.membros.some(m => m.usuario_id === id))
+        : [...ms, ...e.membros.map(m => m.usuario_id)]);
+      if (on && destino === e.key) setDestino("");
+      return next;
+    });
+  };
+
+  const mesclar = async () => {
+    if (selEquipes.length < 2) return toast.error("Selecione ao menos duas equipes");
+    if (selMembros.length === 0) return toast.error("Selecione ao menos um colaborador");
+    const novo = prefixoMescla.trim().toUpperCase();
+    const alvo = destino === "__novo" ? null : equipes.find(e => e.key === destino);
+    if (destino === "__novo" && !novo) return toast.error("Informe o prefixo da nova equipe");
+    if (!alvo && destino !== "__novo") return toast.error("Escolha a equipe de destino");
+    const poloAlvo = alvo?.polo ?? equipesMescla[0].polo;
+    const prefixoAlvo = alvo?.prefixo ?? novo;
+    const keyAlvo = `${prefixoAlvo}|${poloAlvo}`;
+
+    setSalvando(true);
+    const res = await moverMembros(selMembros, prefixoAlvo, poloAlvo);
+    if (res?.error) { setSalvando(false); return toast.error("Não foi possível mesclar as equipes"); }
+    for (const e of equipesMescla) {
+      if (e.key === keyAlvo) continue;
+      await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+    }
+    const { error } = await supabase.from("equipe_areas").upsert(
+      { dia, prefixo: prefixoAlvo, polo: poloAlvo as any, area: alvo?.area ?? null, gerada: alvo?.gerada ?? false, ajustado: true },
+      { onConflict: "dia,prefixo,polo" },
+    );
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível mesclar as equipes");
+    toast.success(`Equipes mescladas em ${prefixoAlvo}`);
+    setMesclarOpen(false); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla("");
+    load();
+  };
+
   const completos = (e: Equipe) => e.membros.filter(m => ETAPAS.every(et => m.marcacoes[et])).length;
 
   return (
