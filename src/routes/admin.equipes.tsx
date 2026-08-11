@@ -383,7 +383,26 @@ function EquipesView() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
+            <div className="min-w-0 sm:w-56">
+              <Label>Buscar</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-8" value={busca} onChange={(ev) => setBusca(ev.target.value)} placeholder="Nome ou prefixo" />
+              </div>
+            </div>
+            <div className="min-w-0 sm:w-40">
+              <Label>Turno</Label>
+              <Select value={turno} onValueChange={setTurno}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="A">Turno A</SelectItem>
+                  <SelectItem value="B">Turno B</SelectItem>
+                  <SelectItem value="C">Turno C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="min-w-0 sm:w-48">
               <Label>Polo</Label>
               <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
@@ -419,6 +438,9 @@ function EquipesView() {
               {role === "ADMIN_DISPATCH" && (
                 <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
               )}
+              <Button variant="outline" onClick={() => { setMesclarOpen(true); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla(""); }}>
+                <Merge className="mr-2 h-4 w-4" />Mesclar equipe
+              </Button>
               <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
                 <Plus className="mr-2 h-4 w-4" />Gerar equipe
               </Button>
