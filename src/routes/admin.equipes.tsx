@@ -640,6 +640,97 @@ function EquipesView() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={editarOpen} onOpenChange={setEditarOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Ajustar prefixo da equipe</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Novo prefixo</Label>
+              <Input value={prefixoEdit} onChange={(ev) => setPrefixoEdit(ev.target.value.toUpperCase())} placeholder="Ex.: RJ1234-A" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Os colaboradores da equipe passam a contar no novo prefixo hoje e a equipe fica marcada como <strong>ajustado</strong>.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditarOpen(false)}>Cancelar</Button>
+              <Button onClick={ajustarPrefixo} disabled={salvando}>{salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mesclarOpen} onOpenChange={setMesclarOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Mesclar equipes</DialogTitle></DialogHeader>
+          <div className="max-h-[65vh] space-y-4 overflow-auto">
+            <div>
+              <p className="mb-2 text-sm font-medium">1 · Selecione as equipes</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {equipes.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma equipe ativa hoje</p>}
+                {equipes.map(e => (
+                  <label key={e.key} className="flex cursor-pointer items-center gap-2 rounded border p-2 text-sm">
+                    <Checkbox checked={selEquipes.includes(e.key)} onCheckedChange={() => toggleEquipeMescla(e)} />
+                    <span className="font-mono font-semibold">{e.prefixo}</span>
+                    <span className="text-muted-foreground">· {e.polo} · {e.membros.length} col.</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {equipesMescla.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-medium">2 · Selecione os colaboradores que vão para a equipe final</p>
+                <div className="space-y-2">
+                  {equipesMescla.map(e => (
+                    <div key={e.key} className="rounded border p-2">
+                      <p className="mb-1 font-mono text-xs font-semibold">{e.prefixo}</p>
+                      {e.membros.length === 0 && <p className="text-xs text-muted-foreground">Sem colaboradores</p>}
+                      <div className="grid gap-1 sm:grid-cols-2">
+                        {e.membros.map(m => (
+                          <label key={m.usuario_id} className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={selMembros.includes(m.usuario_id)}
+                              onCheckedChange={(v) => setSelMembros(prev => v ? [...prev, m.usuario_id] : prev.filter(id => id !== m.usuario_id))}
+                            />
+                            {m.nome}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="mb-2 text-sm font-medium">3 · Equipe final</p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="w-56">
+                  <Select value={destino} onValueChange={setDestino}>
+                    <SelectTrigger><SelectValue placeholder="Escolher destino" /></SelectTrigger>
+                    <SelectContent>
+                      {equipesMescla.map(e => <SelectItem key={e.key} value={e.key}>{e.prefixo}</SelectItem>)}
+                      <SelectItem value="__novo">Novo prefixo…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {destino === "__novo" && (
+                  <Input className="w-48" value={prefixoMescla} onChange={(ev) => setPrefixoMescla(ev.target.value.toUpperCase())} placeholder="Novo prefixo" />
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                As demais equipes selecionadas deixam de existir hoje e a equipe final fica marcada como <strong>ajustado</strong>.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMesclarOpen(false)}>Cancelar</Button>
+              <Button onClick={mesclar} disabled={salvando}>{salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mesclar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={logOpen} onOpenChange={setLogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Log de equipes, áreas e incidentes</DialogTitle></DialogHeader>
