@@ -106,6 +106,7 @@ function EquipesView() {
   const [salvando, setSalvando] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [logPolo, setLogPolo] = useState<string>("all");
+  const [logBusca, setLogBusca] = useState("");
   const [logs, setLogs] = useState<any[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -272,6 +273,15 @@ function EquipesView() {
     setLogs((data as any[]) ?? []);
     setLogLoading(false);
   }, [logPolo]);
+
+  const logsFiltrados = useMemo(() => {
+    const termo = logBusca.trim().toLowerCase();
+    if (!termo) return logs;
+    return logs.filter(l =>
+      (l.prefixo ?? "").toLowerCase().includes(termo) ||
+      (l.numero_incidente ?? "").toLowerCase().includes(termo)
+    );
+  }, [logs, logBusca]);
 
   useEffect(() => { if (logOpen) carregarLogs(); }, [logOpen, carregarLogs]);
 
@@ -805,15 +815,24 @@ function EquipesView() {
         <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Log de equipes, áreas e incidentes</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="w-56">
-              <Label>Polo</Label>
-              <Select value={logPolo} onValueChange={setLogPolo}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Polo</Label>
+                <Select value={logPolo} onValueChange={setLogPolo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Prefixo ou incidente</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="pl-8" value={logBusca} onChange={(ev) => setLogBusca(ev.target.value)} placeholder="Buscar prefixo ou nº incidente" />
+                </div>
+              </div>
             </div>
             <div className="max-h-[60vh] overflow-auto">
               {logLoading ? (
@@ -831,8 +850,8 @@ function EquipesView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
-                    {logs.map(l => (
+                    {logsFiltrados.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
+                    {logsFiltrados.map(l => (
                       <TableRow key={l.id}>
                         <TableCell className="font-mono text-xs">{new Date(l.created_at).toLocaleString("pt-BR")}</TableCell>
                         <TableCell className="font-mono">{l.prefixo}</TableCell>
