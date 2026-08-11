@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
 
@@ -90,7 +92,8 @@ function EquipesView() {
   const [ajustados, setAjustados] = useState<Record<string, boolean>>({});
   const [overrides, setOverrides] = useState<Record<string, { prefixo: string; polo: string }>>({});
   const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
-  const [areaFiltro, setAreaFiltro] = useState<string>("all");
+  type AreaFiltroItem = Area | "none";
+  const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
   const [mesclarOpen, setMesclarOpen] = useState(false);
@@ -200,7 +203,16 @@ function EquipesView() {
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return equipes.filter(e => {
-      const okArea = areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro;
+      const okArea = (() => {
+        if (areaFiltro.length === 0) return true;
+        const semArea = areaFiltro.includes("none");
+        const areasSel = areaFiltro.filter(a => a !== "none") as Area[];
+        const areaAtual = areas[e.key] ?? null;
+        if (areasSel.length === 0) return semArea ? !areaAtual : true;
+        if (areaAtual && areasSel.includes(areaAtual)) return true;
+        if (!areaAtual && semArea) return true;
+        return false;
+      })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
       if (!termo) return true;
@@ -480,17 +492,51 @@ function EquipesView() {
             </div>
             <div className="min-w-0">
               <Label className="mb-1.5 block">Área</Label>
-              <Select value={areaFiltro} onValueChange={setAreaFiltro}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="BT">BT</SelectItem>
-                  <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
-                  <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
-                  <SelectItem value="INATIVA">INATIVA</SelectItem>
-                  <SelectItem value="none">Sem área</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="truncate">
+                      {areaFiltro.length === 0 ? "Todas" : areaFiltro.map(a => a === "none" ? "Sem área" : AREA_LABEL[a as Area]).join(", ")}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium text-muted-foreground">Selecionar áreas</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setAreaFiltro(areaFiltro.length === 0 ? ["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA", "none"] : [])}
+                      >
+                        {areaFiltro.length === 0 ? "Todas" : "Limpar"}
+                      </Button>
+                    </div>
+                    {[
+                      { value: "BT", label: "BT" },
+                      { value: "MT_RAMAL", label: "MT RAMAL" },
+                      { value: "MT_TRONCO", label: "MT TRONCO" },
+                      { value: "INATIVA", label: "INATIVA" },
+                      { value: "none", label: "Sem área" },
+                    ].map((opt) => (
+                      <div key={opt.value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`area-${opt.value}`}
+                          checked={areaFiltro.includes(opt.value as AreaFiltroItem)}
+                          onCheckedChange={(checked) => {
+                            setAreaFiltro(prev => checked ? [...prev, opt.value as AreaFiltroItem] : prev.filter(a => a !== opt.value));
+                          }}
+                        />
+                        <Label htmlFor={`area-${opt.value}`} className="text-sm font-normal cursor-pointer flex-1">
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
