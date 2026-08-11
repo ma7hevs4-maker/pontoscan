@@ -203,7 +203,16 @@ function EquipesView() {
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return equipes.filter(e => {
-      const okArea = areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro;
+      const okArea = (() => {
+        if (areaFiltro.length === 0) return true;
+        const semArea = areaFiltro.includes("none");
+        const areasSel = areaFiltro.filter(a => a !== "none") as Area[];
+        const areaAtual = areas[e.key] ?? null;
+        if (areasSel.length === 0) return semArea ? !areaAtual : true;
+        if (areaAtual && areasSel.includes(areaAtual)) return true;
+        if (!areaAtual && semArea) return true;
+        return false;
+      })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
       if (!termo) return true;
