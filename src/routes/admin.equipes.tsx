@@ -92,7 +92,8 @@ function EquipesView() {
   const [ajustados, setAjustados] = useState<Record<string, boolean>>({});
   const [overrides, setOverrides] = useState<Record<string, { prefixo: string; polo: string }>>({});
   const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
-  const [areaFiltro, setAreaFiltro] = useState<string>("all");
+  type AreaFiltroItem = Area | "none";
+  const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
   const [mesclarOpen, setMesclarOpen] = useState(false);
