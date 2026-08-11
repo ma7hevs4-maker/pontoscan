@@ -113,6 +113,9 @@ function EquipesView() {
   const [novoIncidente, setNovoIncidente] = useState("");
   const [novoPonto, setNovoPonto] = useState("");
   const [novoAlim, setNovoAlim] = useState("");
+  const gridInputRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultado, setResultado] = useState<{ criadas: string[]; existentes: string[]; ignoradas: string[] } | null>(null);
 
   useEffect(() => {
     if (role === "ADMIN_POLO" && adminPolo) setPolo(adminPolo);
