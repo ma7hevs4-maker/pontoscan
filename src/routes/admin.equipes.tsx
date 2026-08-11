@@ -875,6 +875,35 @@ function EquipesView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!resultado} onOpenChange={(o) => { if (!o) setResultado(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Importação concluída</DialogTitle></DialogHeader>
+          {resultado && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium text-emerald-600">{resultado.criadas.length} equipe(s) importada(s)</p>
+                <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">
+                  {resultado.criadas.length ? resultado.criadas.join(", ") : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium">{resultado.existentes.length} equipe(s) já existiam na aba</p>
+                <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">
+                  {resultado.existentes.length ? resultado.existentes.join(", ") : "—"}
+                </p>
+              </div>
+              {resultado.ignoradas.length > 0 && (
+                <div>
+                  <p className="font-medium text-amber-600">{resultado.ignoradas.length} equipe(s) ignorada(s) (fora do seu polo ou polo não identificado)</p>
+                  <p className="mt-1 max-h-40 overflow-y-auto text-muted-foreground">{resultado.ignoradas.join(", ")}</p>
+                </div>
+              )}
+              <Button className="w-full" onClick={() => setResultado(null)}>Fechar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
