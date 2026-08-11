@@ -492,17 +492,51 @@ function EquipesView() {
             </div>
             <div className="min-w-0">
               <Label className="mb-1.5 block">Área</Label>
-              <Select value={areaFiltro} onValueChange={setAreaFiltro}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="BT">BT</SelectItem>
-                  <SelectItem value="MT_RAMAL">MT RAMAL</SelectItem>
-                  <SelectItem value="MT_TRONCO">MT TRONCO</SelectItem>
-                  <SelectItem value="INATIVA">INATIVA</SelectItem>
-                  <SelectItem value="none">Sem área</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="truncate">
+                      {areaFiltro.length === 0 ? "Todas" : areaFiltro.map(a => a === "none" ? "Sem área" : AREA_LABEL[a as Area]).join(", ")}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium text-muted-foreground">Selecionar áreas</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setAreaFiltro(areaFiltro.length === 0 ? ["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA", "none"] : [])}
+                      >
+                        {areaFiltro.length === 0 ? "Todas" : "Limpar"}
+                      </Button>
+                    </div>
+                    {[
+                      { value: "BT", label: "BT" },
+                      { value: "MT_RAMAL", label: "MT RAMAL" },
+                      { value: "MT_TRONCO", label: "MT TRONCO" },
+                      { value: "INATIVA", label: "INATIVA" },
+                      { value: "none", label: "Sem área" },
+                    ].map((opt) => (
+                      <div key={opt.value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`area-${opt.value}`}
+                          checked={areaFiltro.includes(opt.value as AreaFiltroItem)}
+                          onCheckedChange={(checked) => {
+                            setAreaFiltro(prev => checked ? [...prev, opt.value as AreaFiltroItem] : prev.filter(a => a !== opt.value));
+                          }}
+                        />
+                        <Label htmlFor={`area-${opt.value}`} className="text-sm font-normal cursor-pointer flex-1">
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
