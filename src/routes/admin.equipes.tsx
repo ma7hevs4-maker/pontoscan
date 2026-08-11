@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2 } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -37,6 +38,7 @@ const ACAO_LABEL: Record<string, string> = {
   AREA_REMOVIDA: "Área removida",
   INCIDENTE_ATRIBUIDO: "Incidente atribuído",
   INCIDENTE_REMOVIDO: "Incidente removido",
+  PREFIXO_AJUSTADO: "Prefixo ajustado",
 };
 const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO", INATIVA: "INATIVA" };
 
@@ -63,11 +65,17 @@ interface Equipe {
   bases: string[];
   area: Area | null;
   gerada: boolean;
+  ajustado: boolean;
   incidentes: Inc[];
 }
 
 function hoje() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+function turnoDe(prefixo: string) {
+  const m = prefixo.trim().toUpperCase().match(/-\s*([A-Z])/);
+  return m ? m[1] : "";
 }
 
 function EquipesView() {
@@ -77,8 +85,19 @@ function EquipesView() {
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
   const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
+  const [ajustados, setAjustados] = useState<Record<string, boolean>>({});
+  const [overrides, setOverrides] = useState<Record<string, { prefixo: string; polo: string }>>({});
   const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
   const [areaFiltro, setAreaFiltro] = useState<string>("all");
+  const [busca, setBusca] = useState("");
+  const [turno, setTurno] = useState<string>("all");
+  const [mesclarOpen, setMesclarOpen] = useState(false);
+  const [selEquipes, setSelEquipes] = useState<string[]>([]);
+  const [selMembros, setSelMembros] = useState<string[]>([]);
+  const [destino, setDestino] = useState<string>("");
+  const [prefixoMescla, setPrefixoMescla] = useState("");
+  const [editarOpen, setEditarOpen] = useState(false);
+  const [prefixoEdit, setPrefixoEdit] = useState("");
   const [novaOpen, setNovaOpen] = useState(false);
   const [novoPrefixo, setNovoPrefixo] = useState("");
   const [novoPolo, setNovoPolo] = useState<string>("");
@@ -106,17 +125,24 @@ function EquipesView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
-    const [{ data, error }, { data: ar }, { data: inc }] = await Promise.all([
+    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }] = await Promise.all([
       q,
-      supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
+      supabase.from("equipe_areas").select("prefixo, polo, area, gerada, ajustado").eq("dia", dia),
       supabase.from("equipe_incidentes")
         .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
         .eq("dia", dia).order("created_at", { ascending: true }),
+      supabase.from("equipe_membros_override").select("usuario_id, prefixo, polo").eq("dia", dia),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
+    const aj: Record<string, boolean> = {};
+    (ar ?? []).forEach((a: any) => { if (a.ajustado) aj[`${a.prefixo}|${a.polo}`] = true; });
+    setAjustados(aj);
+    const omap: Record<string, { prefixo: string; polo: string }> = {};
+    (ov ?? []).forEach((o: any) => { omap[o.usuario_id] = { prefixo: o.prefixo, polo: o.polo }; });
+    setOverrides(omap);
     setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
     const imap: Record<string, Inc[]> = {};
     (inc ?? []).forEach((i: any) => {
@@ -142,16 +168,17 @@ function EquipesView() {
     for (const m of manuais) {
       if (polo !== "all" && m.polo !== polo) continue;
       const key = `${m.prefixo}|${m.polo}`;
-      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, incidentes: incidentesMap[key] ?? [] });
+      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] });
     }
     for (const r of regs) {
-      const prefixo = (r.prefixo_override ?? r.prefixo ?? "").trim();
+      const ov = overrides[r.usuario_id];
+      const prefixo = (ov?.prefixo ?? r.prefixo_override ?? r.prefixo ?? "").trim();
       if (!prefixo) continue;
-      const p = r.user_polo ?? "";
+      const p = ov?.polo ?? r.user_polo ?? "";
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, incidentes: incidentesMap[key] ?? [] };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
@@ -162,11 +189,18 @@ function EquipesView() {
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo, incidentesMap]);
+  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados]);
 
-  const visiveis = useMemo(() => equipes.filter(e =>
-    areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro
-  ), [equipes, areas, areaFiltro]);
+  const visiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return equipes.filter(e => {
+      const okArea = areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro;
+      if (!okArea) return false;
+      if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (!termo) return true;
+      return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
+    });
+  }, [equipes, areas, areaFiltro, busca, turno]);
 
   const kpis = useMemo(() => ({
     total: equipes.filter(e => e.area !== "INATIVA").length,
