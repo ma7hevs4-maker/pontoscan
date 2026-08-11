@@ -13,7 +13,6 @@ import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Mer
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { POLOS as POLOS_LIST } from "@/lib/auth-context";
 import { poloFromPrefixo } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/equipes")({
