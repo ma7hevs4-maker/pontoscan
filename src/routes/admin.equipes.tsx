@@ -477,6 +477,7 @@ function EquipesView() {
                     <TableCell className="font-mono font-semibold">
                       {e.prefixo}
                       {e.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
+                      {e.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
                     </TableCell>
                     <TableCell>{e.polo}</TableCell>
                     <TableCell><span className="inline-flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{e.membros.length}</span></TableCell>
@@ -532,6 +533,7 @@ function EquipesView() {
             <DialogTitle>
               {aberta?.prefixo} · {aberta?.polo}
               {aberta?.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
+              {aberta?.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
               {aberta && areas[aberta.key] && (
                 <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{AREA_LABEL[areas[aberta.key]]}</span>
               )}
@@ -540,6 +542,9 @@ function EquipesView() {
           {aberta && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setPrefixoEdit(aberta.prefixo); setEditarOpen(true); }}>
+                  <Pencil className="mr-2 h-4 w-4" />Ajustar prefixo
+                </Button>
                 <span className="text-sm text-muted-foreground">Área de atuação:</span>
                 {(["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA"] as Area[]).map(a => (
                   <Button key={a} size="sm" variant={areas[aberta.key] === a ? "default" : "outline"} onClick={() => setArea(aberta, a)}>
