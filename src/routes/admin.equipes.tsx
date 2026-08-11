@@ -346,13 +346,6 @@ function EquipesView() {
     setImportando(false);
   };
 
-  const excluirGeradaLegacy = async (e: Equipe) => {
-    const { error } = await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
-    if (error) return toast.error("Não foi possível excluir a equipe");
-    setAberta(null);
-    load();
-  };
-
   const moverMembros = async (usuarios: string[], prefixo: string, poloAlvo: string) => {
     if (usuarios.length === 0) return null;
     return supabase.from("equipe_membros_override").upsert(
