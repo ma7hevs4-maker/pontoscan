@@ -382,17 +382,17 @@ function EquipesView() {
       </div>
 
       <Card className="p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
-            <div className="min-w-0 sm:w-56">
-              <Label>Buscar</Label>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Buscar</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-8" value={busca} onChange={(ev) => setBusca(ev.target.value)} placeholder="Nome ou prefixo" />
               </div>
             </div>
-            <div className="min-w-0 sm:w-40">
-              <Label>Turno</Label>
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Turno</Label>
               <Select value={turno} onValueChange={setTurno}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -403,8 +403,8 @@ function EquipesView() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-w-0 sm:w-48">
-              <Label>Polo</Label>
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Polo</Label>
               <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -413,8 +413,8 @@ function EquipesView() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-w-0 sm:w-48">
-              <Label>Área</Label>
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Área</Label>
               <Select value={areaFiltro} onValueChange={setAreaFiltro}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -429,11 +429,11 @@ function EquipesView() {
             </div>
           </div>
 
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <p className="text-xs text-muted-foreground sm:text-right">
+          <div className="flex flex-col gap-3 lg:items-end">
+            <p className="text-xs text-muted-foreground lg:text-right">
               Dia {new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR")} · as áreas resetam automaticamente todo dia
             </p>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={load}>Atualizar</Button>
               {role === "ADMIN_DISPATCH" && (
                 <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
