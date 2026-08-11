@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -8,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { POLOS as POLOS_LIST } from "@/lib/auth-context";
+import { poloFromPrefixo } from "@/lib/incidentes";
 
 export const Route = createFileRoute("/admin/equipes")({
   component: EquipesView,
