@@ -116,6 +116,7 @@ export type Database = {
       }
       equipe_areas: {
         Row: {
+          ajustado: boolean
           area: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at: string
           dia: string
@@ -126,6 +127,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ajustado?: boolean
           area?: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at?: string
           dia?: string
@@ -136,6 +138,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ajustado?: boolean
           area?: Database["public"]["Enums"]["area_atuacao_enum"] | null
           created_at?: string
           dia?: string
@@ -180,6 +183,36 @@ export type Database = {
           ponto_eletrico?: string | null
           prefixo?: string
           usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      equipe_membros_override: {
+        Row: {
+          created_at: string
+          dia: string
+          id: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          updated_at: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          dia?: string
+          id?: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          updated_at?: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          dia?: string
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+          updated_at?: string
+          usuario_id?: string
         }
         Relationships: []
       }
