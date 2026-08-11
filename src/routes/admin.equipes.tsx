@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2 } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -37,6 +38,7 @@ const ACAO_LABEL: Record<string, string> = {
   AREA_REMOVIDA: "Área removida",
   INCIDENTE_ATRIBUIDO: "Incidente atribuído",
   INCIDENTE_REMOVIDO: "Incidente removido",
+  PREFIXO_AJUSTADO: "Prefixo ajustado",
 };
 const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TRONCO: "MT TRONCO", INATIVA: "INATIVA" };
 
@@ -63,11 +65,17 @@ interface Equipe {
   bases: string[];
   area: Area | null;
   gerada: boolean;
+  ajustado: boolean;
   incidentes: Inc[];
 }
 
 function hoje() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+function turnoDe(prefixo: string) {
+  const m = prefixo.trim().toUpperCase().match(/-\s*([A-Z])/);
+  return m ? m[1] : "";
 }
 
 function EquipesView() {
@@ -77,8 +85,19 @@ function EquipesView() {
   const [regs, setRegs] = useState<Reg[]>([]);
   const [areas, setAreas] = useState<Record<string, Area>>({});
   const [manuais, setManuais] = useState<{ prefixo: string; polo: string }[]>([]);
+  const [ajustados, setAjustados] = useState<Record<string, boolean>>({});
+  const [overrides, setOverrides] = useState<Record<string, { prefixo: string; polo: string }>>({});
   const [incidentesMap, setIncidentesMap] = useState<Record<string, Inc[]>>({});
   const [areaFiltro, setAreaFiltro] = useState<string>("all");
+  const [busca, setBusca] = useState("");
+  const [turno, setTurno] = useState<string>("all");
+  const [mesclarOpen, setMesclarOpen] = useState(false);
+  const [selEquipes, setSelEquipes] = useState<string[]>([]);
+  const [selMembros, setSelMembros] = useState<string[]>([]);
+  const [destino, setDestino] = useState<string>("");
+  const [prefixoMescla, setPrefixoMescla] = useState("");
+  const [editarOpen, setEditarOpen] = useState(false);
+  const [prefixoEdit, setPrefixoEdit] = useState("");
   const [novaOpen, setNovaOpen] = useState(false);
   const [novoPrefixo, setNovoPrefixo] = useState("");
   const [novoPolo, setNovoPolo] = useState<string>("");
@@ -106,17 +125,24 @@ function EquipesView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
-    const [{ data, error }, { data: ar }, { data: inc }] = await Promise.all([
+    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }] = await Promise.all([
       q,
-      supabase.from("equipe_areas").select("prefixo, polo, area, gerada").eq("dia", dia),
+      supabase.from("equipe_areas").select("prefixo, polo, area, gerada, ajustado").eq("dia", dia),
       supabase.from("equipe_incidentes")
         .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
         .eq("dia", dia).order("created_at", { ascending: true }),
+      supabase.from("equipe_membros_override").select("usuario_id, prefixo, polo").eq("dia", dia),
     ]);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
     setAreas(map);
+    const aj: Record<string, boolean> = {};
+    (ar ?? []).forEach((a: any) => { if (a.ajustado) aj[`${a.prefixo}|${a.polo}`] = true; });
+    setAjustados(aj);
+    const omap: Record<string, { prefixo: string; polo: string }> = {};
+    (ov ?? []).forEach((o: any) => { omap[o.usuario_id] = { prefixo: o.prefixo, polo: o.polo }; });
+    setOverrides(omap);
     setManuais((ar ?? []).filter((a: any) => a.gerada).map((a: any) => ({ prefixo: a.prefixo, polo: a.polo as string })));
     const imap: Record<string, Inc[]> = {};
     (inc ?? []).forEach((i: any) => {
@@ -142,16 +168,17 @@ function EquipesView() {
     for (const m of manuais) {
       if (polo !== "all" && m.polo !== polo) continue;
       const key = `${m.prefixo}|${m.polo}`;
-      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, incidentes: incidentesMap[key] ?? [] });
+      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] });
     }
     for (const r of regs) {
-      const prefixo = (r.prefixo_override ?? r.prefixo ?? "").trim();
+      const ov = overrides[r.usuario_id];
+      const prefixo = (ov?.prefixo ?? r.prefixo_override ?? r.prefixo ?? "").trim();
       if (!prefixo) continue;
-      const p = r.user_polo ?? "";
+      const p = ov?.polo ?? r.user_polo ?? "";
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, incidentes: incidentesMap[key] ?? [] };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
@@ -162,11 +189,18 @@ function EquipesView() {
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo, incidentesMap]);
+  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados]);
 
-  const visiveis = useMemo(() => equipes.filter(e =>
-    areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro
-  ), [equipes, areas, areaFiltro]);
+  const visiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return equipes.filter(e => {
+      const okArea = areaFiltro === "all" ? true : areaFiltro === "none" ? !areas[e.key] : areas[e.key] === areaFiltro;
+      if (!okArea) return false;
+      if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (!termo) return true;
+      return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
+    });
+  }, [equipes, areas, areaFiltro, busca, turno]);
 
   const kpis = useMemo(() => ({
     total: equipes.filter(e => e.area !== "INATIVA").length,
@@ -257,6 +291,78 @@ function EquipesView() {
     load();
   };
 
+  const moverMembros = async (usuarios: string[], prefixo: string, poloAlvo: string) => {
+    if (usuarios.length === 0) return null;
+    return supabase.from("equipe_membros_override").upsert(
+      usuarios.map(u => ({ dia, usuario_id: u, prefixo, polo: poloAlvo as any })),
+      { onConflict: "dia,usuario_id" },
+    );
+  };
+
+  const ajustarPrefixo = async () => {
+    if (!aberta) return;
+    const novo = prefixoEdit.trim().toUpperCase();
+    if (!novo) return toast.error("Informe o novo prefixo");
+    if (novo === aberta.prefixo) { setEditarOpen(false); return; }
+    setSalvando(true);
+    const res = await moverMembros(aberta.membros.map(m => m.usuario_id), novo, aberta.polo);
+    if (res?.error) { setSalvando(false); return toast.error("Não foi possível ajustar o prefixo"); }
+    await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", aberta.prefixo).eq("polo", aberta.polo as any);
+    const { error } = await supabase.from("equipe_areas").upsert(
+      { dia, prefixo: novo, polo: aberta.polo as any, area: aberta.area, gerada: aberta.gerada, ajustado: true },
+      { onConflict: "dia,prefixo,polo" },
+    );
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível ajustar o prefixo");
+    toast.success(`Prefixo ajustado para ${novo}`);
+    setEditarOpen(false);
+    setAberta(null);
+    load();
+  };
+
+  const equipesMescla = useMemo(() => equipes.filter(e => selEquipes.includes(e.key)), [equipes, selEquipes]);
+
+  const toggleEquipeMescla = (e: Equipe) => {
+    setSelEquipes(prev => {
+      const on = prev.includes(e.key);
+      const next = on ? prev.filter(k => k !== e.key) : [...prev, e.key];
+      setSelMembros(ms => on
+        ? ms.filter(id => !e.membros.some(m => m.usuario_id === id))
+        : [...ms, ...e.membros.map(m => m.usuario_id)]);
+      if (on && destino === e.key) setDestino("");
+      return next;
+    });
+  };
+
+  const mesclar = async () => {
+    if (selEquipes.length < 2) return toast.error("Selecione ao menos duas equipes");
+    if (selMembros.length === 0) return toast.error("Selecione ao menos um colaborador");
+    const novo = prefixoMescla.trim().toUpperCase();
+    const alvo = destino === "__novo" ? null : equipes.find(e => e.key === destino);
+    if (destino === "__novo" && !novo) return toast.error("Informe o prefixo da nova equipe");
+    if (!alvo && destino !== "__novo") return toast.error("Escolha a equipe de destino");
+    const poloAlvo = alvo?.polo ?? equipesMescla[0].polo;
+    const prefixoAlvo = alvo?.prefixo ?? novo;
+    const keyAlvo = `${prefixoAlvo}|${poloAlvo}`;
+
+    setSalvando(true);
+    const res = await moverMembros(selMembros, prefixoAlvo, poloAlvo);
+    if (res?.error) { setSalvando(false); return toast.error("Não foi possível mesclar as equipes"); }
+    for (const e of equipesMescla) {
+      if (e.key === keyAlvo) continue;
+      await supabase.from("equipe_areas").delete().eq("dia", dia).eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+    }
+    const { error } = await supabase.from("equipe_areas").upsert(
+      { dia, prefixo: prefixoAlvo, polo: poloAlvo as any, area: alvo?.area ?? null, gerada: alvo?.gerada ?? false, ajustado: true },
+      { onConflict: "dia,prefixo,polo" },
+    );
+    setSalvando(false);
+    if (error) return toast.error("Não foi possível mesclar as equipes");
+    toast.success(`Equipes mescladas em ${prefixoAlvo}`);
+    setMesclarOpen(false); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla("");
+    load();
+  };
+
   const completos = (e: Equipe) => e.membros.filter(m => ETAPAS.every(et => m.marcacoes[et])).length;
 
   return (
@@ -277,7 +383,26 @@ function EquipesView() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
+            <div className="min-w-0 sm:w-56">
+              <Label>Buscar</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-8" value={busca} onChange={(ev) => setBusca(ev.target.value)} placeholder="Nome ou prefixo" />
+              </div>
+            </div>
+            <div className="min-w-0 sm:w-40">
+              <Label>Turno</Label>
+              <Select value={turno} onValueChange={setTurno}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="A">Turno A</SelectItem>
+                  <SelectItem value="B">Turno B</SelectItem>
+                  <SelectItem value="C">Turno C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="min-w-0 sm:w-48">
               <Label>Polo</Label>
               <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
@@ -313,6 +438,9 @@ function EquipesView() {
               {role === "ADMIN_DISPATCH" && (
                 <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
               )}
+              <Button variant="outline" onClick={() => { setMesclarOpen(true); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla(""); }}>
+                <Merge className="mr-2 h-4 w-4" />Mesclar equipe
+              </Button>
               <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
                 <Plus className="mr-2 h-4 w-4" />Gerar equipe
               </Button>
@@ -349,6 +477,7 @@ function EquipesView() {
                     <TableCell className="font-mono font-semibold">
                       {e.prefixo}
                       {e.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
+                      {e.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
                     </TableCell>
                     <TableCell>{e.polo}</TableCell>
                     <TableCell><span className="inline-flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{e.membros.length}</span></TableCell>
@@ -404,6 +533,7 @@ function EquipesView() {
             <DialogTitle>
               {aberta?.prefixo} · {aberta?.polo}
               {aberta?.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
+              {aberta?.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
               {aberta && areas[aberta.key] && (
                 <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{AREA_LABEL[areas[aberta.key]]}</span>
               )}
@@ -412,6 +542,9 @@ function EquipesView() {
           {aberta && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setPrefixoEdit(aberta.prefixo); setEditarOpen(true); }}>
+                  <Pencil className="mr-2 h-4 w-4" />Ajustar prefixo
+                </Button>
                 <span className="text-sm text-muted-foreground">Área de atuação:</span>
                 {(["BT", "MT_RAMAL", "MT_TRONCO", "INATIVA"] as Area[]).map(a => (
                   <Button key={a} size="sm" variant={areas[aberta.key] === a ? "default" : "outline"} onClick={() => setArea(aberta, a)}>
@@ -504,6 +637,97 @@ function EquipesView() {
               </Table>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editarOpen} onOpenChange={setEditarOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Ajustar prefixo da equipe</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Novo prefixo</Label>
+              <Input value={prefixoEdit} onChange={(ev) => setPrefixoEdit(ev.target.value.toUpperCase())} placeholder="Ex.: RJ1234-A" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Os colaboradores da equipe passam a contar no novo prefixo hoje e a equipe fica marcada como <strong>ajustado</strong>.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditarOpen(false)}>Cancelar</Button>
+              <Button onClick={ajustarPrefixo} disabled={salvando}>{salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mesclarOpen} onOpenChange={setMesclarOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Mesclar equipes</DialogTitle></DialogHeader>
+          <div className="max-h-[65vh] space-y-4 overflow-auto">
+            <div>
+              <p className="mb-2 text-sm font-medium">1 · Selecione as equipes</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {equipes.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma equipe ativa hoje</p>}
+                {equipes.map(e => (
+                  <label key={e.key} className="flex cursor-pointer items-center gap-2 rounded border p-2 text-sm">
+                    <Checkbox checked={selEquipes.includes(e.key)} onCheckedChange={() => toggleEquipeMescla(e)} />
+                    <span className="font-mono font-semibold">{e.prefixo}</span>
+                    <span className="text-muted-foreground">· {e.polo} · {e.membros.length} col.</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {equipesMescla.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-medium">2 · Selecione os colaboradores que vão para a equipe final</p>
+                <div className="space-y-2">
+                  {equipesMescla.map(e => (
+                    <div key={e.key} className="rounded border p-2">
+                      <p className="mb-1 font-mono text-xs font-semibold">{e.prefixo}</p>
+                      {e.membros.length === 0 && <p className="text-xs text-muted-foreground">Sem colaboradores</p>}
+                      <div className="grid gap-1 sm:grid-cols-2">
+                        {e.membros.map(m => (
+                          <label key={m.usuario_id} className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={selMembros.includes(m.usuario_id)}
+                              onCheckedChange={(v) => setSelMembros(prev => v ? [...prev, m.usuario_id] : prev.filter(id => id !== m.usuario_id))}
+                            />
+                            {m.nome}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="mb-2 text-sm font-medium">3 · Equipe final</p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="w-56">
+                  <Select value={destino} onValueChange={setDestino}>
+                    <SelectTrigger><SelectValue placeholder="Escolher destino" /></SelectTrigger>
+                    <SelectContent>
+                      {equipesMescla.map(e => <SelectItem key={e.key} value={e.key}>{e.prefixo}</SelectItem>)}
+                      <SelectItem value="__novo">Novo prefixo…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {destino === "__novo" && (
+                  <Input className="w-48" value={prefixoMescla} onChange={(ev) => setPrefixoMescla(ev.target.value.toUpperCase())} placeholder="Novo prefixo" />
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                As demais equipes selecionadas deixam de existir hoje e a equipe final fica marcada como <strong>ajustado</strong>.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMesclarOpen(false)}>Cancelar</Button>
+              <Button onClick={mesclar} disabled={salvando}>{salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mesclar</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
