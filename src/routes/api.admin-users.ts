@@ -69,22 +69,8 @@ async function authorizeToken(token: string) {
   };
 }
 
-function buildEletricistaEmail(prefixo: string, nome: string) {
-  const p = prefixo.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const n = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (!p || !n) return null;
-  return `${p}.${n}@pontoscan.app`;
-}
-
-async function syncEletricistaEmail(supabaseAdmin: SupabaseClient<Database>, userId: string) {
-  const { data: prof } = await supabaseAdmin.from("profiles").select("nome, prefixo").eq("id", userId).maybeSingle();
-  if (!prof) return;
-  const email = buildEletricistaEmail((prof as any).prefixo ?? "", (prof as any).nome ?? "");
-  if (!email) return;
-  const { data: u } = await supabaseAdmin.auth.admin.getUserById(userId);
-  if (u?.user?.email === email) return;
-  await supabaseAdmin.auth.admin.updateUserById(userId, { email, email_confirm: true });
-}
+// O e-mail de login é definido no cadastro e NÃO é alterado ao editar nome/prefixo,
+// para que o colaborador continue logando com as mesmas credenciais.
 
 async function listAdmins(supabaseAdmin: SupabaseClient<Database>) {
   const { data: roles, error: rErr } = await supabaseAdmin
@@ -212,7 +198,6 @@ export const Route = createFileRoute("/api/admin-users")({
             if (!(await ensureTargetIsEletricista(supabaseAdmin, userId, isDispatch))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ prefixo }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
-            try { await syncEletricistaEmail(supabaseAdmin, userId); } catch (e) { console.error("sync email", e); }
             return Response.json({ ok: true });
           }
           if (action === "update-nome") {
@@ -223,7 +208,6 @@ export const Route = createFileRoute("/api/admin-users")({
             if (!(await ensureTargetIsEletricista(supabaseAdmin, userId, isDispatch))) return new Response("Forbidden", { status: 403 });
             const { error } = await supabaseAdmin.from("profiles").update({ nome }).eq("id", userId);
             if (error) return new Response(error.message, { status: 400 });
-            try { await syncEletricistaEmail(supabaseAdmin, userId); } catch (e) { console.error("sync email", e); }
             return Response.json({ ok: true });
           }
           if (action === "delete-user") {
