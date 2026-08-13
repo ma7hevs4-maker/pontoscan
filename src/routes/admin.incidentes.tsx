@@ -199,13 +199,56 @@ function IncidentesFeed() {
           )}
           <div>
             <Label>Equipe</Label>
-            <Select value={equipe} onValueChange={setEquipe}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">Todas</SelectItem>
-                {equipes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  <span className="truncate">
+                    {equipe.length === 0 ? "Todas" : `${equipe.length} selecionada(s)`}
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="mb-2 flex items-center justify-between border-b pb-1">
+                  <span className="text-xs font-medium text-muted-foreground">Selecionar equipes</span>
+                  {equipe.length > 0 && (
+                    <button onClick={() => setEquipe([])} className="text-xs text-primary hover:underline">Limpar</button>
+                  )}
+                </div>
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {equipes.length === 0 && (
+                    <p className="px-2 py-1 text-xs text-muted-foreground">Nenhuma equipe disponível.</p>
+                  )}
+                  {equipes.map(p => {
+                    const checked = equipe.includes(p);
+                    return (
+                      <label key={p} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            setEquipe(prev => v ? [...prev, p] : prev.filter(x => x !== p));
+                          }}
+                        />
+                        <span className="text-sm">{p}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {equipe.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {equipe.map(p => (
+                  <Badge key={p} variant="secondary" className="text-xs">
+                    {p}
+                    <button
+                      onClick={() => setEquipe(prev => prev.filter(x => x !== p))}
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                    >×</button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <Label>De</Label>
