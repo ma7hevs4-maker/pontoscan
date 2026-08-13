@@ -132,7 +132,7 @@ function IncidentesFeed() {
       if (polo !== "all") {
         if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
       }
-      if (equipe !== "all" && (r.prefixo ?? "").trim().toUpperCase() !== equipe) return false;
+      if (equipe.length > 0 && !equipe.includes((r.prefixo ?? "").trim().toUpperCase())) return false;
       const ts = new Date(r.created_at).getTime();
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
