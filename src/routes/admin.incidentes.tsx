@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio, ChevronDown } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
 
@@ -47,7 +49,7 @@ function IncidentesFeed() {
   const [tipo, setTipo] = useState<string>("all");
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
-  const [equipe, setEquipe] = useState<string>("all");
+  const [equipe, setEquipe] = useState<string[]>([]);
   const hoje = new Date().toISOString().slice(0, 10);
   const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const [dataDe, setDataDe] = useState<string>(trintaDias);
@@ -130,7 +132,7 @@ function IncidentesFeed() {
       if (polo !== "all") {
         if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
       }
-      if (equipe !== "all" && (r.prefixo ?? "").trim().toUpperCase() !== equipe) return false;
+      if (equipe.length > 0 && !equipe.includes((r.prefixo ?? "").trim().toUpperCase())) return false;
       const ts = new Date(r.created_at).getTime();
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
@@ -197,13 +199,56 @@ function IncidentesFeed() {
           )}
           <div>
             <Label>Equipe</Label>
-            <Select value={equipe} onValueChange={setEquipe}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">Todas</SelectItem>
-                {equipes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  <span className="truncate">
+                    {equipe.length === 0 ? "Todas" : `${equipe.length} selecionada(s)`}
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="mb-2 flex items-center justify-between border-b pb-1">
+                  <span className="text-xs font-medium text-muted-foreground">Selecionar equipes</span>
+                  {equipe.length > 0 && (
+                    <button onClick={() => setEquipe([])} className="text-xs text-primary hover:underline">Limpar</button>
+                  )}
+                </div>
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {equipes.length === 0 && (
+                    <p className="px-2 py-1 text-xs text-muted-foreground">Nenhuma equipe disponível.</p>
+                  )}
+                  {equipes.map(p => {
+                    const checked = equipe.includes(p);
+                    return (
+                      <label key={p} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-muted">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            setEquipe(prev => v ? [...prev, p] : prev.filter(x => x !== p));
+                          }}
+                        />
+                        <span className="text-sm">{p}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {equipe.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {equipe.map(p => (
+                  <Badge key={p} variant="secondary" className="text-xs">
+                    {p}
+                    <button
+                      onClick={() => setEquipe(prev => prev.filter(x => x !== p))}
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                    >×</button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <Label>De</Label>
