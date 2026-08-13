@@ -145,13 +145,18 @@ function IncidentesFeed() {
 
   const equipes = useMemo(() => {
     const set = new Set<string>();
+    const deTs = dataDe ? new Date(dataDe + "T00:00:00").getTime() : null;
+    const ateTs = dataAte ? new Date(dataAte + "T23:59:59.999").getTime() : null;
     rows.forEach(r => {
       if (polo !== "all" && r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return;
+      const ts = new Date(r.created_at).getTime();
+      if (deTs != null && ts < deTs) return;
+      if (ateTs != null && ts > ateTs) return;
       const p = (r.prefixo ?? "").trim().toUpperCase();
       if (p) set.add(p);
     });
     return Array.from(set).sort();
-  }, [rows, polo]);
+  }, [rows, polo, dataDe, dataAte]);
 
   return (
     <div className="space-y-4">
