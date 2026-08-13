@@ -49,7 +49,7 @@ function IncidentesFeed() {
   const [tipo, setTipo] = useState<string>("all");
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
-  const [equipe, setEquipe] = useState<string>("all");
+  const [equipe, setEquipe] = useState<string[]>([]);
   const hoje = new Date().toISOString().slice(0, 10);
   const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const [dataDe, setDataDe] = useState<string>(trintaDias);
