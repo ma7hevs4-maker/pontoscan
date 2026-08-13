@@ -47,6 +47,7 @@ function IncidentesFeed() {
   const [tipo, setTipo] = useState<string>("all");
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
+  const [equipe, setEquipe] = useState<string>("all");
   const hoje = new Date().toISOString().slice(0, 10);
   const trintaDias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   const [dataDe, setDataDe] = useState<string>(trintaDias);
@@ -129,6 +130,7 @@ function IncidentesFeed() {
       if (polo !== "all") {
         if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
       }
+      if (equipe !== "all" && (r.prefixo ?? "").trim().toUpperCase() !== equipe) return false;
       const ts = new Date(r.created_at).getTime();
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
@@ -138,7 +140,17 @@ function IncidentesFeed() {
       }
       return true;
     });
-  }, [rows, busca, tipo, origem, polo, dataDe, dataAte, nomes]);
+  }, [rows, busca, tipo, origem, polo, equipe, dataDe, dataAte, nomes]);
+
+  const equipes = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach(r => {
+      if (polo !== "all" && r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return;
+      const p = (r.prefixo ?? "").trim().toUpperCase();
+      if (p) set.add(p);
+    });
+    return Array.from(set).sort();
+  }, [rows, polo]);
 
   return (
     <div className="space-y-4">
@@ -183,6 +195,16 @@ function IncidentesFeed() {
               </Select>
             </div>
           )}
+          <div>
+            <Label>Equipe</Label>
+            <Select value={equipe} onValueChange={setEquipe}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todas</SelectItem>
+                {equipes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>De</Label>
             <Input type="date" value={dataDe} onChange={(e) => setDataDe(e.target.value)} />
