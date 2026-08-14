@@ -197,7 +197,18 @@ function EletricistaPage() {
         </Card>
       </main>
 
-      {formsEnabled && <IncidenteDialog open={incidenteOpen} onOpenChange={setIncidenteOpen} />}
+      {formsEnabled && user && profile && (
+        <IncidenteDialog
+          open={incidenteOpen}
+          onOpenChange={setIncidenteOpen}
+          actor={{
+            mode: "insourcing",
+            userId: user.id,
+            prefixo: provAtivo ?? profile.prefixo,
+            polo: profile.polo,
+          }}
+        />
+      )}
 
       <Dialog open={scanning} onOpenChange={(o) => !o && setScanning(false)}>
         <DialogContent className="max-w-md">
