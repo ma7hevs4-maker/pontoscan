@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { KeyRound, Loader2 } from "lucide-react";
@@ -37,11 +38,11 @@ export function AlterarSenhaDialog() {
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="nv">Nova senha</Label>
-            <Input id="nv" type="password" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" required />
+            <PasswordInput id="nv" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" required />
           </div>
           <div>
             <Label htmlFor="cf">Confirmar nova senha</Label>
-            <Input id="cf" type="password" value={conf} onChange={(e) => setConf(e.target.value)} autoComplete="new-password" required />
+            <PasswordInput id="cf" value={conf} onChange={(e) => setConf(e.target.value)} autoComplete="new-password" required />
           </div>
           <Button type="submit" className="w-full" disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar nova senha"}

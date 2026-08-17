@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -123,7 +124,7 @@ function LoginPage() {
           </div>
           <div>
             <Label htmlFor="pw">Senha</Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordInput id="pw" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
