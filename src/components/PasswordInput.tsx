@@ -19,7 +19,7 @@ export function PasswordInput({ className, label, id, ...props }: PasswordInputP
       />
       <button
         type="button"
-        onClick={() => { console.log("eye click", visible); setVisible(v => !v); }}
+        onClick={() => setVisible(v => !v)}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
         tabIndex={-1}
         aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
