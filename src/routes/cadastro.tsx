@@ -56,7 +56,9 @@ function SignupPage() {
     });
     setLoading(false);
     if (error) {
-      if (error.message.includes("registered")) toast.error("Prefixo já cadastrado");
+      if (error.code === "user_already_exists" || error.message.toLowerCase().includes("registered")) {
+        toast.error("Este colaborador já possui cadastro. Entre com a senha ou solicite uma nova.");
+      }
       else toast.error(error.message);
       return;
     }
