@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart, Settings, Users } from "lucide-react";
+import { AlterarSenhaDialog } from "@/components/AlterarSenhaDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
