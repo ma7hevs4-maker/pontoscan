@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,7 +28,26 @@ function LoginPage() {
   const [parcPrefixo, setParcPrefixo] = useState("");
   const [parcNome, setParcNome] = useState("");
   const [parcEmpresa, setParcEmpresa] = useState<string>("");
+  const [esqOpen, setEsqOpen] = useState(false);
+  const [esqPrefixo, setEsqPrefixo] = useState("");
+  const [esqNome, setEsqNome] = useState("");
+  const [esqSaving, setEsqSaving] = useState(false);
   const navigate = useNavigate();
+
+  const enviarSolicitacao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const p = esqPrefixo.trim().toUpperCase();
+    const n = esqNome.trim();
+    if (!p || !n) return toast.error("Informe prefixo e nome completo");
+    setEsqSaving(true);
+    const { error } = await (supabase as any)
+      .from("solicitacoes_senha")
+      .insert({ prefixo: p, nome: n, status: "PENDENTE" });
+    setEsqSaving(false);
+    if (error) return toast.error("Não foi possível enviar a solicitação");
+    toast.success("Solicitação enviada. Um administrador vai redefinir sua senha.");
+    setEsqPrefixo(""); setEsqNome(""); setEsqOpen(false);
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +128,32 @@ function LoginPage() {
           <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
           </Button>
+          <Dialog open={esqOpen} onOpenChange={setEsqOpen}>
+            <DialogTrigger asChild>
+              <button type="button" className="w-full text-center text-sm font-medium text-primary hover:underline">
+                Esqueci minha senha
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader><DialogTitle>Solicitar nova senha</DialogTitle></DialogHeader>
+              <form onSubmit={enviarSolicitacao} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Envie um pedido para o administrador do seu polo. Ele redefine sua senha e informa a nova.
+                </p>
+                <div>
+                  <Label htmlFor="ep">Prefixo da equipe</Label>
+                  <Input id="ep" value={esqPrefixo} onChange={(e) => setEsqPrefixo(e.target.value)} placeholder="SG010SOE-A" autoCapitalize="characters" required />
+                </div>
+                <div>
+                  <Label htmlFor="en">Nome completo</Label>
+                  <Input id="en" value={esqNome} onChange={(e) => setEsqNome(e.target.value)} required />
+                </div>
+                <Button type="submit" className="w-full" disabled={esqSaving}>
+                  {esqSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar solicitação"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </form>
         ) : (
         <form onSubmit={onSubmitParceira} className="space-y-4">
