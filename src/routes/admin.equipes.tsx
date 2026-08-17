@@ -220,12 +220,15 @@ function EquipesView() {
     });
   }, [equipes, areas, areaFiltro, busca, turno]);
 
-  const kpis = useMemo(() => ({
-    total: equipes.filter(e => e.area !== "INATIVA").length,
-    BT: equipes.filter(e => e.area === "BT").length,
-    MT_RAMAL: equipes.filter(e => e.area === "MT_RAMAL").length,
-    MT_TRONCO: equipes.filter(e => e.area === "MT_TRONCO").length,
-  }), [equipes]);
+  const kpis = useMemo(() => {
+    const base = turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno);
+    return {
+      total: base.filter(e => e.area !== "INATIVA").length,
+      BT: base.filter(e => e.area === "BT").length,
+      MT_RAMAL: base.filter(e => e.area === "MT_RAMAL").length,
+      MT_TRONCO: base.filter(e => e.area === "MT_TRONCO").length,
+    };
+  }, [equipes, turno]);
 
   const setArea = async (e: Equipe, area: Area | "none") => {
     if (area === "none") {
