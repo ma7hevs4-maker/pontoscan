@@ -125,6 +125,38 @@ function ContasPage() {
     } finally { setSearching(false); }
   };
 
+  const [pedidos, setPedidos] = useState<SolicitacaoRow[]>([]);
+  const carregarPedidos = async () => {
+    const { data } = await (supabase as any)
+      .from("solicitacoes_senha")
+      .select("id, prefixo, nome, status, created_at")
+      .eq("status", "PENDENTE")
+      .order("created_at", { ascending: false });
+    setPedidos((data as SolicitacaoRow[]) ?? []);
+  };
+  useEffect(() => { carregarPedidos(); /* eslint-disable-next-line */ }, []);
+
+  const atenderPedido = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from("solicitacoes_senha")
+      .update({ status: "ATENDIDA", atendido_em: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return toast.error("Não foi possível concluir");
+    toast.success("Solicitação concluída");
+    carregarPedidos();
+  };
+
+  const buscarDoPedido = async (p: SolicitacaoRow) => {
+    setQ(p.prefixo);
+    setSearching(true);
+    try {
+      const r = await callAdmin({ action: "search-eletricistas", q: p.prefixo });
+      setResults(r.users ?? []);
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro");
+    } finally { setSearching(false); }
+  };
+
   // Auto-load list for ADMIN_POLO (already scoped server-side)
   useEffect(() => { if (isPolo) runSearch(); /* eslint-disable-next-line */ }, [isPolo]);
 
@@ -132,6 +164,46 @@ function ContasPage() {
 
   return (
     <div className="space-y-6">
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between border-b p-3">
+          <div>
+            <h3 className="font-semibold">Solicitações de senha {pedidos.length > 0 && <span className="ml-1 rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">{pedidos.length}</span>}</h3>
+            <p className="text-xs text-muted-foreground">Pedidos feitos na tela de login por quem não consegue entrar.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={carregarPedidos}>Atualizar</Button>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Prefixo</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pedidos.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">Nenhuma solicitação pendente</TableCell></TableRow>}
+              {pedidos.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell>{p.nome}</TableCell>
+                  <TableCell className="font-mono text-xs">{p.prefixo}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR")}</TableCell>
+                  <TableCell className="space-x-2 text-right">
+                    <Button variant="outline" size="sm" onClick={() => buscarDoPedido(p)}>
+                      <Search className="mr-1 h-3 w-3" />Localizar conta
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => atenderPedido(p.id)}>
+                      <Check className="mr-1 h-3 w-3" />Concluir
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
       {isDispatch && <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b p-3">
           <div>
