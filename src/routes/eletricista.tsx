@@ -157,6 +157,7 @@ function EletricistaPage() {
             </p>
           </div>
           <ScanLine className="h-6 w-6 text-primary" />
+          <AlterarSenhaDialog />
           <Button variant="ghost" size="icon" title="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
             <LogOut className="h-5 w-5" />
           </Button>
