@@ -123,7 +123,7 @@ function LoginPage() {
           </div>
           <div>
             <Label htmlFor="pw">Senha</Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordInput id="pw" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}

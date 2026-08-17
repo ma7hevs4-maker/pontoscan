@@ -325,7 +325,7 @@ function ResetPasswordDialog({ userId, label }: { userId: string; label: string 
         <DialogHeader><DialogTitle>Redefinir senha · {label}</DialogTitle></DialogHeader>
         <div className="space-y-2">
           <Label>Nova senha (mín. 6 caracteres)</Label>
-          <Input type="text" value={pw} onChange={e => setPw(e.target.value)} placeholder="Nova senha" autoComplete="off" />
+          <PasswordInput value={pw} onChange={e => setPw(e.target.value)} placeholder="Nova senha" autoComplete="off" />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
