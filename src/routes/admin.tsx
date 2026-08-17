@@ -133,6 +133,7 @@ function AdminLayout() {
                 </div>
               </DialogContent>
             </Dialog>
+            <AlterarSenhaDialog />
             <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
               <LogOut className="h-5 w-5" />
             </Button>
