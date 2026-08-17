@@ -12,6 +12,7 @@ import { IncidenteDialog } from "@/components/IncidenteDialog";
 import { loadFormsEnabled } from "@/lib/form-config";
 import { getPosition, distanceMeters } from "@/lib/geo";
 import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, UserCog, X, AlertTriangle } from "lucide-react";
+import { AlterarSenhaDialog } from "@/components/AlterarSenhaDialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
@@ -157,6 +158,7 @@ function EletricistaPage() {
             </p>
           </div>
           <ScanLine className="h-6 w-6 text-primary" />
+          <AlterarSenhaDialog />
           <Button variant="ghost" size="icon" title="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
             <LogOut className="h-5 w-5" />
           </Button>

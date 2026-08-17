@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ScanLine, LogOut, BarChart3, MapPin, FileSpreadsheet, Loader2, HelpCircle, ShieldCheck, AlertTriangle, PieChart, Settings, Users } from "lucide-react";
+import { AlterarSenhaDialog } from "@/components/AlterarSenhaDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -133,6 +134,7 @@ function AdminLayout() {
                 </div>
               </DialogContent>
             </Dialog>
+            <AlterarSenhaDialog />
             <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => signOut().then(() => navigate({ to: "/login" }))}>
               <LogOut className="h-5 w-5" />
             </Button>
