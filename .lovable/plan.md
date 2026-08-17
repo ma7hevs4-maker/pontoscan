@@ -1,46 +1,38 @@
-# Construtor de formulários dinâmicos
+# Migrar o banco atual para o seu projeto Supabase
 
-Um ícone de engrenagem no cabeçalho administrativo (apenas para `ADMIN_DISPATCH`) abrirá um modal para gerenciar as perguntas dos formulários de incidentes sem depender de novas modificações no código.
+Objetivo: replicar no SEU projeto Supabase toda a estrutura, os dados e as fotos que hoje existem no banco do PontoScan, mantendo o banco atual funcionando normalmente (nada aqui é apagado).
 
-## Escopo
+## O que será copiado
 
-Para preservar o que já funciona (validação de nº do incidente, GPS, fotos obrigatórias, print de ligação, cruzamento e dash-forms), o construtor gerencia **perguntas extras** anexadas a cada tipo de incidente (`ATENDIMENTO_INDIVIDUAL`, `ORDEM_2`, `IMPRODUTIVO`). O núcleo estruturado dos três formulários continua fixo; o admin adiciona/edita/remove perguntas complementares por tipo.
+1. **Estrutura** — os tipos (polo, etapa, área, tipo de incidente, papéis), as 11 tabelas (`profiles`, `registros`, `bases`, `incidentes`, `equipe_areas`, `equipe_incidentes`, `equipe_membros_override`, `equipe_area_logs`, `form_questions`, `app_settings`, `user_roles`), as 2 views (`vw_registros_admin`, `vw_tempos`), as funções e triggers de validação/log, as permissões (GRANTs) e todas as regras de segurança (RLS).
+2. **Dados** — todas as linhas de todas as tabelas, na ordem correta de dependência (bases e perfis antes de registros e incidentes).
+3. **Storage** — o bucket `incidentes-fotos` (privado) recriado no destino, com todos os arquivos copiados e as políticas de acesso equivalentes.
 
-Tipos de pergunta suportados:
-- **Texto curto** (input)
-- **Texto longo** (textarea)
-- **Escolha única** (radio com opções)
+## Sobre os logins (o ponto da sua dúvida)
 
-Cada pergunta tem: rótulo, chave interna (autogerada a partir do rótulo), tipo, opções (se choice), obrigatória (sim/não), ordem.
+As senhas dos usuários **não podem ser copiadas**: elas ficam em uma área protegida do Supabase à qual nem eu nem você temos acesso de leitura por aqui. Então o caminho é:
 
-## Fluxo do usuário
+- Recrio as contas no seu projeto com o mesmo **e-mail e o mesmo ID interno** de cada usuário. Isso é essencial, porque é esse ID que liga a conta aos perfis, registros e incidentes — sem ele os dados ficariam órfãos.
+- Cada usuário define a senha na primeira entrada (recuperação de senha) — ou, se preferir, eu defino uma senha padrão inicial para todos (por exemplo o padrão de polo + 123 que já usamos) e eles trocam depois.
 
-1. Dispatch clica na engrenagem ao lado dos botões de ajuda/contas no cabeçalho.
-2. Modal abre com abas: **Atendimento Individual · Ordem 2 · Improdutivo**.
-3. Em cada aba: lista de perguntas custom (drag simples via botões ↑/↓), botão "Adicionar pergunta" e edição/exclusão inline.
-4. Salvar persiste no banco. Eletricistas (mobile) e Parceiras passam a ver as perguntas novas imediatamente.
-5. Cards de detalhe do incidente e o dash-forms leem os rótulos corretos a partir dessa configuração.
+Sim, você pode ficar com os **dois bancos ao mesmo tempo**: a cópia não altera nada aqui. O que precisa decidir é qual deles o app passa a usar depois — ver a última seção.
+
+## Como vou fazer
+
+1. Você me envia a **connection string do banco de destino** (Postgres URI do seu projeto) e a **service role key + URL** dele, para as fotos. Guardo tudo como segredo, nunca aparece no código.
+2. Gero o script de estrutura lendo o catálogo do banco atual e aplico no destino.
+3. Exporto os dados tabela a tabela e carrego no destino, conferindo a contagem de linhas de cada uma no final.
+4. Recrio as contas de autenticação (mesmos IDs e e-mails) e depois carrego os perfis e papéis.
+5. Copio os arquivos do bucket e recrio as políticas do storage.
+6. Entrego um **relatório de conferência**: linhas por tabela na origem x no destino, contas criadas e arquivos copiados.
+
+## Depois da cópia
+
+O app hoje aponta para o banco do Lovable Cloud. Apontar o app para o seu projeto é um passo separado (trocar as chaves de conexão), e ele tem efeitos: as ferramentas de banco do Lovable deixam de enxergar o banco em uso e passam a ser gerenciadas por você. Faço isso só se você pedir — por padrão a cópia é só um espelho e o app continua como está.
 
 ## Detalhes técnicos
 
-### Banco
-Nova tabela `public.form_questions`:
-- `tipo tipo_incidente_enum`, `chave text`, `rotulo text`, `campo_tipo text` (`text|textarea|choice`), `opcoes jsonb` (array de strings), `obrigatoria boolean`, `ordem integer`, `ativa boolean`
-- Unique (`tipo`, `chave`)
-- RLS: SELECT aberto para `authenticated` e `anon` (parceira precisa ler sem login); INSERT/UPDATE/DELETE só para `ADMIN_DISPATCH`
-- GRANTs de acordo
-
-### Frontend
-- `src/lib/form-config.ts`: fetch e cache das perguntas custom por tipo.
-- `src/components/admin/FormBuilder.tsx`: modal com abas, editor de perguntas, salvar/reordenar/excluir.
-- `src/routes/admin.tsx`: novo botão engrenagem visível só quando `role === "ADMIN_DISPATCH"`.
-- `src/components/IncidenteDialog.tsx` (eletricista) e `src/routes/parceira.tsx`: após o bloco fixo de cada tipo, renderiza dinamicamente as perguntas custom e as inclui em `dados`.
-- `src/routes/admin.incidentes.tsx` (detalhe) e `src/routes/admin.dash-forms.tsx`: usam os rótulos vindos do banco para exibir e agrupar respostas de perguntas custom (a lógica existente para `ligacaoCliente`, `correlacaoDefeito` etc. continua igual).
-
-### Chaves internas
-Geradas por slugify do rótulo (ex.: "Houve religamento?" → `houveReligamento`), evitando colisões e mantendo compatibilidade com o esquema atual (`dados jsonb`).
-
-## Fora do escopo (por ora)
-- Remover/renomear perguntas fixas dos três formulários.
-- Tipos avançados (data, número, upload de foto extra, condicionais entre perguntas). Podemos adicionar depois.
-- Criar tipos de incidente totalmente novos além dos três existentes.
+- Estrutura extraída via catálogo (`pg_catalog`/`information_schema`) e reescrita como SQL idempotente; sem `pg_dump` (indisponível neste ambiente).
+- Dados via `COPY ... TO STDOUT (CSV)` na origem e `COPY ... FROM STDIN` no destino, com triggers de log/validação desabilitadas durante a carga para preservar timestamps e não gerar logs duplicados.
+- Contas recriadas via Auth Admin API do projeto de destino (`auth.admin.createUser` com `id` e `email_confirm: true`); o trigger `handle_new_user` fica desativado durante a criação para não duplicar perfis.
+- Arquivos do storage baixados com URL assinada na origem e enviados com service role no destino, mantendo os mesmos caminhos, para que a coluna `fotos` de `incidentes` continue válida.
