@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown, User, Trash2 } from "lucide-react";
+import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown, User, Trash2, Check } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/admin/contas")({ component: ContasPage })
 
 interface AdminRow { user_id: string; email: string | null; nome: string; role: string; polo: string | null; }
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }
+interface SolicitacaoRow { id: string; prefixo: string; nome: string; status: string; created_at: string; }
 
 async function callAdmin(body: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
