@@ -1,6 +1,6 @@
 // Comprime imagens no dispositivo antes do upload: reduz drasticamente o uso de storage.
-const MAX_DIM = 1600;
-const QUALITY = 0.7;
+const MAX_DIM = 1280;
+const QUALITY = 0.65;
 
 export async function compressImage(file: File, maxDim = MAX_DIM, quality = QUALITY): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
