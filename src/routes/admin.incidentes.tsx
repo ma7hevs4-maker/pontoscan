@@ -308,13 +308,30 @@ function IncidentesFeed() {
 
 function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: string; onOpen: () => void; isNovo?: boolean }) {
   const [thumb, setThumb] = useState<string | null>(null);
+  const [visivel, setVisivel] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+
+  // Só busca a imagem quando o card entra na tela (economiza tráfego).
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || visivel) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setVisivel(true); io.disconnect(); }
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visivel]);
+
   useEffect(() => {
     let alive = true;
-    if (inc.fotos?.[0]) {
-      signedPhotoUrl(inc.fotos[0]).then(u => { if (alive) setThumb(u); });
+    if (visivel && inc.fotos?.[0]) {
+      // miniatura leve; se a transformação não estiver disponível, cai para o original
+      signedPhotoUrl(inc.fotos[0], 3600, { width: 480, height: 270, quality: 50 })
+        .then(u => u ?? signedPhotoUrl(inc.fotos[0]))
+        .then(u => { if (alive) setThumb(u); });
     }
     return () => { alive = false; };
-  }, [inc.id]);
+  }, [inc.id, visivel]);
 
   const date = new Date(inc.created_at).toLocaleString("pt-BR");
   const gmaps = inc.latitude != null && inc.longitude != null
@@ -324,14 +341,21 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
   return (
     <Card className={`overflow-hidden transition-shadow ${isNovo ? "ring-2 ring-primary shadow-lg" : ""}`}>
       <button onClick={onOpen} className="block w-full text-left">
-        <div className="relative aspect-video bg-muted">
+        <div ref={boxRef} className="relative aspect-video bg-muted">
           {isNovo && (
             <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow">
               <Radio className="h-3 w-3 animate-pulse" /> Novo
             </span>
           )}
           {thumb ? (
-            <img src={thumb} alt="Evidência" className="h-full w-full object-cover" />
+            <img
+              src={thumb}
+              alt="Evidência"
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              onError={() => { if (inc.fotos?.[0]) signedPhotoUrl(inc.fotos[0]).then(u => setThumb(u)); }}
+            />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               {inc.fotos?.length ? <ImgIcon className="h-8 w-8 animate-pulse" /> : <ImageOff className="h-8 w-8" />}
