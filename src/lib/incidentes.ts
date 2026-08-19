@@ -47,7 +47,23 @@ export const TIPO_LABEL: Record<string, string> = {
   IMPRODUTIVO: "Improdutivo",
 };
 
-export async function signedPhotoUrl(path: string, expiresIn = 3600): Promise<string | null> {
-  const { data } = await supabase.storage.from("incidentes-fotos").createSignedUrl(path, expiresIn);
-  return data?.signedUrl ?? null;
+// Cache de URLs assinadas para evitar baixar a mesma foto várias vezes
+// (URL nova = query string nova = novo download, sem cache do browser).
+const urlCache = new Map<string, { url: string; exp: number }>();
+
+export async function signedPhotoUrl(
+  path: string,
+  expiresIn = 3600,
+  transform?: { width: number; height?: number; quality?: number },
+): Promise<string | null> {
+  const key = transform ? `${path}@${transform.width}x${transform.height ?? 0}q${transform.quality ?? 0}` : path;
+  const hit = urlCache.get(key);
+  if (hit && hit.exp > Date.now() + 60_000) return hit.url;
+
+  const { data } = await supabase.storage
+    .from("incidentes-fotos")
+    .createSignedUrl(path, expiresIn, transform ? { transform: { ...transform, resize: "cover" } } : undefined);
+  const url = data?.signedUrl ?? null;
+  if (url) urlCache.set(key, { url, exp: Date.now() + expiresIn * 1000 });
+  return url;
 }
