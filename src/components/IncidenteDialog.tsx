@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
 import { loadFormQuestions, type FormQuestion, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
+import { compressImages } from "@/lib/image-compress";
 
 type TipoIncidente = TipoIncidenteConfig;
 
@@ -293,10 +294,12 @@ function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (fot
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
 
-  const add = (list: FileList | null) => {
+  const add = async (list: FileList | null) => {
     if (!list) return;
     const arr = Array.from(list).filter(f => f.type.startsWith("image/"));
-    onChange([...fotos, ...arr]);
+    if (!arr.length) return;
+    const comp = await compressImages(arr);
+    onChange([...fotos, ...comp]);
   };
   const remove = (i: number) => onChange(fotos.filter((_, idx) => idx !== i));
 
@@ -341,10 +344,12 @@ function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (fot
 
 function PrintLigacaoPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
   const albumRef = useRef<HTMLInputElement>(null);
-  const add = (list: FileList | null) => {
+  const add = async (list: FileList | null) => {
     if (!list) return;
     const arr = Array.from(list).filter(f => f.type.startsWith("image/"));
-    onChange([...fotos, ...arr]);
+    if (!arr.length) return;
+    const comp = await compressImages(arr);
+    onChange([...fotos, ...comp]);
   };
   const remove = (i: number) => onChange(fotos.filter((_, idx) => idx !== i));
   const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
