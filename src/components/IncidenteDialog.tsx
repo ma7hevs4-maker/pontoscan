@@ -113,45 +113,75 @@ async function submitIncidente(args: {
   if (iErr) throw new Error(iErr.message);
 }
 
+const FOTOS_LABEL: Record<string, string> = {
+  ATENDIMENTO_INDIVIDUAL: "Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)",
+  ORDEM_2: "Registro Fotográfico",
+  IMPRODUTIVO: "Evidência Fotográfica",
+};
+
+function iconeTipo(chave: string) {
+  if (chave === "ORDEM_2") return <Users className="h-6 w-6" />;
+  if (chave === "IMPRODUTIVO") return <MinusCircle className="h-6 w-6" />;
+  return <User className="h-6 w-6" />;
+}
+
 export function IncidenteDialog({ open, onOpenChange, actor: actorProp }: { open: boolean; onOpenChange: (o: boolean) => void; actor?: IncidenteActor }) {
   const [tipo, setTipo] = useState<TipoIncidente | null>(null);
+  const [tipos, setTipos] = useState<FormTipo[]>([]);
   const auth = useAuth();
   const actor: IncidenteActor | null = actorProp
     ?? (auth.user && auth.profile
       ? { mode: "insourcing", userId: auth.user.id, prefixo: auth.profile.prefixo, polo: auth.profile.polo }
       : null);
 
+  useEffect(() => {
+    if (!open) return;
+    loadFormTipos(true).then(setTipos).catch(() => setTipos([]));
+  }, [open]);
+
   const reset = () => setTipo(null);
   const close = () => { onOpenChange(false); setTimeout(reset, 300); };
+  const tipoSel = tipos.find((t) => t.chave === tipo);
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         {!actor ? (
           <p className="text-sm text-muted-foreground">Sessão indisponível.</p>
-        ) : !tipo ? (
+        ) : !tipo || !tipoSel ? (
           <>
             <DialogHeader>
               <DialogTitle>Registrar incidente</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">Selecione o tipo de atendimento:</p>
             <div className="grid gap-3">
-              <TipoButton icon={<User className="h-6 w-6" />} label="Atendimento Individual" onClick={() => setTipo("ATENDIMENTO_INDIVIDUAL")} />
-              <TipoButton icon={<Users className="h-6 w-6" />} label="Ordem 2" onClick={() => setTipo("ORDEM_2")} />
-              <TipoButton icon={<MinusCircle className="h-6 w-6" />} label="Improdutivo" onClick={() => setTipo("IMPRODUTIVO")} />
+              {tipos.map((t) => (
+                <TipoButton key={t.chave} icon={iconeTipo(t.chave)} label={t.rotulo} onClick={() => setTipo(t.chave)} />
+              ))}
+              {tipos.length === 0 && (
+                <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  Nenhum tipo de incidente disponível.
+                </p>
+              )}
             </div>
           </>
-        ) : tipo === "ATENDIMENTO_INDIVIDUAL" ? (
-          <AtendimentoIndividualForm actor={actor} onBack={reset} onDone={close} />
-        ) : tipo === "ORDEM_2" ? (
-          <Ordem2Form actor={actor} onBack={reset} onDone={close} />
-        ) : tipo === "IMPRODUTIVO" ? (
-          <ImprodutivoForm actor={actor} onBack={reset} onDone={close} />
-        ) : null}
+        ) : (
+          <DynamicForm
+            tipo={tipoSel.chave}
+            title={tipoSel.rotulo}
+            fotosLabel={FOTOS_LABEL[tipoSel.chave] ?? "Registro Fotográfico"}
+            successMsg={(n) => `${tipoSel.rotulo} ${n} registrado`}
+            actor={actor}
+            onBack={reset}
+            onDone={close}
+            withLigacaoCliente={tipoSel.chave === "IMPRODUTIVO"}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function TipoButton({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
   return (
