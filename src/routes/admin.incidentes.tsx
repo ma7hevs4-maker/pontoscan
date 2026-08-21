@@ -14,6 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio, ChevronDown } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
 import { loadFormTipos, type FormTipo } from "@/lib/form-config";
+
+let TIPOS_CACHE: FormTipo[] = [];
+function rotuloTipo(chave: string): string {
+  return TIPOS_CACHE.find((t) => t.chave === chave)?.rotulo ?? TIPO_LABEL[chave] ?? chave;
+}
 import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
@@ -79,6 +84,9 @@ function IncidentesFeed() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadFormTipos().then((ts) => { TIPOS_CACHE = ts; setTiposForm(ts); }).catch(() => {});
+  }, []);
 
   // Realtime
   useEffect(() => {
@@ -377,7 +385,7 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
             </Badge>
           </div>
           <div className="text-xs text-muted-foreground">
-            <p><b>{(tiposForm.find(t=>t.chave===inc.tipo)?.rotulo ?? TIPO_LABEL[inc.tipo] ?? inc.tipo)}</b></p>
+            <p><b>{rotuloTipo(inc.tipo)}</b></p>
             <p>Colaborador: <span className="font-medium text-foreground">{nome ?? "—"}</span></p>
             <p>Equipe: <span className="font-mono">{inc.prefixo}</span></p>
             <p>{date}</p>
@@ -422,7 +430,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
     <Dialog open={!!inc} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{(tiposForm.find(t=>t.chave===inc.tipo)?.rotulo ?? TIPO_LABEL[inc.tipo] ?? inc.tipo)} · {inc.numero_incidente}</DialogTitle>
+          <DialogTitle>{rotuloTipo(inc.tipo)} · {inc.numero_incidente}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
@@ -556,7 +564,7 @@ function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
     const nome = i.usuario_id ? nomes[i.usuario_id] : (i.nome_colaborador ?? "");
     const base = [
       new Date(i.created_at).toLocaleString("pt-BR"),
-      (tiposForm.find(t=>t.chave===i.tipo)?.rotulo ?? TIPO_LABEL[i.tipo] ?? i.tipo),
+      rotuloTipo(i.tipo),
       i.numero_incidente,
       i.origem,
       i.parceira ?? "",
