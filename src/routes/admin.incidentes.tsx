@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin, ImageOff, Image as ImgIcon, Download, Radio, ChevronDown } from "lucide-react";
 import { TIPO_LABEL, signedPhotoUrl } from "@/lib/incidentes";
+import { loadFormTipos, type FormTipo } from "@/lib/form-config";
 import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
@@ -27,7 +28,7 @@ type Incidente = {
   polo_prefixo: string | null;
   polo_geo: string | null;
   origem: "INSOURCING" | "PARCEIRA";
-  tipo: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+  tipo: string;
   numero_incidente: string;
   latitude: number | null;
   longitude: number | null;
@@ -47,6 +48,7 @@ function IncidentesFeed() {
   const [aoVivo, setAoVivo] = useState(false);
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<string>("all");
+  const [tiposForm, setTiposForm] = useState<FormTipo[]>([]);
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
   const [equipe, setEquipe] = useState<string[]>([]);
@@ -172,9 +174,9 @@ function IncidentesFeed() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>
-                <SelectItem value="ORDEM_2">Ordem 2</SelectItem>
-                <SelectItem value="IMPRODUTIVO">Improdutivo</SelectItem>
+                {tiposForm.map((t) => (
+                  <SelectItem key={t.chave} value={t.chave}>{t.rotulo}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -375,7 +377,7 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
             </Badge>
           </div>
           <div className="text-xs text-muted-foreground">
-            <p><b>{TIPO_LABEL[inc.tipo]}</b></p>
+            <p><b>{(tiposForm.find(t=>t.chave===inc.tipo)?.rotulo ?? TIPO_LABEL[inc.tipo] ?? inc.tipo)}</b></p>
             <p>Colaborador: <span className="font-medium text-foreground">{nome ?? "—"}</span></p>
             <p>Equipe: <span className="font-mono">{inc.prefixo}</span></p>
             <p>{date}</p>
@@ -420,7 +422,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
     <Dialog open={!!inc} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{TIPO_LABEL[inc.tipo]} · {inc.numero_incidente}</DialogTitle>
+          <DialogTitle>{(tiposForm.find(t=>t.chave===inc.tipo)?.rotulo ?? TIPO_LABEL[inc.tipo] ?? inc.tipo)} · {inc.numero_incidente}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
@@ -554,7 +556,7 @@ function exportarCSV(incidentes: Incidente[], nomes: Record<string, string>) {
     const nome = i.usuario_id ? nomes[i.usuario_id] : (i.nome_colaborador ?? "");
     const base = [
       new Date(i.created_at).toLocaleString("pt-BR"),
-      TIPO_LABEL[i.tipo],
+      (tiposForm.find(t=>t.chave===i.tipo)?.rotulo ?? TIPO_LABEL[i.tipo] ?? i.tipo),
       i.numero_incidente,
       i.origem,
       i.parceira ?? "",
