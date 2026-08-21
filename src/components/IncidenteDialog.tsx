@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
-import { loadFormQuestions, type FormQuestion, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
+import { loadFormQuestions, loadFormTipos, type FormQuestion, type FormTipo, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
 import { compressImages } from "@/lib/image-compress";
 
 type TipoIncidente = TipoIncidenteConfig;
@@ -197,21 +197,6 @@ function TipoButton({ icon, label, onClick, disabled }: { icon: React.ReactNode;
   );
 }
 
-/* ---------- Atendimento Individual (data-driven) ---------- */
-
-function AtendimentoIndividualForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  return (
-    <DynamicForm
-      tipo="ATENDIMENTO_INDIVIDUAL"
-      title="Atendimento Individual"
-      fotosLabel="Insira as evidências (foto do medidor, conexões dos bornes, conexão na rede, etc)"
-      successMsg={(n) => `Incidente ${n} registrado`}
-      actor={actor}
-      onBack={onBack}
-      onDone={onDone}
-    />
-  );
-}
 
 function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
   for (const q of qs) {
@@ -426,36 +411,6 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
   );
 }
 
-/* ---------- Ordem 2 & Improdutivo (data-driven) ---------- */
-
-function Ordem2Form({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  return (
-    <DynamicForm
-      tipo="ORDEM_2"
-      title="Ordem 2"
-      fotosLabel="Registro Fotográfico"
-      successMsg={(n) => `Ordem 2 ${n} registrada`}
-      actor={actor}
-      onBack={onBack}
-      onDone={onDone}
-    />
-  );
-}
-
-function ImprodutivoForm({ actor, onBack, onDone }: { actor: IncidenteActor; onBack: () => void; onDone: () => void }) {
-  return (
-    <DynamicForm
-      tipo="IMPRODUTIVO"
-      title="Improdutivo"
-      fotosLabel="Evidência Fotográfica"
-      successMsg={(n) => `Improdutivo ${n} registrado`}
-      actor={actor}
-      onBack={onBack}
-      onDone={onDone}
-      withLigacaoCliente
-    />
-  );
-}
 
 function DynamicForm({
   tipo, title, fotosLabel, successMsg, actor, onBack, onDone, withLigacaoCliente,
