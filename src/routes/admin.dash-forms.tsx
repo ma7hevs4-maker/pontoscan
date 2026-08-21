@@ -11,6 +11,7 @@ import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { TIPO_LABEL } from "@/lib/incidentes";
 import { useAuth } from "@/lib/auth-context";
+import { loadAllFormQuestions, loadFormTipos, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
 
@@ -135,9 +136,24 @@ function DashForms() {
         .order("created_at", { ascending: false })
         .limit(5000);
       setRows((data as Row[]) ?? []);
+      const [ts, qs] = await Promise.all([loadFormTipos(true), loadAllFormQuestions()]);
+      setTipos(ts);
+      setAllQs(qs);
+      setTipo((prev) => (ts.some((t) => t.chave === prev) ? prev : ts[0]?.chave ?? prev));
       setLoading(false);
     })();
   }, []);
+
+  const fieldDefs = useMemo<FieldDef[]>(() => {
+    const base = FIELDS[tipo] ? [...FIELDS[tipo]] : [];
+    const seen = new Set(base.map((f) => f.key));
+    for (const q of allQs[tipo] ?? []) {
+      if (q.campo_tipo !== "choice" || seen.has(q.chave)) continue;
+      base.push({ key: q.chave, label: q.rotulo, outroKey: q.permite_outro ? `${q.chave}Outro` : undefined });
+      seen.add(q.chave);
+    }
+    return base;
+  }, [tipo, allQs]);
 
   const filtradas = useMemo(() => {
     const deTs = new Date(de + "T00:00:00").getTime();
