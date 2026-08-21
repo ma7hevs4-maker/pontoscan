@@ -129,14 +129,11 @@ export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, Form
     .from("form_questions")
     .select("*")
     .order("ordem", { ascending: true });
-  const out: Record<TipoIncidente, FormQuestion[]> = {
-    ATENDIMENTO_INDIVIDUAL: [],
-    ORDEM_2: [],
-    IMPRODUTIVO: [],
-  };
+  const out: Record<TipoIncidente, FormQuestion[]> = {};
   for (const r of ((data as any[]) ?? [])) {
     const q: FormQuestion = { ...r, permite_outro: !!r.permite_outro, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
-    if (out[q.tipo]) out[q.tipo].push(q);
+    (out[q.tipo] ??= []).push(q);
   }
+
   return out;
 }
