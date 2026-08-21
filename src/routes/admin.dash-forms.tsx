@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
-import { TIPO_LABEL } from "@/lib/incidentes";
+
 import { useAuth } from "@/lib/auth-context";
+import { loadAllFormQuestions, loadFormTipos, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
 
@@ -79,7 +80,7 @@ function exportarCSVPorPolo(tipo: string, charts: { field: { label: string }; po
 }
 
 type Row = {
-  tipo: "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+  tipo: string;
   dados: Record<string, any>;
   created_at: string;
   origem: "INSOURCING" | "PARCEIRA";
@@ -90,7 +91,7 @@ type Row = {
 
 type FieldDef = { key: string; label: string; outroKey?: string };
 
-const FIELDS: Record<Row["tipo"], FieldDef[]> = {
+const FIELDS: Record<string, FieldDef[]> = {
   ATENDIMENTO_INDIVIDUAL: [
     { key: "tipoRede", label: "Tipo de Rede", outroKey: "tipoRedeOutro" },
     { key: "tipoConexao", label: "Tipo de Conexão", outroKey: "tipoConexaoOutro" },
@@ -115,7 +116,9 @@ function DashForms() {
   const { role } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tipo, setTipo] = useState<Row["tipo"]>("ATENDIMENTO_INDIVIDUAL");
+  const [tipo, setTipo] = useState<string>("ATENDIMENTO_INDIVIDUAL");
+  const [tipos, setTipos] = useState<FormTipo[]>([]);
+  const [allQs, setAllQs] = useState<Record<string, FormQuestion[]>>({});
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
   const [porPolo, setPorPolo] = useState(false);
@@ -133,9 +136,24 @@ function DashForms() {
         .order("created_at", { ascending: false })
         .limit(5000);
       setRows((data as Row[]) ?? []);
+      const [ts, qs] = await Promise.all([loadFormTipos(true), loadAllFormQuestions()]);
+      setTipos(ts);
+      setAllQs(qs);
+      setTipo((prev) => (ts.some((t) => t.chave === prev) ? prev : ts[0]?.chave ?? prev));
       setLoading(false);
     })();
   }, []);
+
+  const fieldDefs = useMemo<FieldDef[]>(() => {
+    const base = FIELDS[tipo] ? [...FIELDS[tipo]] : [];
+    const seen = new Set(base.map((f) => f.key));
+    for (const q of allQs[tipo] ?? []) {
+      if (q.campo_tipo !== "choice" || seen.has(q.chave)) continue;
+      base.push({ key: q.chave, label: q.rotulo, outroKey: q.permite_outro ? `${q.chave}Outro` : undefined });
+      seen.add(q.chave);
+    }
+    return base;
+  }, [tipo, allQs]);
 
   const filtradas = useMemo(() => {
     const deTs = new Date(de + "T00:00:00").getTime();
@@ -152,7 +170,7 @@ function DashForms() {
   }, [rows, tipo, origem, polo, de, ate]);
 
   const charts = useMemo(() => {
-    return FIELDS[tipo].map(f => {
+    return fieldDefs.map(f => {
       const counts: Record<string, number> = {};
       for (const r of filtradas) {
         let val = r.dados?.[f.key];
@@ -172,7 +190,7 @@ function DashForms() {
   }, [filtradas, tipo]);
 
   const chartsPorPolo = useMemo(() => {
-    return FIELDS[tipo].map(f => {
+    return fieldDefs.map(f => {
       const rowsByResp: Record<string, Record<string, number>> = {};
       const polosSet = new Set<string>();
       for (const r of filtradas) {
@@ -204,11 +222,11 @@ function DashForms() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
             <Label className="text-xs">Tipo</Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as Row["tipo"])}>
+            <Select value={tipo} onValueChange={setTipo}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(Object.keys(FIELDS) as Row["tipo"][]).map(t => (
-                  <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>
+                {tipos.map(t => (
+                  <SelectItem key={t.chave} value={t.chave}>{t.rotulo}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

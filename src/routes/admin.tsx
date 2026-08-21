@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FormBuilder } from "@/components/admin/FormBuilder";
+import { loadFormsEnabled } from "@/lib/form-config";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -16,6 +17,22 @@ function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [formsEnabled, setFormsEnabled] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    const carregar = () => loadFormsEnabled().then((v) => { if (alive) setFormsEnabled(v); }).catch(() => {});
+    carregar();
+    const id = setInterval(carregar, 60000);
+    return () => { alive = false; clearInterval(id); };
+  }, [builderOpen]);
+
+  useEffect(() => {
+    if (formsEnabled) return;
+    if (location.pathname.startsWith("/admin/incidentes") || location.pathname.startsWith("/admin/dash-forms")) {
+      navigate({ to: "/admin" });
+    }
+  }, [formsEnabled, location.pathname, navigate]);
 
   useEffect(() => {
     if (loading) return;
@@ -71,10 +88,14 @@ function AdminLayout() {
     { to: "/admin/equipes", label: "Equipes", icon: Users },
     { to: "/admin", label: "Registros", icon: FileSpreadsheet, exact: true },
     { to: "/admin/metricas", label: "Métricas", icon: BarChart3 },
-    { to: "/admin/incidentes", label: "Incidentes", icon: AlertTriangle },
-    { to: "/admin/dash-forms", label: "Dash Forms", icon: PieChart },
     { to: "/admin/bases", label: "Bases & QR", icon: MapPin },
   ];
+  if (formsEnabled) {
+    tabs.splice(3, 0,
+      { to: "/admin/incidentes", label: "Incidentes", icon: AlertTriangle },
+      { to: "/admin/dash-forms", label: "Dash Forms", icon: PieChart },
+    );
+  }
   if (role === "ADMIN_DISPATCH" || role === "ADMIN_POLO") {
     tabs.push({ to: "/admin/contas", label: "Contas", icon: ShieldCheck } as any);
   }

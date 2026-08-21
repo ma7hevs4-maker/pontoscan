@@ -15,7 +15,17 @@ const PREFIX_MAP: Record<string, string> = {
 };
 
 const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELLCA", "Ceneged"];
-const TIPOS = ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"];
+const TIPOS_BUILTIN = ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"];
+
+async function tipoValido(tipo: string): Promise<boolean> {
+  if (!tipo || tipo.length > 48) return false;
+  const { data, error } = await (supabaseAdmin as any)
+    .from("form_tipos")
+    .select("chave")
+    .eq("ativo", true);
+  if (error || !data?.length) return TIPOS_BUILTIN.includes(tipo);
+  return (data as any[]).some((t) => t.chave === tipo);
+}
 
 function poloFromPrefixo(prefixo: string): string | null {
   const p = (prefixo ?? "").trim().toUpperCase().slice(0, 2);
@@ -69,7 +79,7 @@ export const Route = createFileRoute("/api/public/incidente-parceira")({
         if (!prefixo || prefixo.length > 32) return new Response("Prefixo inválido", { status: 400 });
         if (!nome || nome.length > 120) return new Response("Nome inválido", { status: 400 });
         if (!PARCEIRAS.includes(parceira)) return new Response("Parceira inválida", { status: 400 });
-        if (!TIPOS.includes(tipo)) return new Response("Tipo inválido", { status: 400 });
+        if (!(await tipoValido(tipo))) return new Response("Tipo inválido", { status: 400 });
         if (!/^[A-Z0-9]{10}$/.test(numero)) return new Response("Nº incidente inválido", { status: 400 });
         if (fotos.length === 0 || fotos.length > 20) return new Response("Fotos inválidas", { status: 400 });
 

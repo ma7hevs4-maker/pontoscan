@@ -1,7 +1,60 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type CampoTipo = "text" | "textarea" | "choice";
-export type TipoIncidente = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
+export type TipoIncidente = string;
+
+export interface FormTipo {
+  chave: string;
+  rotulo: string;
+  ordem: number;
+  ativo: boolean;
+  builtin: boolean;
+}
+
+export const TIPOS_BUILTIN: FormTipo[] = [
+  { chave: "ATENDIMENTO_INDIVIDUAL", rotulo: "Atendimento Individual", ordem: 0, ativo: true, builtin: true },
+  { chave: "ORDEM_2", rotulo: "Ordem 2", ordem: 1, ativo: true, builtin: true },
+  { chave: "IMPRODUTIVO", rotulo: "Improdutivo", ordem: 2, ativo: true, builtin: true },
+];
+
+export async function loadFormTipos(apenasAtivos = false): Promise<FormTipo[]> {
+  const { data, error } = await (supabase as any)
+    .from("form_tipos")
+    .select("*")
+    .order("ordem", { ascending: true });
+  if (error || !data?.length) return TIPOS_BUILTIN;
+  const list = (data as any[]).map((r) => ({
+    chave: r.chave as string,
+    rotulo: r.rotulo as string,
+    ordem: r.ordem as number,
+    ativo: !!r.ativo,
+    builtin: !!r.builtin,
+  }));
+  return apenasAtivos ? list.filter((t) => t.ativo) : list;
+}
+
+export function slugifyTipoChave(rotulo: string): string {
+  const base = rotulo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toUpperCase();
+  return (base || "TIPO").slice(0, 48);
+}
+
+export async function upsertFormTipo(t: { chave: string; rotulo: string; ordem: number; ativo: boolean }): Promise<void> {
+  const { error } = await (supabase as any).from("form_tipos").upsert(t, { onConflict: "chave" });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteFormTipo(chave: string): Promise<void> {
+  const { error: e1 } = await (supabase as any).from("form_questions").delete().eq("tipo", chave);
+  if (e1) throw new Error(e1.message);
+  const { error } = await (supabase as any).from("form_tipos").delete().eq("chave", chave);
+  if (error) throw new Error(error.message);
+}
+
 
 export interface FormQuestion {
   id: string;
@@ -76,14 +129,11 @@ export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, Form
     .from("form_questions")
     .select("*")
     .order("ordem", { ascending: true });
-  const out: Record<TipoIncidente, FormQuestion[]> = {
-    ATENDIMENTO_INDIVIDUAL: [],
-    ORDEM_2: [],
-    IMPRODUTIVO: [],
-  };
+  const out: Record<TipoIncidente, FormQuestion[]> = {};
   for (const r of ((data as any[]) ?? [])) {
     const q: FormQuestion = { ...r, permite_outro: !!r.permite_outro, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
-    if (out[q.tipo]) out[q.tipo].push(q);
+    (out[q.tipo] ??= []).push(q);
   }
+
   return out;
 }
