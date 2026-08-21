@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
-import { TIPO_LABEL } from "@/lib/incidentes";
+
 import { useAuth } from "@/lib/auth-context";
 import { loadAllFormQuestions, loadFormTipos, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
