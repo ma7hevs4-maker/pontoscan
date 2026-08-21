@@ -228,7 +228,7 @@ export type Database = {
           ordem: number
           permite_outro: boolean
           rotulo: string
-          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -242,7 +242,7 @@ export type Database = {
           ordem?: number
           permite_outro?: boolean
           rotulo: string
-          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo: string
           updated_at?: string
         }
         Update: {
@@ -256,8 +256,35 @@ export type Database = {
           ordem?: number
           permite_outro?: boolean
           rotulo?: string
-          tipo?: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      form_tipos: {
+        Row: {
+          ativo: boolean
+          builtin: boolean
+          chave: string
+          created_at: string
+          ordem: number
+          rotulo: string
+        }
+        Insert: {
+          ativo?: boolean
+          builtin?: boolean
+          chave: string
+          created_at?: string
+          ordem?: number
+          rotulo: string
+        }
+        Update: {
+          ativo?: boolean
+          builtin?: boolean
+          chave?: string
+          created_at?: string
+          ordem?: number
+          rotulo?: string
         }
         Relationships: []
       }
@@ -277,7 +304,7 @@ export type Database = {
           polo_geo: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo: Database["public"]["Enums"]["polo_enum"] | null
           prefixo: string
-          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo: string
           usuario_id: string | null
         }
         Insert: {
@@ -295,7 +322,7 @@ export type Database = {
           polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null
           prefixo: string
-          tipo: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo: string
           usuario_id?: string | null
         }
         Update: {
@@ -313,7 +340,7 @@ export type Database = {
           polo_geo?: Database["public"]["Enums"]["polo_enum"] | null
           polo_prefixo?: Database["public"]["Enums"]["polo_enum"] | null
           prefixo?: string
-          tipo?: Database["public"]["Enums"]["tipo_incidente_enum"]
+          tipo?: string
           usuario_id?: string | null
         }
         Relationships: []
