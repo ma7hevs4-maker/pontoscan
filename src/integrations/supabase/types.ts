@@ -226,6 +226,8 @@ export type Database = {
           obrigatoria: boolean
           opcoes: Json
           ordem: number
+          parent_chave: string | null
+          parent_valores: Json
           permite_outro: boolean
           rotulo: string
           tipo: string
@@ -240,6 +242,8 @@ export type Database = {
           obrigatoria?: boolean
           opcoes?: Json
           ordem?: number
+          parent_chave?: string | null
+          parent_valores?: Json
           permite_outro?: boolean
           rotulo: string
           tipo: string
@@ -254,6 +258,8 @@ export type Database = {
           obrigatoria?: boolean
           opcoes?: Json
           ordem?: number
+          parent_chave?: string | null
+          parent_valores?: Json
           permite_outro?: boolean
           rotulo?: string
           tipo?: string
