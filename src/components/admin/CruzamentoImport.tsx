@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, type Polo } from "@/lib/incidentes";
@@ -127,7 +129,16 @@ export function CruzamentoImport({
     setFileName(f.name);
     try {
       const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      let wb: XLSX.WorkBook;
+      if (/\.csv$/i.test(f.name) || f.type === "text/csv") {
+        let text = new TextDecoder("utf-8").decode(buf);
+        if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buf);
+        const head = text.split(/\r?\n/)[0] ?? "";
+        const FS = head.split(";").length > head.split(",").length ? ";" : ",";
+        wb = XLSX.read(text, { type: "string", FS, raw: false, cellDates: true });
+      } else {
+        wb = XLSX.read(buf, { type: "array", cellDates: true });
+      }
       const ws = wb.Sheets[wb.SheetNames[0]];
       const matrix = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" }) as any[][];
       if (!matrix.length) throw new Error("Planilha vazia.");
@@ -319,6 +330,37 @@ export function CruzamentoImport({
 
   const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
 
+  // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
+  const porPolo = useMemo(() => {
+    type Row = {
+      polo: string; planilha: number; sistema: number; faltando: number;
+      falta_ATENDIMENTO_INDIVIDUAL: number; falta_ORDEM_2: number; falta_IMPRODUTIVO: number;
+      aderencia: number;
+    };
+    const map = new Map<string, Row>();
+    const get = (p: string) =>
+      map.get(p) ?? (map.set(p, {
+        polo: p, planilha: 0, sistema: 0, faltando: 0,
+        falta_ATENDIMENTO_INDIVIDUAL: 0, falta_ORDEM_2: 0, falta_IMPRODUTIVO: 0, aderencia: 0,
+      }), map.get(p)!);
+
+    for (const l of linhasEscopo) {
+      const r = get(l.polo ?? "Sem polo");
+      r.planilha++;
+      if (!sistemaMap.has(l.numero)) {
+        r.faltando++;
+        if (l.tipo) r[`falta_${l.tipo}` as const]++;
+      }
+    }
+    for (const i of incidentesEscopo) {
+      const r = get(poloFromPrefixo(i.prefixo) ?? "Sem polo");
+      r.sistema++;
+    }
+    return Array.from(map.values())
+      .map((r) => ({ ...r, aderencia: r.planilha ? Math.round(((r.planilha - r.faltando) / r.planilha) * 100) : 0 }))
+      .sort((a, b) => b.faltando - a.faltando || b.planilha - a.planilha);
+  }, [linhasEscopo, incidentesEscopo, sistemaMap]);
+
   const abrirSistema = (equipe: string) => {
     const lista = incidentesEscopo.filter((i) => normUp(i.prefixo) === equipe);
     setDrill({
@@ -371,7 +413,7 @@ export function CruzamentoImport({
 
           <div className="space-y-4 text-sm">
             <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              Envie um arquivo <b>.xlsx</b> com as colunas <b>Número</b>, <b>Equipe desl.</b>, <b>Causa</b>, <b>Cli Af Max</b>, <b>NT</b>, <b>Ord 2</b>, <b>Observação</b> e <b>Data Início</b>. O tipo é deduzido automaticamente: Ordem 2 (coluna Ord 2 = Sim ou menção na observação), Improdutivo (causa da lista padrão) e Atendimento Individual (Cli Af Max = 1 e NT = BT).
+              Envie um arquivo <b>.xlsx</b> ou <b>.csv</b> com as colunas <b>Número</b>, <b>Equipe desl.</b>, <b>Causa</b>, <b>Cli Af Max</b>, <b>NT</b>, <b>Ord 2</b>, <b>Observação</b> e <b>Data Início</b>. O tipo é deduzido automaticamente: Ordem 2 (coluna Ord 2 = Sim ou menção na observação), Improdutivo (causa da lista padrão) e Atendimento Individual (Cli Af Max = 1 e NT = BT).
               <br />
               Comparando com {incidentesEscopo.length} de {incidentes.length} incidentes do período {dataDe || "—"} a {dataAte || "—"}.
               {role !== "ADMIN_DISPATCH" && adminPolo && (
@@ -383,7 +425,7 @@ export function CruzamentoImport({
               <input
                 ref={inputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv,text/csv"
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
               />
@@ -450,6 +492,70 @@ export function CruzamentoImport({
                   <StatCard label="Com divergência" value={divergencias.length} tone="warn" />
                 </div>
 
+                <Tabs defaultValue="polos">
+                  <TabsList>
+                    <TabsTrigger value="polos">Diagnóstico por polo</TabsTrigger>
+                    <TabsTrigger value="equipes">Detalhamento</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="polos" className="space-y-4">
+                    <Section
+                      title="Preenchimento do PontoScan por polo"
+                      desc="Compara o que existe na planilha com o que foi registrado no PontoScan, por tipo. “Faltando” = incidentes da planilha sem registro correspondente no sistema."
+                    >
+                      <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ fontSize: 12 }} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Bar dataKey="planilha" name="Planilha" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(var(--primary) / 0.45)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Section>
+
+                    <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
+                      <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ fontSize: 12 }} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(var(--primary))" />
+                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)" />
+                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Section>
+
+                    <Section title={`Tabela por polo (${porPolo.length})`} desc="Aderência = registros no PontoScan ÷ registros na planilha.">
+                      {porPolo.length === 0 ? (
+                        <Empty>Sem dados no escopo atual.</Empty>
+                      ) : (
+                        <Tabela
+                          headers={[
+                            "Polo", "Planilha", "PontoScan", "Faltando",
+                            "Falta At. Individual", "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                          ]}
+                          rows={porPolo.map((p) => [
+                            p.polo, p.planilha, p.sistema, p.faltando,
+                            p.falta_ATENDIMENTO_INDIVIDUAL, p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            `${p.aderencia}%`,
+                          ])}
+                        />
+                      )}
+                    </Section>
+                  </TabsContent>
+
+                  <TabsContent value="equipes" className="space-y-4">
                 <Section
                   title={`Quantidade por equipe (${porEquipe.length})`}
                   desc="Clique em uma quantidade para ver os incidentes correspondentes. Diferença positiva indica registros que a equipe deveria ter feito no sistema e não fez."
@@ -566,6 +672,8 @@ export function CruzamentoImport({
                     />
                   )}
                 </Section>
+                </TabsContent>
+                </Tabs>
               </>
             )}
           </div>
