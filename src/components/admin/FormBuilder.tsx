@@ -267,6 +267,19 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
           <Switch checked={formsEnabled} disabled={togglingForms || loading} onCheckedChange={toggleForms} />
         </div>
 
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Fotos nos incidentes</p>
+            <p className="text-xs text-muted-foreground">
+              {fotosEnabled
+                ? "Ligada — o eletricista anexa evidências fotográficas e as fotos aparecem na aba Incidentes."
+                : "Desligada — nenhum envio de foto é pedido no formulário e as fotos ficam ocultas na aba Incidentes."}
+            </p>
+          </div>
+          <Switch checked={fotosEnabled} disabled={togglingFotos || loading} onCheckedChange={toggleFotos} />
+        </div>
+
+
         <p className="text-xs text-muted-foreground">
           Crie abas (tipos de incidente) e perguntas por aba. O núcleo estruturado (Nº do incidente, GPS e fotos) continua fixo — as perguntas aparecem após ele para eletricistas e parceiras.
         </p>
