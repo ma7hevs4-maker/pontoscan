@@ -36,6 +36,9 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [saving, setSaving] = useState(false);
   const [formsEnabled, setFormsEnabled] = useState(true);
   const [togglingForms, setTogglingForms] = useState(false);
+  const [fotosEnabled, setFotosEnabled] = useState(true);
+  const [togglingFotos, setTogglingFotos] = useState(false);
+
   const [novoRotulo, setNovoRotulo] = useState("");
   const [criandoAba, setCriandoAba] = useState(false);
   const [renome, setRenome] = useState<string>("");
