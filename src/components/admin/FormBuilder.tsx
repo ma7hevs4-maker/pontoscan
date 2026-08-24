@@ -493,18 +493,28 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
 }
 
 
+type ParentOpt = { chave: string; rotulo: string; opcoes: string[] };
+
 function QuestionCard({
-  q, onChange, onUp, onDown, onRemove,
+  q, parents, onChange, onUp, onDown, onRemove,
 }: {
   q: Draft;
+  parents: ParentOpt[];
   onChange: (patch: Partial<Draft>) => void;
   onUp?: () => void;
   onDown?: () => void;
   onRemove: () => void;
 }) {
   const chavePreview = q.chave.trim() || slugifyChave(q.rotulo || "");
+  const pai = parents.find((p) => p.chave === q.parent_chave);
+  const toggleValor = (v: string) => {
+    const set = new Set(q.parent_valores);
+    if (set.has(v)) set.delete(v); else set.add(v);
+    onChange({ parent_valores: Array.from(set) });
+  };
   return (
-    <Card className="space-y-3 p-3">
+    <Card className={`space-y-3 p-3 ${q.parent_chave ? "ml-4 border-l-4 border-l-primary/50" : ""}`}>
+
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <Label className="text-xs">Rótulo (visível para o eletricista) *</Label>
