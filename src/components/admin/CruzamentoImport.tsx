@@ -647,17 +647,23 @@ export function CruzamentoImport({
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            {!semAtInd && (
-                              <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
-                                <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            {tiposVisiveis.map((t, idx) => (
+                              <Bar
+                                key={t}
+                                stackId="f"
+                                dataKey={`falta_${t}`}
+                                name={TIPO_LABEL[t]}
+                                fill={TIPO_COR[t]}
+                                radius={idx === tiposVisiveis.length - 1 ? [4, 4, 0, 0] : undefined}
+                              >
+                                <LabelList
+                                  dataKey={idx === tiposVisiveis.length - 1 ? "faltando" : `falta_${t}`}
+                                  position={idx === tiposVisiveis.length - 1 ? "top" : "inside"}
+                                  style={{ fontSize: 10, fill: idx === tiposVisiveis.length - 1 ? undefined : "#fff" }}
+                                  formatter={(v: number) => (v ? v : "")}
+                                />
                               </Bar>
-                            )}
-                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
-                              <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
-                            </Bar>
-                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
-                              <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
-                            </Bar>
+                            ))}
                           </BarChart>
 
                         </ResponsiveContainer>
