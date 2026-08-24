@@ -12,7 +12,7 @@ import { useFotosEnabled } from "@/hooks/use-fotos-enabled";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
-import { loadFormQuestions, loadFormTipos, type FormQuestion, type FormTipo, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
+import { loadFormQuestions, loadFormTipos, visibleQuestions, type FormQuestion, type FormTipo, type TipoIncidente as TipoIncidenteConfig } from "@/lib/form-config";
 import { compressImages } from "@/lib/image-compress";
 
 type TipoIncidente = TipoIncidenteConfig;
