@@ -312,10 +312,14 @@ function DashForms() {
             const data = c.rows.map(r => ({ name: r.name, ...r.counts }));
             return (
               <Card key={c.field.key} className="p-4">
-                <div className="mb-2 flex items-baseline justify-between">
-                  <h3 className="font-semibold">{c.field.label}</h3>
-                  <span className="text-xs text-muted-foreground">{c.rows.reduce((s, r) => s + r.total, 0)} resposta(s) · {c.polos.length} polo(s)</span>
+                <div className="mb-2 flex items-baseline justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold">{c.field.label}</h3>
+                    {c.field.cond && <p className="text-[11px] text-muted-foreground">Sub-pergunta de: {c.field.cond}</p>}
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">{c.rows.reduce((s, r) => s + r.total, 0)} resposta(s) · {c.polos.length} polo(s)</span>
                 </div>
+
                 {c.rows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Sem respostas.</p>
                 ) : (
@@ -347,10 +351,16 @@ function DashForms() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {charts.map(c => (
             <Card key={c.field.key} className="p-4">
-              <div className="mb-2 flex items-baseline justify-between">
-                <h3 className="font-semibold">{c.field.label}</h3>
-                <span className="text-xs text-muted-foreground">{c.total} resposta(s)</span>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold">{c.field.label}</h3>
+                  {c.field.cond && <p className="text-[11px] text-muted-foreground">Sub-pergunta de: {c.field.cond}</p>}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {c.total} resposta(s){c.field.cond ? ` de ${c.elegiveis} aplicável(is)` : ""}
+                </span>
               </div>
+
               {c.data.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem respostas.</p>
               ) : (
