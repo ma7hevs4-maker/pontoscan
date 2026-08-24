@@ -125,6 +125,8 @@ export function CruzamentoImport({
   const [fUt, setFUt] = useState<"all" | "UTN" | "UTS">("all");
   const [fEquipe, setFEquipe] = useState<string>("");
   const [fTipo, setFTipo] = useState<string>("all");
+  // Foco em Ordem 2 / Improdutivo: descarta Atendimento Individual de todo o cruzamento.
+  const [semAtInd, setSemAtInd] = useState(false);
   const [drill, setDrill] = useState<
     | { titulo: string; headers: string[]; rows: (string | number)[][] }
     | null
