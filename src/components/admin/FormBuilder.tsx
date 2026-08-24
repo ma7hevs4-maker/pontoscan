@@ -569,6 +569,48 @@ function QuestionCard({
         </div>
       )}
 
+      <div className="rounded-md border bg-muted/30 p-3">
+        <Label className="text-xs">Sub-pergunta (exibir apenas quando…)</Label>
+        <Select
+          value={q.parent_chave ?? "__none"}
+          onValueChange={(v) => onChange({ parent_chave: v === "__none" ? null : v, parent_valores: [] })}
+        >
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Sempre visível" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Sempre visível (pergunta principal)</SelectItem>
+            {parents.map((p) => (
+              <SelectItem key={p.chave} value={p.chave}>{p.rotulo}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {pai && (
+          <div className="mt-2">
+            <p className="mb-1 text-[11px] text-muted-foreground">Respostas de "{pai.rotulo}" que exibem esta pergunta:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {pai.opcoes.map((op) => {
+                const on = q.parent_valores.includes(op);
+                return (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => toggleValor(op)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                  >
+                    {op}
+                  </button>
+                );
+              })}
+              {pai.opcoes.length === 0 && <span className="text-xs text-muted-foreground">A pergunta condicionante ainda não tem opções.</span>}
+            </div>
+          </div>
+        )}
+        {q.parent_chave && !pai && (
+          <p className="mt-2 text-xs text-destructive">A pergunta condicionante ({q.parent_chave}) não está mais nesta aba.</p>
+        )}
+      </div>
+
+
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={q.obrigatoria} onCheckedChange={(v) => onChange({ obrigatoria: v })} />
