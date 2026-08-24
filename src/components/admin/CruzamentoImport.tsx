@@ -211,10 +211,16 @@ export function CruzamentoImport({
     }
   };
 
-  // Escopo por polo: ADMIN_POLO só vê o próprio; ADMIN_DISPATCH filtra pelo select.
-  const poloAtivo: Polo | null = role === "ADMIN_DISPATCH"
-    ? (fPolo === "all" ? null : (fPolo as Polo))
-    : (adminPolo as Polo | null);
+  // Escopo por polo: ADMIN_POLO só vê o próprio; ADMIN_DISPATCH usa UT + multi-seleção.
+  const polosDaUt = useMemo<Polo[]>(
+    () => (fUt === "all" ? POLOS : POLOS.filter((p) => (fUt === "UTN" ? UTN.includes(p) : !UTN.includes(p)))),
+    [fUt]
+  );
+  const polosAtivos = useMemo<Polo[]>(() => {
+    if (role !== "ADMIN_DISPATCH") return adminPolo ? [adminPolo as Polo] : [];
+    return fPolos.length ? (fPolos as Polo[]) : polosDaUt;
+  }, [role, adminPolo, fPolos, polosDaUt]);
+  const restringePolo = polosAtivos.length > 0 && polosAtivos.length < POLOS.length;
 
   const equipeQ = fEquipe.trim().toUpperCase();
 
@@ -225,19 +231,20 @@ export function CruzamentoImport({
     return incidentes.filter((i) => {
       if (fTipo !== "all" && i.tipo !== fTipo) return false;
       if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
-      if (poloAtivo) {
+      if (restringePolo) {
         const pi = poloFromPrefixo(i.prefixo);
-        if (pi !== poloAtivo) return false;
+        if (!pi || !polosAtivos.includes(pi)) return false;
       }
       return true;
     });
-  }, [incidentes, fTipo, equipeQ, poloAtivo]);
+  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo]);
 
   const linhasEscopo = useMemo(() => {
     return linhas.filter((l) => {
       if (equipeQ && !l.equipe.includes(equipeQ)) return false;
-      if (poloAtivo && l.polo !== poloAtivo) return false;
+      if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
       if (fTipo !== "all" && l.tipo !== fTipo) return false;
+
       // Período da aba de incidentes, aplicado pela coluna "Data Início".
       if (l.data) {
         const ts = l.data.getTime();
