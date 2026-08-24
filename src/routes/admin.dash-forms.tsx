@@ -11,7 +11,7 @@ import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 
 import { useAuth } from "@/lib/auth-context";
-import { loadAllFormQuestions, loadFormTipos, type FormQuestion, type FormTipo } from "@/lib/form-config";
+import { loadAllFormQuestions, loadFormTipos, visibleQuestions, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
 
@@ -30,21 +30,26 @@ const POLO_COLORS: Record<string, string> = {
   "Perdas": "hsl(55 80% 45%)",
 };
 
-function exportarCSV(tipo: string, charts: { field: { label: string }; data: { name: string; value: number }[]; total: number }[]) {
+function rotuloExport(f: { label: string; cond?: string }) {
+  return f.cond ? `${f.label} [quando ${f.cond}]` : f.label;
+}
+
+function exportarCSV(tipo: string, charts: { field: { label: string; cond?: string }; data: { name: string; value: number }[]; total: number }[]) {
   const sep = ";";
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
   const lines: string[] = [];
   lines.push(["Pergunta", "Resposta", "Quantidade", "Total", "%"].map(esc).join(sep));
   for (const c of charts) {
     if (c.data.length === 0) {
-      lines.push([c.field.label, "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
+      lines.push([rotuloExport(c.field), "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
       continue;
     }
     for (const d of c.data) {
       const pct = c.total ? ((d.value / c.total) * 100).toFixed(1) + "%" : "0%";
-      lines.push([c.field.label, d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
+      lines.push([rotuloExport(c.field), d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
     }
   }
+
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -54,12 +59,13 @@ function exportarCSV(tipo: string, charts: { field: { label: string }; data: { n
   URL.revokeObjectURL(url);
 }
 
-function exportarCSVPorPolo(tipo: string, charts: { field: { label: string }; polos: string[]; rows: { name: string; counts: Record<string, number>; total: number }[] }[]) {
+function exportarCSVPorPolo(tipo: string, charts: { field: { label: string; cond?: string }; polos: string[]; rows: { name: string; counts: Record<string, number>; total: number }[] }[]) {
   const sep = ";";
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
   const lines: string[] = [];
   for (const c of charts) {
-    lines.push([c.field.label].map(esc).join(sep));
+    lines.push([rotuloExport(c.field)].map(esc).join(sep));
+
     lines.push(["Resposta", ...c.polos, "Total"].map(esc).join(sep));
     if (c.rows.length === 0) {
       lines.push(["(sem respostas)", ...c.polos.map(() => "0"), "0"].map(esc).join(sep));
@@ -89,7 +95,7 @@ type Row = {
   polo_geo: string | null;
 };
 
-type FieldDef = { key: string; label: string; outroKey?: string };
+type FieldDef = { key: string; label: string; outroKey?: string; cond?: string };
 
 const FIELDS: Record<string, FieldDef[]> = {
   ATENDIMENTO_INDIVIDUAL: [
@@ -144,16 +150,31 @@ function DashForms() {
     })();
   }, []);
 
+  const qsDoTipo = useMemo(() => allQs[tipo] ?? [], [allQs, tipo]);
+
   const fieldDefs = useMemo<FieldDef[]>(() => {
     const base = FIELDS[tipo] ? [...FIELDS[tipo]] : [];
     const seen = new Set(base.map((f) => f.key));
-    for (const q of allQs[tipo] ?? []) {
+    for (const q of qsDoTipo) {
       if (q.campo_tipo !== "choice" || seen.has(q.chave)) continue;
-      base.push({ key: q.chave, label: q.rotulo, outroKey: q.permite_outro ? `${q.chave}Outro` : undefined });
+      const pai = q.parent_chave ? qsDoTipo.find((p) => p.chave === q.parent_chave) : undefined;
+      base.push({
+        key: q.chave,
+        label: q.rotulo,
+        outroKey: q.permite_outro ? `${q.chave}Outro` : undefined,
+        cond: pai ? `${pai.rotulo} = ${q.parent_valores.join(" ou ")}` : undefined,
+      });
       seen.add(q.chave);
     }
     return base;
-  }, [tipo, allQs]);
+  }, [tipo, qsDoTipo]);
+
+  /** Uma resposta só entra no gráfico se a pergunta estava realmente visível para aquele registro. */
+  const aplicavel = (f: FieldDef, dados: Record<string, any>) => {
+    const q = qsDoTipo.find((x) => x.chave === f.key);
+    if (!q) return true;
+    return visibleQuestions(qsDoTipo, dados ?? {}).some((v) => v.chave === f.key);
+  };
 
   const filtradas = useMemo(() => {
     const deTs = new Date(de + "T00:00:00").getTime();
@@ -172,7 +193,10 @@ function DashForms() {
   const charts = useMemo(() => {
     return fieldDefs.map(f => {
       const counts: Record<string, number> = {};
+      let elegiveis = 0;
       for (const r of filtradas) {
+        if (!aplicavel(f, r.dados)) continue;
+        elegiveis++;
         let val = r.dados?.[f.key];
         if (val == null || val === "") continue;
         val = String(val);
@@ -185,15 +209,16 @@ function DashForms() {
       const data = Object.entries(counts)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
-      return { field: f, data, total: data.reduce((s, d) => s + d.value, 0) };
+      return { field: f, data, total: data.reduce((s, d) => s + d.value, 0), elegiveis };
     });
-  }, [filtradas, tipo]);
+  }, [filtradas, tipo, fieldDefs, qsDoTipo]);
 
   const chartsPorPolo = useMemo(() => {
     return fieldDefs.map(f => {
       const rowsByResp: Record<string, Record<string, number>> = {};
       const polosSet = new Set<string>();
       for (const r of filtradas) {
+        if (!aplicavel(f, r.dados)) continue;
         let val = r.dados?.[f.key];
         if (val == null || val === "") continue;
         val = String(val);
@@ -214,7 +239,8 @@ function DashForms() {
       })).sort((a, b) => b.total - a.total);
       return { field: f, polos, rows };
     });
-  }, [filtradas, tipo]);
+  }, [filtradas, tipo, fieldDefs, qsDoTipo]);
+
 
   return (
     <div className="space-y-4">
@@ -292,10 +318,14 @@ function DashForms() {
             const data = c.rows.map(r => ({ name: r.name, ...r.counts }));
             return (
               <Card key={c.field.key} className="p-4">
-                <div className="mb-2 flex items-baseline justify-between">
-                  <h3 className="font-semibold">{c.field.label}</h3>
-                  <span className="text-xs text-muted-foreground">{c.rows.reduce((s, r) => s + r.total, 0)} resposta(s) · {c.polos.length} polo(s)</span>
+                <div className="mb-2 flex items-baseline justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold">{c.field.label}</h3>
+                    {c.field.cond && <p className="text-[11px] text-muted-foreground">Sub-pergunta de: {c.field.cond}</p>}
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">{c.rows.reduce((s, r) => s + r.total, 0)} resposta(s) · {c.polos.length} polo(s)</span>
                 </div>
+
                 {c.rows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Sem respostas.</p>
                 ) : (
@@ -327,10 +357,16 @@ function DashForms() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {charts.map(c => (
             <Card key={c.field.key} className="p-4">
-              <div className="mb-2 flex items-baseline justify-between">
-                <h3 className="font-semibold">{c.field.label}</h3>
-                <span className="text-xs text-muted-foreground">{c.total} resposta(s)</span>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold">{c.field.label}</h3>
+                  {c.field.cond && <p className="text-[11px] text-muted-foreground">Sub-pergunta de: {c.field.cond}</p>}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {c.total} resposta(s){c.field.cond ? ` de ${c.elegiveis} aplicável(is)` : ""}
+                </span>
               </div>
+
               {c.data.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem respostas.</p>
               ) : (

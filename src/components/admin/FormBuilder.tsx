@@ -230,6 +230,8 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         permite_outro: false,
         ordem: arr.length,
         ativa: true,
+        parent_chave: null,
+        parent_valores: [],
         dirty: true,
       });
       return { ...prev, [tab]: arr };
@@ -239,7 +241,8 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const validate = (): string | null => {
     for (const t of tipos) {
       const set = new Set<string>();
-      for (const q of drafts[t.chave] ?? []) {
+      const lista = drafts[t.chave] ?? [];
+      for (const q of lista) {
         if (!q.rotulo.trim()) return `[${t.rotulo}] Rótulo obrigatório`;
         const chave = q.chave.trim() || slugifyChave(q.rotulo);
         if (!chave) return `[${t.rotulo}] Chave inválida em "${q.rotulo}"`;
@@ -248,10 +251,17 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         if (q.campo_tipo === "choice" && q.opcoes.filter((o) => o.trim()).length < 2) {
           return `[${t.rotulo}] "${q.rotulo}" precisa de ao menos 2 opções`;
         }
+        if (q.parent_chave) {
+          if (q.parent_chave === chave) return `[${t.rotulo}] "${q.rotulo}" não pode depender de si mesma`;
+          const pai = lista.find((p) => (p.chave.trim() || slugifyChave(p.rotulo)) === q.parent_chave);
+          if (!pai) return `[${t.rotulo}] A pergunta condicionante de "${q.rotulo}" não existe mais`;
+          if (!q.parent_valores.length) return `[${t.rotulo}] Escolha ao menos uma resposta que exibe "${q.rotulo}"`;
+        }
       }
     }
     return null;
   };
+
 
   const save = async () => {
     const err = validate();
@@ -277,7 +287,10 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
             permite_outro: q.campo_tipo === "choice" ? q.permite_outro : false,
             ordem: q.ordem,
             ativa: q.ativa,
+            parent_chave: q.parent_chave || null,
+            parent_valores: q.parent_chave ? q.parent_valores : [],
           };
+
           if (q.id) {
             const { error } = await (supabase as any).from("form_questions").update(payload).eq("id", q.id);
             if (error) throw new Error(error.message);
@@ -438,12 +451,20 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
                   <QuestionCard
                     key={q.id ?? `new-${idx}`}
                     q={q}
+                    parents={current
+                      .filter((p, j) => j !== idx && p.campo_tipo === "choice" && (p.chave.trim() || slugifyChave(p.rotulo)))
+                      .map((p) => ({
+                        chave: (p.chave.trim() || slugifyChave(p.rotulo)).slice(0, 48),
+                        rotulo: p.rotulo || "(sem rótulo)",
+                        opcoes: [...p.opcoes.map((o) => o.trim()).filter(Boolean), ...(p.permite_outro ? ["Outro"] : [])],
+                      }))}
                     onChange={(patch) => updateOne(idx, patch)}
                     onUp={idx > 0 ? () => move(idx, -1) : undefined}
                     onDown={idx < current.length - 1 ? () => move(idx, 1) : undefined}
                     onRemove={() => remove(idx)}
                   />
                 ))}
+
                 {tab === t.chave && (
                   <Button variant="outline" onClick={add} className="w-full">
                     <Plus className="mr-2 h-4 w-4" /> Adicionar pergunta
@@ -472,18 +493,28 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
 }
 
 
+type ParentOpt = { chave: string; rotulo: string; opcoes: string[] };
+
 function QuestionCard({
-  q, onChange, onUp, onDown, onRemove,
+  q, parents, onChange, onUp, onDown, onRemove,
 }: {
   q: Draft;
+  parents: ParentOpt[];
   onChange: (patch: Partial<Draft>) => void;
   onUp?: () => void;
   onDown?: () => void;
   onRemove: () => void;
 }) {
   const chavePreview = q.chave.trim() || slugifyChave(q.rotulo || "");
+  const pai = parents.find((p) => p.chave === q.parent_chave);
+  const toggleValor = (v: string) => {
+    const set = new Set(q.parent_valores);
+    if (set.has(v)) set.delete(v); else set.add(v);
+    onChange({ parent_valores: Array.from(set) });
+  };
   return (
-    <Card className="space-y-3 p-3">
+    <Card className={`space-y-3 p-3 ${q.parent_chave ? "ml-4 border-l-4 border-l-primary/50" : ""}`}>
+
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <Label className="text-xs">Rótulo (visível para o eletricista) *</Label>
@@ -537,6 +568,48 @@ function QuestionCard({
           </label>
         </div>
       )}
+
+      <div className="rounded-md border bg-muted/30 p-3">
+        <Label className="text-xs">Sub-pergunta (exibir apenas quando…)</Label>
+        <Select
+          value={q.parent_chave ?? "__none"}
+          onValueChange={(v) => onChange({ parent_chave: v === "__none" ? null : v, parent_valores: [] })}
+        >
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Sempre visível" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Sempre visível (pergunta principal)</SelectItem>
+            {parents.map((p) => (
+              <SelectItem key={p.chave} value={p.chave}>{p.rotulo}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {pai && (
+          <div className="mt-2">
+            <p className="mb-1 text-[11px] text-muted-foreground">Respostas de "{pai.rotulo}" que exibem esta pergunta:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {pai.opcoes.map((op) => {
+                const on = q.parent_valores.includes(op);
+                return (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => toggleValor(op)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                  >
+                    {op}
+                  </button>
+                );
+              })}
+              {pai.opcoes.length === 0 && <span className="text-xs text-muted-foreground">A pergunta condicionante ainda não tem opções.</span>}
+            </div>
+          </div>
+        )}
+        {q.parent_chave && !pai && (
+          <p className="mt-2 text-xs text-destructive">A pergunta condicionante ({q.parent_chave}) não está mais nesta aba.</p>
+        )}
+      </div>
+
+
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm">

@@ -86,6 +86,31 @@ function flat(s: any) {
   return normUp(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
 
+// Chaves conhecidas que nunca representam causa (fotos, prints, número, etc).
+const CAUSA_IGNORE = /(foto|print|anexo|evidencia|numero|obs|observ)/i;
+
+/**
+ * Cadeia de causa do PontoScan: começa pela pergunta principal ("motivo" /
+ * "correlacaoDefeito") e acrescenta as respostas das sub-perguntas, já que com
+ * sub-questionários a causa final pode estar num nível mais profundo.
+ */
+function causaChain(dados: Record<string, any> | null | undefined): string[] {
+  if (!dados) return [];
+  const out: string[] = [];
+  const push = (v: any) => {
+    const s = norm(v);
+    if (s && !out.includes(s)) out.push(s);
+  };
+  for (const k of ["motivo", "motivoOutro", "correlacaoDefeito", "correlacaoDefeitoOutro"]) push(dados[k]);
+  for (const [k, v] of Object.entries(dados)) {
+    if (typeof v !== "string" || CAUSA_IGNORE.test(k)) continue;
+    if (["motivo", "motivoOutro", "correlacaoDefeito", "correlacaoDefeitoOutro"].includes(k)) continue;
+    push(v);
+  }
+  return out;
+}
+
+
 function parseData(v: any): Date | null {
   if (v == null || v === "") return null;
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
@@ -344,16 +369,18 @@ export function CruzamentoImport({
     for (const l of linhasEscopo) {
       const sis = sistemaMap.get(l.numero);
       if (!sis) continue;
-      const causaSis = norm(
-        sis.dados?.correlacaoDefeito || sis.dados?.correlacaoDefeitoOutro || sis.dados?.motivo
-      );
+      // Com sub-questionários a causa pode estar na pergunta principal OU numa sub-pergunta.
+      const cadeia = causaChain(sis.dados);
+      const causaSis = cadeia.join(" › ");
       const eqSis = normUp(sis.prefixo);
       // Causas só são comparáveis para IMPRODUTIVO — os demais tipos usam
       // taxonomias diferentes entre o sistema e a planilha externa.
       const causaDif = sis.tipo === "IMPRODUTIVO" && l.tipo === "IMPRODUTIVO"
-        && l.causa && causaSis && flat(l.causa) !== flat(causaSis);
+        && !!l.causa && cadeia.length > 0
+        && !cadeia.some((c) => flat(c) === flat(l.causa));
       const eqDif = l.equipe && eqSis && l.equipe !== eqSis;
       const tipoDif = !!l.tipo && l.tipo !== sis.tipo;
+
       if (causaDif || eqDif || tipoDif) {
         out.push({
           numero: l.numero,

@@ -67,7 +67,32 @@ export interface FormQuestion {
   permite_outro: boolean;
   ordem: number;
   ativa: boolean;
+  /** Chave da pergunta "pai": esta pergunta só aparece quando o pai for respondido com um dos parent_valores. */
+  parent_chave: string | null;
+  parent_valores: string[];
 }
+
+/** Uma pergunta está visível se não tiver pai, ou se a resposta do pai estiver entre os valores gatilho. */
+export function isQuestionVisible(q: Pick<FormQuestion, "parent_chave" | "parent_valores">, vals: Record<string, any>): boolean {
+  if (!q.parent_chave) return true;
+  const v = vals?.[q.parent_chave];
+  if (v == null || v === "") return false;
+  if (!q.parent_valores?.length) return true;
+  return q.parent_valores.includes(String(v));
+}
+
+/** Filtra recursivamente as perguntas visíveis (respeita cadeias pai → filho → neto). */
+export function visibleQuestions(qs: FormQuestion[], vals: Record<string, any>): FormQuestion[] {
+  const byChave = new Map(qs.map((q) => [q.chave, q]));
+  const ok = (q: FormQuestion, depth = 0): boolean => {
+    if (depth > 10) return false;
+    if (!isQuestionVisible(q, vals)) return false;
+    const pai = q.parent_chave ? byChave.get(q.parent_chave) : undefined;
+    return pai ? ok(pai, depth + 1) : true;
+  };
+  return qs.filter((q) => ok(q));
+}
+
 
 export function slugifyChave(label: string): string {
   return slugifyChaveImpl(label);
@@ -140,11 +165,17 @@ export async function loadFormQuestions(tipo: TipoIncidente): Promise<FormQuesti
     .eq("ativa", true)
     .order("ordem", { ascending: true });
   if (error) return [];
-  return ((data as any[]) ?? []).map((r) => ({
+  return ((data as any[]) ?? []).map(mapQuestion);
+}
+
+function mapQuestion(r: any): FormQuestion {
+  return {
     ...r,
     permite_outro: !!r.permite_outro,
     opcoes: Array.isArray(r.opcoes) ? r.opcoes : [],
-  }));
+    parent_chave: r.parent_chave ?? null,
+    parent_valores: Array.isArray(r.parent_valores) ? r.parent_valores.map(String) : [],
+  } as FormQuestion;
 }
 
 export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, FormQuestion[]>> {
@@ -154,9 +185,10 @@ export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, Form
     .order("ordem", { ascending: true });
   const out: Record<TipoIncidente, FormQuestion[]> = {};
   for (const r of ((data as any[]) ?? [])) {
-    const q: FormQuestion = { ...r, permite_outro: !!r.permite_outro, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
+    const q = mapQuestion(r);
     (out[q.tipo] ??= []).push(q);
   }
+
 
   return out;
 }
