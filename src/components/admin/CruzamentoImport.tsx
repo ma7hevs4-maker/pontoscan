@@ -402,6 +402,8 @@ export function CruzamentoImport({
         if (l.tipo) r[`falta_${l.tipo}` as const]++;
       }
     }
+    // "sistema" = total registrado no PontoScan no escopo (usa a classificação do
+    // próprio sistema). É informativo; a conta que fecha é planilha = encontrados + faltando.
     for (const i of incidentesEscopo) {
       const p = poloFromPrefixo(i.prefixo);
       if (!p) continue;
