@@ -127,7 +127,16 @@ export function CruzamentoImport({
     setFileName(f.name);
     try {
       const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      let wb: XLSX.WorkBook;
+      if (/\.csv$/i.test(f.name) || f.type === "text/csv") {
+        let text = new TextDecoder("utf-8").decode(buf);
+        if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buf);
+        const head = text.split(/\r?\n/)[0] ?? "";
+        const FS = head.split(";").length > head.split(",").length ? ";" : ",";
+        wb = XLSX.read(text, { type: "string", FS, raw: false, cellDates: true });
+      } else {
+        wb = XLSX.read(buf, { type: "array", cellDates: true });
+      }
       const ws = wb.Sheets[wb.SheetNames[0]];
       const matrix = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" }) as any[][];
       if (!matrix.length) throw new Error("Planilha vazia.");
