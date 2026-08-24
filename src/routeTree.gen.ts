@@ -21,6 +21,7 @@ import { Route as AdminDashFormsRouteImport } from './routes/admin.dash-forms'
 import { Route as AdminEquipesRouteImport } from './routes/admin.equipes'
 import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
+import { Route as ApiAdminPhotosRouteImport } from './routes/api.admin-photos'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
 import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
 
@@ -84,6 +85,11 @@ const AdminMetricasRoute = AdminMetricasRouteImport.update({
   path: '/metricas',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiAdminPhotosRoute = ApiAdminPhotosRouteImport.update({
+  id: '/api/admin-photos',
+  path: '/api/admin-photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
   id: '/api/admin-users',
   path: '/api/admin-users',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/admin/equipes': typeof AdminEquipesRoute
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
+  '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
+    | '/api/admin-photos'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   fileRoutesByTo: FileRoutesByTo
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
+    | '/api/admin-photos'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   id:
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/admin/equipes'
     | '/admin/incidentes'
     | '/admin/metricas'
+    | '/api/admin-photos'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   fileRoutesById: FileRoutesById
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   EletricistaRoute: typeof EletricistaRoute
   LoginRoute: typeof LoginRoute
   ParceiraRoute: typeof ParceiraRoute
+  ApiAdminPhotosRoute: typeof ApiAdminPhotosRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
   ApiPublicIncidenteParceiraRoute: typeof ApiPublicIncidenteParceiraRoute
 }
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMetricasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/admin-photos': {
+      id: '/api/admin-photos'
+      path: '/api/admin-photos'
+      fullPath: '/api/admin-photos'
+      preLoaderRoute: typeof ApiAdminPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin-users': {
       id: '/api/admin-users'
       path: '/api/admin-users'
@@ -337,6 +357,7 @@ const rootRouteChildren: RootRouteChildren = {
   EletricistaRoute: EletricistaRoute,
   LoginRoute: LoginRoute,
   ParceiraRoute: ParceiraRoute,
+  ApiAdminPhotosRoute: ApiAdminPhotosRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
   ApiPublicIncidenteParceiraRoute: ApiPublicIncidenteParceiraRoute,
 }
