@@ -45,8 +45,10 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
 
   const carregar = async () => {
     setLoading(true);
-    const [all, enabled, ts] = await Promise.all([loadAllFormQuestions(), loadFormsEnabled(), loadFormTipos()]);
+    const [all, enabled, ts, fotos] = await Promise.all([loadAllFormQuestions(), loadFormsEnabled(), loadFormTipos(), loadFotosEnabled()]);
     setFormsEnabled(enabled);
+    setFotosEnabled(fotos);
+
     setTipos(ts);
     const d: Record<TipoIncidente, Draft[]> = {};
     for (const t of ts) d[t.chave] = (all[t.chave] ?? []).map((q) => ({ ...q, id: q.id, dirty: false }));
