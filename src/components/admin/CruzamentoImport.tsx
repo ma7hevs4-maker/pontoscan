@@ -606,7 +606,7 @@ export function CruzamentoImport({
                   <TabsContent value="polos" className="space-y-4">
                     <Section
                       title="Preenchimento do PontoScan por polo"
-                      desc="Compara o que existe na planilha com o que foi registrado no PontoScan, por tipo. “Faltando” = incidentes da planilha sem registro correspondente no sistema."
+                      desc="Planilha = incidentes da planilha no escopo. No PontoScan = os que têm registro correspondente. Faltando = os que não têm. Planilha = No PontoScan + Faltando."
                     >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -619,8 +619,8 @@ export function CruzamentoImport({
                             <Bar dataKey="planilha" name="Planilha" fill="hsl(217 91% 55%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="planilha" position="top" style={{ fontSize: 10 }} />
                             </Bar>
-                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
-                              <LabelList dataKey="sistema" position="top" style={{ fontSize: 10 }} />
+                            <Bar dataKey="encontrados" name="No PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="encontrados" position="top" style={{ fontSize: 10 }} />
                             </Bar>
                             <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
