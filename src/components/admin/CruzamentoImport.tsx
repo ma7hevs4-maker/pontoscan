@@ -61,9 +61,12 @@ const RE_ORD2 = /ord(em)?\s*\.?\s*2/i;
 function norm(s: any) {
   return String(s ?? "").trim();
 }
+// Chave de comparação: só dígitos e sem zeros à esquerda
+// (o sistema grava "0029438039" / "DT29438039" e a planilha "29438039").
 function normNum(s: any) {
-  return norm(s).replace(/\D+/g, "");
+  return norm(s).replace(/\D+/g, "").replace(/^0+/, "");
 }
+
 function normUp(s: any) {
   return norm(s).toUpperCase();
 }
