@@ -38,6 +38,14 @@ const TIPO_LABEL: Record<string, string> = {
   IMPRODUTIVO: "Improdutivo",
 };
 
+const TIPO_COR: Record<string, string> = {
+  ATENDIMENTO_INDIVIDUAL: "hsl(217 91% 55%)",
+  ORDEM_2: "hsl(199 89% 48%)",
+  IMPRODUTIVO: "hsl(38 92% 50%)",
+};
+
+const TIPOS: Tipo[] = ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"];
+
 const UTN: Polo[] = ["Campos", "Lagos", "Macaé", "Noroeste"];
 
 const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"];
