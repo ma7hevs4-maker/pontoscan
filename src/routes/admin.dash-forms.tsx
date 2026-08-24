@@ -59,12 +59,13 @@ function exportarCSV(tipo: string, charts: { field: { label: string; cond?: stri
   URL.revokeObjectURL(url);
 }
 
-function exportarCSVPorPolo(tipo: string, charts: { field: { label: string }; polos: string[]; rows: { name: string; counts: Record<string, number>; total: number }[] }[]) {
+function exportarCSVPorPolo(tipo: string, charts: { field: { label: string; cond?: string }; polos: string[]; rows: { name: string; counts: Record<string, number>; total: number }[] }[]) {
   const sep = ";";
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
   const lines: string[] = [];
   for (const c of charts) {
-    lines.push([c.field.label].map(esc).join(sep));
+    lines.push([rotuloExport(c.field)].map(esc).join(sep));
+
     lines.push(["Resposta", ...c.polos, "Total"].map(esc).join(sep));
     if (c.rows.length === 0) {
       lines.push(["(sem respostas)", ...c.polos.map(() => "0"), "0"].map(esc).join(sep));
