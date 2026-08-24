@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, type Polo } from "@/lib/incidentes";
@@ -37,6 +37,8 @@ const TIPO_LABEL: Record<string, string> = {
   IMPRODUTIVO: "Improdutivo",
 };
 
+const UTN: Polo[] = ["Campos", "Lagos", "Macaé", "Noroeste"];
+
 const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"];
 
 // Causas que caracterizam Improdutivo na planilha externa.
@@ -61,9 +63,12 @@ const RE_ORD2 = /ord(em)?\s*\.?\s*2/i;
 function norm(s: any) {
   return String(s ?? "").trim();
 }
+// Chave de comparação: só dígitos e sem zeros à esquerda
+// (o sistema grava "0029438039" / "DT29438039" e a planilha "29438039").
 function normNum(s: any) {
-  return norm(s).replace(/\D+/g, "");
+  return norm(s).replace(/\D+/g, "").replace(/^0+/, "");
 }
+
 function normUp(s: any) {
   return norm(s).toUpperCase();
 }
@@ -115,7 +120,8 @@ export function CruzamentoImport({
   const [semData, setSemData] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
-  const [fPolo, setFPolo] = useState<string>("all");
+  const [fPolos, setFPolos] = useState<string[]>([]);
+  const [fUt, setFUt] = useState<"all" | "UTN" | "UTS">("all");
   const [fEquipe, setFEquipe] = useState<string>("");
   const [fTipo, setFTipo] = useState<string>("all");
   const [drill, setDrill] = useState<
@@ -211,10 +217,16 @@ export function CruzamentoImport({
     }
   };
 
-  // Escopo por polo: ADMIN_POLO só vê o próprio; ADMIN_DISPATCH filtra pelo select.
-  const poloAtivo: Polo | null = role === "ADMIN_DISPATCH"
-    ? (fPolo === "all" ? null : (fPolo as Polo))
-    : (adminPolo as Polo | null);
+  // Escopo por polo: ADMIN_POLO só vê o próprio; ADMIN_DISPATCH usa UT + multi-seleção.
+  const polosDaUt = useMemo<Polo[]>(
+    () => (fUt === "all" ? POLOS : POLOS.filter((p) => (fUt === "UTN" ? UTN.includes(p) : !UTN.includes(p)))),
+    [fUt]
+  );
+  const polosAtivos = useMemo<Polo[]>(() => {
+    if (role !== "ADMIN_DISPATCH") return adminPolo ? [adminPolo as Polo] : [];
+    return fPolos.length ? (fPolos as Polo[]) : polosDaUt;
+  }, [role, adminPolo, fPolos, polosDaUt]);
+  const restringePolo = polosAtivos.length > 0 && polosAtivos.length < POLOS.length;
 
   const equipeQ = fEquipe.trim().toUpperCase();
 
@@ -225,19 +237,20 @@ export function CruzamentoImport({
     return incidentes.filter((i) => {
       if (fTipo !== "all" && i.tipo !== fTipo) return false;
       if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
-      if (poloAtivo) {
+      if (restringePolo) {
         const pi = poloFromPrefixo(i.prefixo);
-        if (pi !== poloAtivo) return false;
+        if (!pi || !polosAtivos.includes(pi)) return false;
       }
       return true;
     });
-  }, [incidentes, fTipo, equipeQ, poloAtivo]);
+  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo]);
 
   const linhasEscopo = useMemo(() => {
     return linhas.filter((l) => {
       if (equipeQ && !l.equipe.includes(equipeQ)) return false;
-      if (poloAtivo && l.polo !== poloAtivo) return false;
+      if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
       if (fTipo !== "all" && l.tipo !== fTipo) return false;
+
       // Período da aba de incidentes, aplicado pela coluna "Data Início".
       if (l.data) {
         const ts = l.data.getTime();
@@ -246,7 +259,7 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [linhas, equipeQ, poloAtivo, fTipo, deTs, ateTs]);
+  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs]);
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
@@ -331,35 +344,41 @@ export function CruzamentoImport({
   const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
 
   // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
+  // "Sem polo" (prefixo não reconhecido) é ignorado a pedido da operação.
   const porPolo = useMemo(() => {
     type Row = {
-      polo: string; planilha: number; sistema: number; faltando: number;
+      polo: string; planilha: number; sistema: number; faltando: number; encontrados: number;
       falta_ATENDIMENTO_INDIVIDUAL: number; falta_ORDEM_2: number; falta_IMPRODUTIVO: number;
       aderencia: number;
     };
     const map = new Map<string, Row>();
     const get = (p: string) =>
       map.get(p) ?? (map.set(p, {
-        polo: p, planilha: 0, sistema: 0, faltando: 0,
+        polo: p, planilha: 0, sistema: 0, faltando: 0, encontrados: 0,
         falta_ATENDIMENTO_INDIVIDUAL: 0, falta_ORDEM_2: 0, falta_IMPRODUTIVO: 0, aderencia: 0,
       }), map.get(p)!);
 
     for (const l of linhasEscopo) {
-      const r = get(l.polo ?? "Sem polo");
+      if (!l.polo) continue;
+      const r = get(l.polo);
       r.planilha++;
-      if (!sistemaMap.has(l.numero)) {
+      if (sistemaMap.has(l.numero)) {
+        r.encontrados++;
+      } else {
         r.faltando++;
         if (l.tipo) r[`falta_${l.tipo}` as const]++;
       }
     }
     for (const i of incidentesEscopo) {
-      const r = get(poloFromPrefixo(i.prefixo) ?? "Sem polo");
-      r.sistema++;
+      const p = poloFromPrefixo(i.prefixo);
+      if (!p) continue;
+      get(p).sistema++;
     }
     return Array.from(map.values())
-      .map((r) => ({ ...r, aderencia: r.planilha ? Math.round(((r.planilha - r.faltando) / r.planilha) * 100) : 0 }))
+      .map((r) => ({ ...r, aderencia: r.planilha ? Math.round((r.encontrados / r.planilha) * 100) : 0 }))
       .sort((a, b) => b.faltando - a.faltando || b.planilha - a.planilha);
   }, [linhasEscopo, incidentesEscopo, sistemaMap]);
+
 
   const abrirSistema = (equipe: string) => {
     const lista = incidentesEscopo.filter((i) => normUp(i.prefixo) === equipe);
@@ -439,19 +458,52 @@ export function CruzamentoImport({
               )}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              {role === "ADMIN_DISPATCH" && (
-                <div>
-                  <Label className="text-xs">Polo</Label>
-                  <Select value={fPolo} onValueChange={setFPolo}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {POLOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+            {role === "ADMIN_DISPATCH" && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label className="text-xs">UT</Label>
+                  {(["all", "UTN", "UTS"] as const).map((u) => (
+                    <Button
+                      key={u}
+                      type="button"
+                      size="sm"
+                      variant={fUt === u ? "default" : "outline"}
+                      onClick={() => { setFUt(u); setFPolos([]); }}
+                    >
+                      {u === "all" ? "Todas" : u}
+                    </Button>
+                  ))}
                 </div>
-              )}
+                <div>
+                  <Label className="text-xs">Polos (multi-seleção)</Label>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {polosDaUt.map((p) => {
+                      const on = fPolos.includes(p);
+                      return (
+                        <Button
+                          key={p}
+                          type="button"
+                          size="sm"
+                          variant={on ? "default" : "outline"}
+                          onClick={() =>
+                            setFPolos((prev) => (on ? prev.filter((x) => x !== p) : [...prev, p]))
+                          }
+                        >
+                          {p}
+                        </Button>
+                      );
+                    })}
+                    {fPolos.length > 0 && (
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setFPolos([])}>
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <Label className="text-xs">Equipe (prefixo)</Label>
                 <Input value={fEquipe} onChange={(e) => setFEquipe(e.target.value)} placeholder="Ex.: SG010" />
@@ -469,6 +521,7 @@ export function CruzamentoImport({
                 </Select>
               </div>
             </div>
+
 
             {erro && (
               <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
@@ -505,33 +558,47 @@ export function CruzamentoImport({
                     >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                          <BarChart data={porPolo} margin={{ top: 20, right: 8, bottom: 8, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar dataKey="planilha" name="Planilha" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(var(--primary) / 0.45)" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="planilha" name="Planilha" fill="hsl(217 91% 55%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="planilha" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
+                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="sistema" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
+                            <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+
                     </Section>
 
                     <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                          <BarChart data={porPolo} margin={{ top: 20, right: 8, bottom: 8, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(var(--primary))" />
-                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)" />
-                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
+                              <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            </Bar>
+                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
+                              <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            </Bar>
+                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
                           </BarChart>
+
                         </ResponsiveContainer>
                       </div>
                     </Section>
