@@ -230,6 +230,8 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         permite_outro: false,
         ordem: arr.length,
         ativa: true,
+        parent_chave: null,
+        parent_valores: [],
         dirty: true,
       });
       return { ...prev, [tab]: arr };
@@ -239,7 +241,8 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const validate = (): string | null => {
     for (const t of tipos) {
       const set = new Set<string>();
-      for (const q of drafts[t.chave] ?? []) {
+      const lista = drafts[t.chave] ?? [];
+      for (const q of lista) {
         if (!q.rotulo.trim()) return `[${t.rotulo}] Rótulo obrigatório`;
         const chave = q.chave.trim() || slugifyChave(q.rotulo);
         if (!chave) return `[${t.rotulo}] Chave inválida em "${q.rotulo}"`;
@@ -248,10 +251,17 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
         if (q.campo_tipo === "choice" && q.opcoes.filter((o) => o.trim()).length < 2) {
           return `[${t.rotulo}] "${q.rotulo}" precisa de ao menos 2 opções`;
         }
+        if (q.parent_chave) {
+          if (q.parent_chave === chave) return `[${t.rotulo}] "${q.rotulo}" não pode depender de si mesma`;
+          const pai = lista.find((p) => (p.chave.trim() || slugifyChave(p.rotulo)) === q.parent_chave);
+          if (!pai) return `[${t.rotulo}] A pergunta condicionante de "${q.rotulo}" não existe mais`;
+          if (!q.parent_valores.length) return `[${t.rotulo}] Escolha ao menos uma resposta que exibe "${q.rotulo}"`;
+        }
       }
     }
     return null;
   };
+
 
   const save = async () => {
     const err = validate();
