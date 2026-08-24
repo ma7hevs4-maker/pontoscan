@@ -404,7 +404,6 @@ export function CruzamentoImport({
       .sort((a, b) => b.faltando - a.faltando || b.xlsx - a.xlsx);
   }, [incidentesEscopo, linhasEscopo, sistemaMap]);
 
-  const equipesFaltando = porEquipe.filter((e) => e.faltando > 0);
 
 
   // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
