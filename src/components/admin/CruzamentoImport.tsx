@@ -253,7 +253,7 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [linhas, equipeQ, poloAtivo, fTipo, deTs, ateTs]);
+  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs]);
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
