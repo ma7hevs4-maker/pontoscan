@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -124,6 +125,8 @@ export function CruzamentoImport({
   const [fUt, setFUt] = useState<"all" | "UTN" | "UTS">("all");
   const [fEquipe, setFEquipe] = useState<string>("");
   const [fTipo, setFTipo] = useState<string>("all");
+  // Foco em Ordem 2 / Improdutivo: descarta Atendimento Individual de todo o cruzamento.
+  const [semAtInd, setSemAtInd] = useState(false);
   const [drill, setDrill] = useState<
     | { titulo: string; headers: string[]; rows: (string | number)[][] }
     | null
@@ -235,6 +238,7 @@ export function CruzamentoImport({
 
   const incidentesEscopo = useMemo(() => {
     return incidentes.filter((i) => {
+      if (semAtInd && i.tipo === "ATENDIMENTO_INDIVIDUAL") return false;
       if (fTipo !== "all" && i.tipo !== fTipo) return false;
       if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
       if (restringePolo) {
@@ -243,10 +247,11 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo]);
+  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo, semAtInd]);
 
   const linhasEscopo = useMemo(() => {
     return linhas.filter((l) => {
+      if (semAtInd && l.tipo === "ATENDIMENTO_INDIVIDUAL") return false;
       if (equipeQ && !l.equipe.includes(equipeQ)) return false;
       if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
       if (fTipo !== "all" && l.tipo !== fTipo) return false;
@@ -259,7 +264,7 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs]);
+  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs, semAtInd]);
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
@@ -514,13 +519,30 @@ export function CruzamentoImport({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>
+                    {!semAtInd && <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>}
                     <SelectItem value="ORDEM_2">Ordem 2</SelectItem>
                     <SelectItem value="IMPRODUTIVO">Improdutivo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label className="text-xs">Desconsiderar Atendimento Individual</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Foca a análise em Ordem 2 e Improdutivos (remove os atendimentos individuais da planilha e do sistema).
+                </p>
+              </div>
+              <Switch
+                checked={semAtInd}
+                onCheckedChange={(v) => {
+                  setSemAtInd(v);
+                  if (v && fTipo === "ATENDIMENTO_INDIVIDUAL") setFTipo("all");
+                }}
+              />
+            </div>
+
 
 
             {erro && (
@@ -579,7 +601,14 @@ export function CruzamentoImport({
 
                     </Section>
 
-                    <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
+                    <Section
+                      title="Faltando por tipo e por polo"
+                      desc={
+                        semAtInd
+                          ? "Quantidade de incidentes da planilha ausentes no PontoScan (apenas Ordem 2 e Improdutivo)."
+                          : "Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo."
+                      }
+                    >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={porPolo} margin={{ top: 20, right: 8, bottom: 8, left: 0 }}>
@@ -588,9 +617,11 @@ export function CruzamentoImport({
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
-                              <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
-                            </Bar>
+                            {!semAtInd && (
+                              <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
+                                <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                              </Bar>
+                            )}
                             <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
                               <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
                             </Bar>
@@ -610,11 +641,13 @@ export function CruzamentoImport({
                         <Tabela
                           headers={[
                             "Polo", "Planilha", "PontoScan", "Faltando",
-                            "Falta At. Individual", "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                            ...(semAtInd ? [] : ["Falta At. Individual"]),
+                            "Falta Ordem 2", "Falta Improdutivo", "Aderência",
                           ]}
                           rows={porPolo.map((p) => [
                             p.polo, p.planilha, p.sistema, p.faltando,
-                            p.falta_ATENDIMENTO_INDIVIDUAL, p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            ...(semAtInd ? [] : [p.falta_ATENDIMENTO_INDIVIDUAL]),
+                            p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
                             `${p.aderencia}%`,
                           ])}
                         />
