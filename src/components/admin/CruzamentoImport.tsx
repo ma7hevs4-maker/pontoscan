@@ -601,7 +601,14 @@ export function CruzamentoImport({
 
                     </Section>
 
-                    <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
+                    <Section
+                      title="Faltando por tipo e por polo"
+                      desc={
+                        semAtInd
+                          ? "Quantidade de incidentes da planilha ausentes no PontoScan (apenas Ordem 2 e Improdutivo)."
+                          : "Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo."
+                      }
+                    >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={porPolo} margin={{ top: 20, right: 8, bottom: 8, left: 0 }}>
@@ -610,9 +617,11 @@ export function CruzamentoImport({
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
-                              <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
-                            </Bar>
+                            {!semAtInd && (
+                              <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
+                                <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                              </Bar>
+                            )}
                             <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
                               <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
                             </Bar>
@@ -632,11 +641,13 @@ export function CruzamentoImport({
                         <Tabela
                           headers={[
                             "Polo", "Planilha", "PontoScan", "Faltando",
-                            "Falta At. Individual", "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                            ...(semAtInd ? [] : ["Falta At. Individual"]),
+                            "Falta Ordem 2", "Falta Improdutivo", "Aderência",
                           ]}
                           rows={porPolo.map((p) => [
                             p.polo, p.planilha, p.sistema, p.faltando,
-                            p.falta_ATENDIMENTO_INDIVIDUAL, p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            ...(semAtInd ? [] : [p.falta_ATENDIMENTO_INDIVIDUAL]),
+                            p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
                             `${p.aderencia}%`,
                           ])}
                         />
