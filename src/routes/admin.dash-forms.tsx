@@ -144,16 +144,31 @@ function DashForms() {
     })();
   }, []);
 
+  const qsDoTipo = useMemo(() => allQs[tipo] ?? [], [allQs, tipo]);
+
   const fieldDefs = useMemo<FieldDef[]>(() => {
     const base = FIELDS[tipo] ? [...FIELDS[tipo]] : [];
     const seen = new Set(base.map((f) => f.key));
-    for (const q of allQs[tipo] ?? []) {
+    for (const q of qsDoTipo) {
       if (q.campo_tipo !== "choice" || seen.has(q.chave)) continue;
-      base.push({ key: q.chave, label: q.rotulo, outroKey: q.permite_outro ? `${q.chave}Outro` : undefined });
+      const pai = q.parent_chave ? qsDoTipo.find((p) => p.chave === q.parent_chave) : undefined;
+      base.push({
+        key: q.chave,
+        label: q.rotulo,
+        outroKey: q.permite_outro ? `${q.chave}Outro` : undefined,
+        cond: pai ? `${pai.rotulo} = ${q.parent_valores.join(" ou ")}` : undefined,
+      });
       seen.add(q.chave);
     }
     return base;
-  }, [tipo, allQs]);
+  }, [tipo, qsDoTipo]);
+
+  /** Uma resposta só entra no gráfico se a pergunta estava realmente visível para aquele registro. */
+  const aplicavel = (f: FieldDef, dados: Record<string, any>) => {
+    const q = qsDoTipo.find((x) => x.chave === f.key);
+    if (!q) return true;
+    return visibleQuestions(qsDoTipo, dados ?? {}).some((v) => v.chave === f.key);
+  };
 
   const filtradas = useMemo(() => {
     const deTs = new Date(de + "T00:00:00").getTime();
@@ -172,7 +187,10 @@ function DashForms() {
   const charts = useMemo(() => {
     return fieldDefs.map(f => {
       const counts: Record<string, number> = {};
+      let elegiveis = 0;
       for (const r of filtradas) {
+        if (!aplicavel(f, r.dados)) continue;
+        elegiveis++;
         let val = r.dados?.[f.key];
         if (val == null || val === "") continue;
         val = String(val);
@@ -185,15 +203,16 @@ function DashForms() {
       const data = Object.entries(counts)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
-      return { field: f, data, total: data.reduce((s, d) => s + d.value, 0) };
+      return { field: f, data, total: data.reduce((s, d) => s + d.value, 0), elegiveis };
     });
-  }, [filtradas, tipo]);
+  }, [filtradas, tipo, fieldDefs, qsDoTipo]);
 
   const chartsPorPolo = useMemo(() => {
     return fieldDefs.map(f => {
       const rowsByResp: Record<string, Record<string, number>> = {};
       const polosSet = new Set<string>();
       for (const r of filtradas) {
+        if (!aplicavel(f, r.dados)) continue;
         let val = r.dados?.[f.key];
         if (val == null || val === "") continue;
         val = String(val);
@@ -214,7 +233,8 @@ function DashForms() {
       })).sort((a, b) => b.total - a.total);
       return { field: f, polos, rows };
     });
-  }, [filtradas, tipo]);
+  }, [filtradas, tipo, fieldDefs, qsDoTipo]);
+
 
   return (
     <div className="space-y-4">
