@@ -465,7 +465,7 @@ function DynamicForm({
     if (fotosEnabled && fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
     try {
-      const dados: Record<string, any> = { ...vals };
+      const dados: Record<string, any> = { ...limparOcultas(questions, vals) };
       if (withLigacaoCliente) dados.ligacaoCliente = ligacaoCliente;
       await submitIncidente({
         tipo,
