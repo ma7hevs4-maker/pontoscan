@@ -413,7 +413,7 @@ export function CruzamentoImport({
 
           <div className="space-y-4 text-sm">
             <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              Envie um arquivo <b>.xlsx</b> com as colunas <b>Número</b>, <b>Equipe desl.</b>, <b>Causa</b>, <b>Cli Af Max</b>, <b>NT</b>, <b>Ord 2</b>, <b>Observação</b> e <b>Data Início</b>. O tipo é deduzido automaticamente: Ordem 2 (coluna Ord 2 = Sim ou menção na observação), Improdutivo (causa da lista padrão) e Atendimento Individual (Cli Af Max = 1 e NT = BT).
+              Envie um arquivo <b>.xlsx</b> ou <b>.csv</b> com as colunas <b>Número</b>, <b>Equipe desl.</b>, <b>Causa</b>, <b>Cli Af Max</b>, <b>NT</b>, <b>Ord 2</b>, <b>Observação</b> e <b>Data Início</b>. O tipo é deduzido automaticamente: Ordem 2 (coluna Ord 2 = Sim ou menção na observação), Improdutivo (causa da lista padrão) e Atendimento Individual (Cli Af Max = 1 e NT = BT).
               <br />
               Comparando com {incidentesEscopo.length} de {incidentes.length} incidentes do período {dataDe || "—"} a {dataAte || "—"}.
               {role !== "ADMIN_DISPATCH" && adminPolo && (
