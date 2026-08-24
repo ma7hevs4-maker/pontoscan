@@ -92,6 +92,26 @@ export async function saveFormsEnabled(valor: boolean): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export const FOTOS_ENABLED_KEY = "fotos_enabled";
+
+export async function loadFotosEnabled(): Promise<boolean> {
+  const { data, error } = await (supabase as any)
+    .from("app_settings")
+    .select("valor")
+    .eq("chave", FOTOS_ENABLED_KEY)
+    .maybeSingle();
+  if (error || !data) return true;
+  return !!data.valor;
+}
+
+export async function saveFotosEnabled(valor: boolean): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("app_settings")
+    .upsert({ chave: FOTOS_ENABLED_KEY, valor, updated_at: new Date().toISOString() }, { onConflict: "chave" });
+  if (error) throw new Error(error.message);
+}
+
+
 function slugifyChaveImpl(label: string): string {
   const base = label
     .normalize("NFD")
