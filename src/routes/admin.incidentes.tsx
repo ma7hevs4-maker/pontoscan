@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useFotosEnabled } from "@/hooks/use-fotos-enabled";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -319,6 +320,7 @@ function IncidentesFeed() {
 function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: string; onOpen: () => void; isNovo?: boolean }) {
   const [thumb, setThumb] = useState<string | null>(null);
   const [visivel, setVisivel] = useState(false);
+  const fotosEnabled = useFotosEnabled();
   const boxRef = useRef<HTMLDivElement | null>(null);
 
   // Só busca a imagem quando o card entra na tela (economiza tráfego).
@@ -334,14 +336,14 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
 
   useEffect(() => {
     let alive = true;
-    if (visivel && inc.fotos?.[0]) {
+    if (fotosEnabled && visivel && inc.fotos?.[0]) {
       // miniatura leve; se a transformação não estiver disponível, cai para o original
       signedPhotoUrl(inc.fotos[0], 3600, { width: 480, height: 270, quality: 50 })
         .then(u => u ?? signedPhotoUrl(inc.fotos[0]))
         .then(u => { if (alive) setThumb(u); });
     }
     return () => { alive = false; };
-  }, [inc.id, visivel]);
+  }, [inc.id, visivel, fotosEnabled]);
 
   const date = new Date(inc.created_at).toLocaleString("pt-BR");
   const gmaps = inc.latitude != null && inc.longitude != null
@@ -351,7 +353,7 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
   return (
     <Card className={`overflow-hidden transition-shadow ${isNovo ? "ring-2 ring-primary shadow-lg" : ""}`}>
       <button onClick={onOpen} className="block w-full text-left">
-        <div ref={boxRef} className="relative aspect-video bg-muted">
+        {fotosEnabled && <div ref={boxRef} className="relative aspect-video bg-muted">
           {isNovo && (
             <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow">
               <Radio className="h-3 w-3 animate-pulse" /> Novo
@@ -376,10 +378,18 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
               +{inc.fotos.length - 1} foto(s)
             </span>
           )}
-        </div>
+        </div>}
         <div className="space-y-2 p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-sm font-bold">{inc.numero_incidente}</span>
+            <span className="flex items-center gap-2 font-mono text-sm font-bold">
+              {!fotosEnabled && isNovo && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                  <Radio className="h-3 w-3 animate-pulse" /> Novo
+                </span>
+              )}
+              {inc.numero_incidente}
+            </span>
+
             <Badge variant={inc.origem === "INSOURCING" ? "default" : "secondary"}>
               {inc.origem === "INSOURCING" ? "Insourcing" : (inc.parceira ?? "Parceira")}
             </Badge>
@@ -412,14 +422,15 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
 function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?: string; onClose: () => void }) {
   const [urls, setUrls] = useState<string[]>([]);
   const [ligacaoUrls, setLigacaoUrls] = useState<string[]>([]);
+  const fotosEnabled = useFotosEnabled();
   useEffect(() => {
-    if (!inc) { setUrls([]); setLigacaoUrls([]); return; }
+    if (!inc || !fotosEnabled) { setUrls([]); setLigacaoUrls([]); return; }
     Promise.all(inc.fotos.map(p => signedPhotoUrl(p, 3600))).then(us => setUrls(us.filter(Boolean) as string[]));
     const lp = (inc.dados as any)?.ligacaoPrint;
     const arr: string[] = Array.isArray(lp) ? lp : [];
     Promise.all(arr.map(p => p?.startsWith("data:") ? Promise.resolve(p) : signedPhotoUrl(p, 3600)))
       .then(us => setLigacaoUrls(us.filter(Boolean) as string[]));
-  }, [inc?.id]);
+  }, [inc?.id, fotosEnabled]);
 
   if (!inc) return null;
   const gmaps = inc.latitude != null && inc.longitude != null
@@ -464,7 +475,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
             </div>
           </div>
 
-          {ligacaoUrls.length > 0 && (
+          {fotosEnabled && ligacaoUrls.length > 0 && (
             <div>
               <p className="mb-2 font-semibold">Print da ligação ({ligacaoUrls.length})</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -482,7 +493,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
             </div>
           )}
 
-          <div>
+          {fotosEnabled && <div>
             <p className="mb-2 font-semibold">Fotos ({inc.fotos.length})</p>
             {urls.length === 0 ? (
               <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
@@ -495,7 +506,7 @@ function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?
                 ))}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </DialogContent>
     </Dialog>

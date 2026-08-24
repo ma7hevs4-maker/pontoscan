@@ -15,7 +15,9 @@ import {
   loadAllFormQuestions,
   loadFormTipos,
   loadFormsEnabled,
+  loadFotosEnabled,
   saveFormsEnabled,
+  saveFotosEnabled,
   slugifyChave,
   slugifyTipoChave,
   upsertFormTipo,
@@ -36,14 +38,19 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [saving, setSaving] = useState(false);
   const [formsEnabled, setFormsEnabled] = useState(true);
   const [togglingForms, setTogglingForms] = useState(false);
+  const [fotosEnabled, setFotosEnabled] = useState(true);
+  const [togglingFotos, setTogglingFotos] = useState(false);
+
   const [novoRotulo, setNovoRotulo] = useState("");
   const [criandoAba, setCriandoAba] = useState(false);
   const [renome, setRenome] = useState<string>("");
 
   const carregar = async () => {
     setLoading(true);
-    const [all, enabled, ts] = await Promise.all([loadAllFormQuestions(), loadFormsEnabled(), loadFormTipos()]);
+    const [all, enabled, ts, fotos] = await Promise.all([loadAllFormQuestions(), loadFormsEnabled(), loadFormTipos(), loadFotosEnabled()]);
     setFormsEnabled(enabled);
+    setFotosEnabled(fotos);
+
     setTipos(ts);
     const d: Record<TipoIncidente, Draft[]> = {};
     for (const t of ts) d[t.chave] = (all[t.chave] ?? []).map((q) => ({ ...q, id: q.id, dirty: false }));
@@ -76,6 +83,23 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
       setTogglingForms(false);
     }
   };
+
+  const toggleFotos = async (v: boolean) => {
+    setTogglingFotos(true);
+    const prev = fotosEnabled;
+    setFotosEnabled(v);
+    try {
+      await saveFotosEnabled(v);
+      toast.success(v ? "Fotos ativadas" : "Fotos desativadas — envio e exibição de fotos ocultos");
+    } catch (e: any) {
+      setFotosEnabled(prev);
+      toast.error(e.message ?? "Falha ao alterar");
+    } finally {
+      setTogglingFotos(false);
+    }
+  };
+
+
 
   const criarAba = async () => {
     const rotulo = novoRotulo.trim();
@@ -266,6 +290,19 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
           </div>
           <Switch checked={formsEnabled} disabled={togglingForms || loading} onCheckedChange={toggleForms} />
         </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Fotos nos incidentes</p>
+            <p className="text-xs text-muted-foreground">
+              {fotosEnabled
+                ? "Ligada — o eletricista anexa evidências fotográficas e as fotos aparecem na aba Incidentes."
+                : "Desligada — nenhum envio de foto é pedido no formulário e as fotos ficam ocultas na aba Incidentes."}
+            </p>
+          </div>
+          <Switch checked={fotosEnabled} disabled={togglingFotos || loading} onCheckedChange={toggleFotos} />
+        </div>
+
 
         <p className="text-xs text-muted-foreground">
           Crie abas (tipos de incidente) e perguntas por aba. O núcleo estruturado (Nº do incidente, GPS e fotos) continua fixo — as perguntas aparecem após ele para eletricistas e parceiras.

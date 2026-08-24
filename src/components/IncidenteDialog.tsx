@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronLeft, Camera, ImageIcon, X, User, Users, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useFotosEnabled } from "@/hooks/use-fotos-enabled";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, poloFromGeo } from "@/lib/incidentes";
 import { getPosition } from "@/lib/geo";
@@ -431,6 +432,7 @@ function DynamicForm({
   const [vals, setVals] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [ligacaoCliente, setLigacaoCliente] = useState("");
+  const fotosEnabled = useFotosEnabled();
   const [printLigacao, setPrintLigacao] = useState<File[]>([]);
 
   useEffect(() => {
@@ -443,9 +445,9 @@ function DynamicForm({
     if (err) return toast.error(err);
     if (withLigacaoCliente) {
       if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-      if (ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
+      if (fotosEnabled && ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     }
-    if (fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
+    if (fotosEnabled && fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
     try {
       const dados: Record<string, any> = { ...vals };
@@ -454,9 +456,9 @@ function DynamicForm({
         tipo,
         numero,
         dados,
-        fotos,
+        fotos: fotosEnabled ? fotos : [],
         actor,
-        extraFotos: withLigacaoCliente && ligacaoCliente === "Sim"
+        extraFotos: fotosEnabled && withLigacaoCliente && ligacaoCliente === "Sim"
           ? [{ key: "ligacaoPrint", files: printLigacao }]
           : [],
       });
@@ -494,12 +496,12 @@ function DynamicForm({
                 ))}
               </RadioGroup>
             </Field>
-            {ligacaoCliente === "Sim" && (
+            {fotosEnabled && ligacaoCliente === "Sim" && (
               <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
             )}
           </>
         )}
-        <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />
+        {fotosEnabled && <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />}
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={submitting}>Cancelar</Button>
           <Button className="flex-1" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar"}</Button>
