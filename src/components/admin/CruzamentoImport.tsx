@@ -38,6 +38,14 @@ const TIPO_LABEL: Record<string, string> = {
   IMPRODUTIVO: "Improdutivo",
 };
 
+const TIPO_COR: Record<string, string> = {
+  ATENDIMENTO_INDIVIDUAL: "hsl(217 91% 55%)",
+  ORDEM_2: "hsl(199 89% 48%)",
+  IMPRODUTIVO: "hsl(38 92% 50%)",
+};
+
+const TIPOS: Tipo[] = ["ATENDIMENTO_INDIVIDUAL", "ORDEM_2", "IMPRODUTIVO"];
+
 const UTN: Polo[] = ["Campos", "Lagos", "Macaé", "Noroeste"];
 
 const POLOS: Polo[] = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"];
@@ -233,6 +241,15 @@ export function CruzamentoImport({
 
   const equipeQ = fEquipe.trim().toUpperCase();
 
+  // Tipos exibidos nos gráficos/tabela conforme filtro de tipo e toggle.
+  const tiposVisiveis = useMemo(
+    () =>
+      TIPOS.filter(
+        (t) => !(semAtInd && t === "ATENDIMENTO_INDIVIDUAL") && (fTipo === "all" || fTipo === t)
+      ),
+    [semAtInd, fTipo]
+  );
+
   const deTs = dataDe ? new Date(dataDe + "T00:00:00").getTime() : null;
   const ateTs = dataAte ? new Date(dataAte + "T23:59:59.999").getTime() : null;
 
@@ -268,20 +285,48 @@ export function CruzamentoImport({
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
+  // Conjuntos de COMPARAÇÃO: nunca filtrados por tipo.
+  // A classificação da planilha e a do sistema podem divergir para o mesmo
+  // incidente; se o casamento usasse o filtro de tipo, um registro existente
+  // apareceria como "faltando" (era a causa de 35 planilha / 31 sistema / 33 faltando).
+  const incidentesMatch = useMemo(() => {
+    return incidentes.filter((i) => {
+      if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
+      if (restringePolo) {
+        const pi = poloFromPrefixo(i.prefixo);
+        if (!pi || !polosAtivos.includes(pi)) return false;
+      }
+      return true;
+    });
+  }, [incidentes, equipeQ, polosAtivos, restringePolo]);
+
+  const linhasMatch = useMemo(() => {
+    return linhas.filter((l) => {
+      if (equipeQ && !l.equipe.includes(equipeQ)) return false;
+      if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
+      if (l.data) {
+        const ts = l.data.getTime();
+        if (deTs != null && ts < deTs) return false;
+        if (ateTs != null && ts > ateTs) return false;
+      }
+      return true;
+    });
+  }, [linhas, equipeQ, polosAtivos, restringePolo, deTs, ateTs]);
+
   const sistemaMap = useMemo(() => {
     const m = new Map<string, IncidenteLite>();
-    for (const i of incidentesEscopo) {
+    for (const i of incidentesMatch) {
       const k = normNum(i.numero_incidente);
       if (k && !m.has(k)) m.set(k, i);
     }
     return m;
-  }, [incidentesEscopo]);
+  }, [incidentesMatch]);
 
   const xlsxMap = useMemo(() => {
     const m = new Map<string, LinhaXlsx>();
-    for (const l of linhasEscopo) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
+    for (const l of linhasMatch) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
     return m;
-  }, [linhasEscopo]);
+  }, [linhasMatch]);
 
   const faltantes = useMemo(
     () => linhasEscopo.filter((l) => !sistemaMap.has(l.numero)),
@@ -374,6 +419,8 @@ export function CruzamentoImport({
         if (l.tipo) r[`falta_${l.tipo}` as const]++;
       }
     }
+    // "sistema" = total registrado no PontoScan no escopo (usa a classificação do
+    // próprio sistema). É informativo; a conta que fecha é planilha = encontrados + faltando.
     for (const i of incidentesEscopo) {
       const p = poloFromPrefixo(i.prefixo);
       if (!p) continue;
@@ -576,7 +623,7 @@ export function CruzamentoImport({
                   <TabsContent value="polos" className="space-y-4">
                     <Section
                       title="Preenchimento do PontoScan por polo"
-                      desc="Compara o que existe na planilha com o que foi registrado no PontoScan, por tipo. “Faltando” = incidentes da planilha sem registro correspondente no sistema."
+                      desc="Planilha = incidentes da planilha no escopo. No PontoScan = os que têm registro correspondente. Faltando = os que não têm. Planilha = No PontoScan + Faltando."
                     >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -589,8 +636,8 @@ export function CruzamentoImport({
                             <Bar dataKey="planilha" name="Planilha" fill="hsl(217 91% 55%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="planilha" position="top" style={{ fontSize: 10 }} />
                             </Bar>
-                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
-                              <LabelList dataKey="sistema" position="top" style={{ fontSize: 10 }} />
+                            <Bar dataKey="encontrados" name="No PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="encontrados" position="top" style={{ fontSize: 10 }} />
                             </Bar>
                             <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
@@ -617,37 +664,46 @@ export function CruzamentoImport({
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            {!semAtInd && (
-                              <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
-                                <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            {tiposVisiveis.map((t, idx) => (
+                              <Bar
+                                key={t}
+                                stackId="f"
+                                dataKey={`falta_${t}`}
+                                name={TIPO_LABEL[t]}
+                                fill={TIPO_COR[t]}
+                                radius={idx === tiposVisiveis.length - 1 ? [4, 4, 0, 0] : undefined}
+                              >
+                                <LabelList
+                                  dataKey={idx === tiposVisiveis.length - 1 ? "faltando" : `falta_${t}`}
+                                  position={idx === tiposVisiveis.length - 1 ? "top" : "inside"}
+                                  style={{ fontSize: 10, fill: idx === tiposVisiveis.length - 1 ? undefined : "#fff" }}
+                                  formatter={(v: number) => (v ? v : "")}
+                                />
                               </Bar>
-                            )}
-                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
-                              <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
-                            </Bar>
-                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
-                              <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
-                            </Bar>
+                            ))}
                           </BarChart>
 
                         </ResponsiveContainer>
                       </div>
                     </Section>
 
-                    <Section title={`Tabela por polo (${porPolo.length})`} desc="Aderência = registros no PontoScan ÷ registros na planilha.">
+                    <Section
+                      title={`Tabela por polo (${porPolo.length})`}
+                      desc="Aderência = No PontoScan ÷ Planilha. “Total PontoScan” é tudo que o polo registrou no escopo (pode ser maior que a planilha)."
+                    >
                       {porPolo.length === 0 ? (
                         <Empty>Sem dados no escopo atual.</Empty>
                       ) : (
                         <Tabela
                           headers={[
-                            "Polo", "Planilha", "PontoScan", "Faltando",
-                            ...(semAtInd ? [] : ["Falta At. Individual"]),
-                            "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                            "Polo", "Planilha", "No PontoScan", "Faltando",
+                            ...tiposVisiveis.map((t) => `Falta ${TIPO_LABEL[t]}`),
+                            "Total PontoScan", "Aderência",
                           ]}
                           rows={porPolo.map((p) => [
-                            p.polo, p.planilha, p.sistema, p.faltando,
-                            ...(semAtInd ? [] : [p.falta_ATENDIMENTO_INDIVIDUAL]),
-                            p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            p.polo, p.planilha, p.encontrados, p.faltando,
+                            ...tiposVisiveis.map((t) => p[`falta_${t}` as const]),
+                            p.sistema,
                             `${p.aderencia}%`,
                           ])}
                         />
