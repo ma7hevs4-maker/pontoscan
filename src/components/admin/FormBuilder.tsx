@@ -451,12 +451,20 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
                   <QuestionCard
                     key={q.id ?? `new-${idx}`}
                     q={q}
+                    parents={current
+                      .filter((p, j) => j !== idx && p.campo_tipo === "choice" && (p.chave.trim() || slugifyChave(p.rotulo)))
+                      .map((p) => ({
+                        chave: (p.chave.trim() || slugifyChave(p.rotulo)).slice(0, 48),
+                        rotulo: p.rotulo || "(sem rótulo)",
+                        opcoes: [...p.opcoes.map((o) => o.trim()).filter(Boolean), ...(p.permite_outro ? ["Outro"] : [])],
+                      }))}
                     onChange={(patch) => updateOne(idx, patch)}
                     onUp={idx > 0 ? () => move(idx, -1) : undefined}
                     onDown={idx < current.length - 1 ? () => move(idx, 1) : undefined}
                     onRemove={() => remove(idx)}
                   />
                 ))}
+
                 {tab === t.chave && (
                   <Button variant="outline" onClick={add} className="w-full">
                     <Plus className="mr-2 h-4 w-4" /> Adicionar pergunta
