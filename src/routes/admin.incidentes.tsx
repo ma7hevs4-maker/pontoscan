@@ -381,7 +381,15 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
         </div>}
         <div className="space-y-2 p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-sm font-bold">{inc.numero_incidente}</span>
+            <span className="flex items-center gap-2 font-mono text-sm font-bold">
+              {!fotosEnabled && isNovo && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                  <Radio className="h-3 w-3 animate-pulse" /> Novo
+                </span>
+              )}
+              {inc.numero_incidente}
+            </span>
+
             <Badge variant={inc.origem === "INSOURCING" ? "default" : "secondary"}>
               {inc.origem === "INSOURCING" ? "Insourcing" : (inc.parceira ?? "Parceira")}
             </Badge>
