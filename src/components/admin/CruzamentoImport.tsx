@@ -328,6 +328,37 @@ export function CruzamentoImport({
 
   const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
 
+  // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
+  const porPolo = useMemo(() => {
+    type Row = {
+      polo: string; planilha: number; sistema: number; faltando: number;
+      falta_ATENDIMENTO_INDIVIDUAL: number; falta_ORDEM_2: number; falta_IMPRODUTIVO: number;
+      aderencia: number;
+    };
+    const map = new Map<string, Row>();
+    const get = (p: string) =>
+      map.get(p) ?? (map.set(p, {
+        polo: p, planilha: 0, sistema: 0, faltando: 0,
+        falta_ATENDIMENTO_INDIVIDUAL: 0, falta_ORDEM_2: 0, falta_IMPRODUTIVO: 0, aderencia: 0,
+      }), map.get(p)!);
+
+    for (const l of linhasEscopo) {
+      const r = get(l.polo ?? "Sem polo");
+      r.planilha++;
+      if (!sistemaMap.has(l.numero)) {
+        r.faltando++;
+        if (l.tipo) r[`falta_${l.tipo}` as const]++;
+      }
+    }
+    for (const i of incidentesEscopo) {
+      const r = get(poloFromPrefixo(i.prefixo) ?? "Sem polo");
+      r.sistema++;
+    }
+    return Array.from(map.values())
+      .map((r) => ({ ...r, aderencia: r.planilha ? Math.round(((r.planilha - r.faltando) / r.planilha) * 100) : 0 }))
+      .sort((a, b) => b.faltando - a.faltando || b.planilha - a.planilha);
+  }, [linhasEscopo, incidentesEscopo, sistemaMap]);
+
   const abrirSistema = (equipe: string) => {
     const lista = incidentesEscopo.filter((i) => normUp(i.prefixo) === equipe);
     setDrill({
