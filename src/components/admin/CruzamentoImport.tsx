@@ -519,13 +519,30 @@ export function CruzamentoImport({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>
+                    {!semAtInd && <SelectItem value="ATENDIMENTO_INDIVIDUAL">Atendimento Individual</SelectItem>}
                     <SelectItem value="ORDEM_2">Ordem 2</SelectItem>
                     <SelectItem value="IMPRODUTIVO">Improdutivo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label className="text-xs">Desconsiderar Atendimento Individual</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Foca a análise em Ordem 2 e Improdutivos (remove os atendimentos individuais da planilha e do sistema).
+                </p>
+              </div>
+              <Switch
+                checked={semAtInd}
+                onCheckedChange={(v) => {
+                  setSemAtInd(v);
+                  if (v && fTipo === "ATENDIMENTO_INDIVIDUAL") setFTipo("all");
+                }}
+              />
+            </div>
+
 
 
             {erro && (
