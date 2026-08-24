@@ -165,11 +165,17 @@ export async function loadFormQuestions(tipo: TipoIncidente): Promise<FormQuesti
     .eq("ativa", true)
     .order("ordem", { ascending: true });
   if (error) return [];
-  return ((data as any[]) ?? []).map((r) => ({
+  return ((data as any[]) ?? []).map(mapQuestion);
+}
+
+function mapQuestion(r: any): FormQuestion {
+  return {
     ...r,
     permite_outro: !!r.permite_outro,
     opcoes: Array.isArray(r.opcoes) ? r.opcoes : [],
-  }));
+    parent_chave: r.parent_chave ?? null,
+    parent_valores: Array.isArray(r.parent_valores) ? r.parent_valores.map(String) : [],
+  } as FormQuestion;
 }
 
 export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, FormQuestion[]>> {
@@ -179,9 +185,10 @@ export async function loadAllFormQuestions(): Promise<Record<TipoIncidente, Form
     .order("ordem", { ascending: true });
   const out: Record<TipoIncidente, FormQuestion[]> = {};
   for (const r of ((data as any[]) ?? [])) {
-    const q: FormQuestion = { ...r, permite_outro: !!r.permite_outro, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] };
+    const q = mapQuestion(r);
     (out[q.tipo] ??= []).push(q);
   }
+
 
   return out;
 }
