@@ -101,7 +101,7 @@ export const Route = createFileRoute("/api/admin-photos")({
           for (const incident of affected) {
             const { error } = await admin
               .from("incidentes")
-              .update({ fotos: [], dados: incident.dados })
+              .update({ fotos: [], dados: incident.dados as any })
               .eq("id", incident.id);
             if (error) throw error;
           }
