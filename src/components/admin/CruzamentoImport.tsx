@@ -563,16 +563,23 @@ export function CruzamentoImport({
                     <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                          <BarChart data={porPolo} margin={{ top: 20, right: 8, bottom: 8, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
                             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip contentStyle={{ fontSize: 12 }} />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(var(--primary))" />
-                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)" />
-                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(217 91% 55%)">
+                              <LabelList dataKey="falta_ATENDIMENTO_INDIVIDUAL" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            </Bar>
+                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)">
+                              <LabelList dataKey="falta_ORDEM_2" position="inside" style={{ fontSize: 10, fill: "#fff" }} formatter={(v: number) => (v ? v : "")} />
+                            </Bar>
+                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="faltando" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
                           </BarChart>
+
                         </ResponsiveContainer>
                       </div>
                     </Section>
