@@ -475,6 +475,85 @@ export function CruzamentoImport({
     });
   };
 
+  const dataStr = (d?: Date | string | null) =>
+    d ? new Date(d).toLocaleString("pt-BR") : "";
+
+  const exportar = () => {
+    const wb = XLSX.utils.book_new();
+    const add = (nome: string, rows: any[]) =>
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(rows.length ? rows : [{ Info: "Sem registros" }]),
+        nome
+      );
+
+    add("Resumo por polo", porPolo.map((p) => ({
+      Polo: p.polo,
+      "Na planilha": p.planilha,
+      "No PontoScan (total)": p.sistema,
+      "Em ambos": p.encontrados,
+      "Faltando no PontoScan": p.faltando,
+      "Aderência (%)": p.aderencia,
+    })));
+
+    add("Resumo por equipe", porEquipe.map((e) => ({
+      Equipe: e.equipe,
+      "Na planilha": e.xlsx,
+      "No PontoScan (total)": e.sistema,
+      "Em ambos": e.ambos,
+      "Faltando no PontoScan": e.faltando,
+      "Só no PontoScan": e.soSistema,
+    })));
+
+    add("Em ambos", emAmbos.map(({ linha, sis }) => ({
+      Número: linha.numero,
+      Polo: linha.polo ?? "",
+      "Equipe (planilha)": linha.equipe,
+      "Equipe (PontoScan)": normUp(sis.prefixo),
+      "Tipo (planilha)": linha.tipo ? TIPO_LABEL[linha.tipo] : "Não classificado",
+      "Tipo (PontoScan)": TIPO_LABEL[sis.tipo] ?? sis.tipo,
+      "Causa (planilha)": linha.causa,
+      "Data Início": dataStr(linha.data),
+      "Data PontoScan": dataStr(sis.created_at),
+    })));
+
+    add("Faltando no PontoScan", faltantes.map((f) => ({
+      Número: f.numero,
+      Polo: f.polo ?? "",
+      Equipe: f.equipe,
+      Tipo: f.tipo ? TIPO_LABEL[f.tipo] : "Não classificado",
+      Causa: f.causa,
+      "Data Início": dataStr(f.data),
+    })));
+
+    add("Divergências", divergencias.map((d) => ({
+      Número: d.numero,
+      "Tipo (planilha)": d.tipo_xlsx,
+      "Tipo (PontoScan)": d.tipo_sis,
+      "Equipe (planilha)": d.equipe_xlsx,
+      "Equipe (PontoScan)": d.equipe_sis,
+      "Causa (planilha)": d.causa_xlsx,
+      "Causa (PontoScan)": d.causa_sis,
+    })));
+
+    add("Só no PontoScan", extras.map((e) => ({
+      Número: e.numero_incidente,
+      Equipe: e.prefixo,
+      Polo: poloFromPrefixo(e.prefixo) ?? "",
+      Tipo: TIPO_LABEL[e.tipo] ?? e.tipo,
+      Data: dataStr(e.created_at),
+    })));
+
+    add("Não classificados", naoClassificadas.map((l) => ({
+      Número: l.numero,
+      Equipe: l.equipe,
+      Causa: l.causa,
+      "Data Início": dataStr(l.data),
+    })));
+
+    XLSX.writeFile(wb, `cruzamento-pontoscan-${dataDe || "inicio"}-a-${dataAte || "fim"}.xlsx`);
+  };
+
   const reset = () => {
     setLinhas([]);
     setErro(null);
@@ -482,6 +561,7 @@ export function CruzamentoImport({
     setSemData(0);
     if (inputRef.current) inputRef.current.value = "";
   };
+
 
   return (
     <>
