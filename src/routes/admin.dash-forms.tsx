@@ -30,21 +30,26 @@ const POLO_COLORS: Record<string, string> = {
   "Perdas": "hsl(55 80% 45%)",
 };
 
-function exportarCSV(tipo: string, charts: { field: { label: string }; data: { name: string; value: number }[]; total: number }[]) {
+function rotuloExport(f: { label: string; cond?: string }) {
+  return f.cond ? `${f.label} [quando ${f.cond}]` : f.label;
+}
+
+function exportarCSV(tipo: string, charts: { field: { label: string; cond?: string }; data: { name: string; value: number }[]; total: number }[]) {
   const sep = ";";
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
   const lines: string[] = [];
   lines.push(["Pergunta", "Resposta", "Quantidade", "Total", "%"].map(esc).join(sep));
   for (const c of charts) {
     if (c.data.length === 0) {
-      lines.push([c.field.label, "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
+      lines.push([rotuloExport(c.field), "(sem respostas)", "0", "0", "0%"].map(esc).join(sep));
       continue;
     }
     for (const d of c.data) {
       const pct = c.total ? ((d.value / c.total) * 100).toFixed(1) + "%" : "0%";
-      lines.push([c.field.label, d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
+      lines.push([rotuloExport(c.field), d.name, String(d.value), String(c.total), pct].map(esc).join(sep));
     }
   }
+
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
