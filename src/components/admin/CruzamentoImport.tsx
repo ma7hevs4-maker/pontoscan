@@ -241,6 +241,15 @@ export function CruzamentoImport({
 
   const equipeQ = fEquipe.trim().toUpperCase();
 
+  // Tipos exibidos nos gráficos/tabela conforme filtro de tipo e toggle.
+  const tiposVisiveis = useMemo(
+    () =>
+      TIPOS.filter(
+        (t) => !(semAtInd && t === "ATENDIMENTO_INDIVIDUAL") && (fTipo === "all" || fTipo === t)
+      ),
+    [semAtInd, fTipo]
+  );
+
   const deTs = dataDe ? new Date(dataDe + "T00:00:00").getTime() : null;
   const ateTs = dataAte ? new Date(dataAte + "T23:59:59.999").getTime() : null;
 
