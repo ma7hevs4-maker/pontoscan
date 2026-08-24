@@ -459,6 +459,70 @@ export function CruzamentoImport({
                   <StatCard label="Com divergência" value={divergencias.length} tone="warn" />
                 </div>
 
+                <Tabs defaultValue="polos">
+                  <TabsList>
+                    <TabsTrigger value="polos">Diagnóstico por polo</TabsTrigger>
+                    <TabsTrigger value="equipes">Detalhamento</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="polos" className="space-y-4">
+                    <Section
+                      title="Preenchimento do PontoScan por polo"
+                      desc="Compara o que existe na planilha com o que foi registrado no PontoScan, por tipo. “Faltando” = incidentes da planilha sem registro correspondente no sistema."
+                    >
+                      <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ fontSize: 12 }} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Bar dataKey="planilha" name="Planilha" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(var(--primary) / 0.45)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Section>
+
+                    <Section title="Faltando por tipo e por polo" desc="Quantidade de incidentes da planilha ausentes no PontoScan, separados por tipo.">
+                      <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={porPolo} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="polo" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={54} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ fontSize: 12 }} />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Bar stackId="f" dataKey="falta_ATENDIMENTO_INDIVIDUAL" name="Atendimento Individual" fill="hsl(var(--primary))" />
+                            <Bar stackId="f" dataKey="falta_ORDEM_2" name="Ordem 2" fill="hsl(199 89% 48%)" />
+                            <Bar stackId="f" dataKey="falta_IMPRODUTIVO" name="Improdutivo" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Section>
+
+                    <Section title={`Tabela por polo (${porPolo.length})`} desc="Aderência = registros no PontoScan ÷ registros na planilha.">
+                      {porPolo.length === 0 ? (
+                        <Empty>Sem dados no escopo atual.</Empty>
+                      ) : (
+                        <Tabela
+                          headers={[
+                            "Polo", "Planilha", "PontoScan", "Faltando",
+                            "Falta At. Individual", "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                          ]}
+                          rows={porPolo.map((p) => [
+                            p.polo, p.planilha, p.sistema, p.faltando,
+                            p.falta_ATENDIMENTO_INDIVIDUAL, p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            `${p.aderencia}%`,
+                          ])}
+                        />
+                      )}
+                    </Section>
+                  </TabsContent>
+
+                  <TabsContent value="equipes" className="space-y-4">
                 <Section
                   title={`Quantidade por equipe (${porEquipe.length})`}
                   desc="Clique em uma quantidade para ver os incidentes correspondentes. Diferença positiva indica registros que a equipe deveria ter feito no sistema e não fez."
