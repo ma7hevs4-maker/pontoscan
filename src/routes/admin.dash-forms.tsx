@@ -11,7 +11,7 @@ import { Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 
 import { useAuth } from "@/lib/auth-context";
-import { loadAllFormQuestions, loadFormTipos, type FormQuestion, type FormTipo } from "@/lib/form-config";
+import { loadAllFormQuestions, loadFormTipos, visibleQuestions, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
 export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
 
@@ -89,7 +89,7 @@ type Row = {
   polo_geo: string | null;
 };
 
-type FieldDef = { key: string; label: string; outroKey?: string };
+type FieldDef = { key: string; label: string; outroKey?: string; cond?: string };
 
 const FIELDS: Record<string, FieldDef[]> = {
   ATENDIMENTO_INDIVIDUAL: [
