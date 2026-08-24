@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Upload, AlertCircle, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, type Polo } from "@/lib/incidentes";
 
