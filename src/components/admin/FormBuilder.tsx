@@ -287,7 +287,10 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
             permite_outro: q.campo_tipo === "choice" ? q.permite_outro : false,
             ordem: q.ordem,
             ativa: q.ativa,
+            parent_chave: q.parent_chave || null,
+            parent_valores: q.parent_chave ? q.parent_valores : [],
           };
+
           if (q.id) {
             const { error } = await (supabase as any).from("form_questions").update(payload).eq("id", q.id);
             if (error) throw new Error(error.message);
