@@ -238,6 +238,7 @@ export function CruzamentoImport({
 
   const incidentesEscopo = useMemo(() => {
     return incidentes.filter((i) => {
+      if (semAtInd && i.tipo === "ATENDIMENTO_INDIVIDUAL") return false;
       if (fTipo !== "all" && i.tipo !== fTipo) return false;
       if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
       if (restringePolo) {
@@ -246,10 +247,11 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo]);
+  }, [incidentes, fTipo, equipeQ, polosAtivos, restringePolo, semAtInd]);
 
   const linhasEscopo = useMemo(() => {
     return linhas.filter((l) => {
+      if (semAtInd && l.tipo === "ATENDIMENTO_INDIVIDUAL") return false;
       if (equipeQ && !l.equipe.includes(equipeQ)) return false;
       if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
       if (fTipo !== "all" && l.tipo !== fTipo) return false;
@@ -262,7 +264,7 @@ export function CruzamentoImport({
       }
       return true;
     });
-  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs]);
+  }, [linhas, equipeQ, polosAtivos, restringePolo, fTipo, deTs, ateTs, semAtInd]);
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
