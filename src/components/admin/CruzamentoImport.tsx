@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Upload, AlertCircle, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { poloFromPrefixo, type Polo } from "@/lib/incidentes";
 
@@ -369,29 +369,42 @@ export function CruzamentoImport({
     return out;
   }, [linhasEscopo, sistemaMap]);
 
+  // Incidentes que existem nos dois lados (planilha ∩ PontoScan).
+  const emAmbos = useMemo(() => {
+    const out: { linha: LinhaXlsx; sis: IncidenteLite }[] = [];
+    for (const l of linhasEscopo) {
+      const sis = sistemaMap.get(l.numero);
+      if (sis) out.push({ linha: l, sis });
+    }
+    return out;
+  }, [linhasEscopo, sistemaMap]);
+
   // Comparativo de quantidade por equipe — foco principal do cruzamento.
   const porEquipe = useMemo(() => {
-    const map = new Map<string, { sistema: number; xlsx: number }>();
+    const map = new Map<string, { sistema: number; xlsx: number; ambos: number }>();
+    const get = (k: string) =>
+      map.get(k) ?? (map.set(k, { sistema: 0, xlsx: 0, ambos: 0 }), map.get(k)!);
     for (const i of incidentesEscopo) {
       const k = normUp(i.prefixo);
-      if (!k) continue;
-      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
-      cur.sistema++;
-      map.set(k, cur);
+      if (k) get(k).sistema++;
     }
     for (const l of linhasEscopo) {
-      const k = l.equipe;
-      if (!k) continue;
-      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
-      cur.xlsx++;
-      map.set(k, cur);
+      if (!l.equipe) continue;
+      const c = get(l.equipe);
+      c.xlsx++;
+      if (sistemaMap.has(l.numero)) c.ambos++;
     }
     return Array.from(map.entries())
-      .map(([equipe, v]) => ({ equipe, ...v, dif: v.xlsx - v.sistema }))
-      .sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif) || b.xlsx - a.xlsx);
-  }, [incidentesEscopo, linhasEscopo]);
+      .map(([equipe, v]) => ({
+        equipe,
+        ...v,
+        faltando: v.xlsx - v.ambos,
+        soSistema: Math.max(0, v.sistema - v.ambos),
+      }))
+      .sort((a, b) => b.faltando - a.faltando || b.xlsx - a.xlsx);
+  }, [incidentesEscopo, linhasEscopo, sistemaMap]);
 
-  const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
+
 
   // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
   // "Sem polo" (prefixo não reconhecido) é ignorado a pedido da operação.
@@ -461,6 +474,85 @@ export function CruzamentoImport({
     });
   };
 
+  const dataStr = (d?: Date | string | null) =>
+    d ? new Date(d).toLocaleString("pt-BR") : "";
+
+  const exportar = () => {
+    const wb = XLSX.utils.book_new();
+    const add = (nome: string, rows: any[]) =>
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(rows.length ? rows : [{ Info: "Sem registros" }]),
+        nome
+      );
+
+    add("Resumo por polo", porPolo.map((p) => ({
+      Polo: p.polo,
+      "Na planilha": p.planilha,
+      "No PontoScan (total)": p.sistema,
+      "Em ambos": p.encontrados,
+      "Faltando no PontoScan": p.faltando,
+      "Aderência (%)": p.aderencia,
+    })));
+
+    add("Resumo por equipe", porEquipe.map((e) => ({
+      Equipe: e.equipe,
+      "Na planilha": e.xlsx,
+      "No PontoScan (total)": e.sistema,
+      "Em ambos": e.ambos,
+      "Faltando no PontoScan": e.faltando,
+      "Só no PontoScan": e.soSistema,
+    })));
+
+    add("Em ambos", emAmbos.map(({ linha, sis }) => ({
+      Número: linha.numero,
+      Polo: linha.polo ?? "",
+      "Equipe (planilha)": linha.equipe,
+      "Equipe (PontoScan)": normUp(sis.prefixo),
+      "Tipo (planilha)": linha.tipo ? TIPO_LABEL[linha.tipo] : "Não classificado",
+      "Tipo (PontoScan)": TIPO_LABEL[sis.tipo] ?? sis.tipo,
+      "Causa (planilha)": linha.causa,
+      "Data Início": dataStr(linha.data),
+      "Data PontoScan": dataStr(sis.created_at),
+    })));
+
+    add("Faltando no PontoScan", faltantes.map((f) => ({
+      Número: f.numero,
+      Polo: f.polo ?? "",
+      Equipe: f.equipe,
+      Tipo: f.tipo ? TIPO_LABEL[f.tipo] : "Não classificado",
+      Causa: f.causa,
+      "Data Início": dataStr(f.data),
+    })));
+
+    add("Divergências", divergencias.map((d) => ({
+      Número: d.numero,
+      "Tipo (planilha)": d.tipo_xlsx,
+      "Tipo (PontoScan)": d.tipo_sis,
+      "Equipe (planilha)": d.equipe_xlsx,
+      "Equipe (PontoScan)": d.equipe_sis,
+      "Causa (planilha)": d.causa_xlsx,
+      "Causa (PontoScan)": d.causa_sis,
+    })));
+
+    add("Só no PontoScan", extras.map((e) => ({
+      Número: e.numero_incidente,
+      Equipe: e.prefixo,
+      Polo: poloFromPrefixo(e.prefixo) ?? "",
+      Tipo: TIPO_LABEL[e.tipo] ?? e.tipo,
+      Data: dataStr(e.created_at),
+    })));
+
+    add("Não classificados", naoClassificadas.map((l) => ({
+      Número: l.numero,
+      Equipe: l.equipe,
+      Causa: l.causa,
+      "Data Início": dataStr(l.data),
+    })));
+
+    XLSX.writeFile(wb, `cruzamento-pontoscan-${dataDe || "inicio"}-a-${dataAte || "fim"}.xlsx`);
+  };
+
   const reset = () => {
     setLinhas([]);
     setErro(null);
@@ -468,6 +560,7 @@ export function CruzamentoImport({
     setSemData(0);
     if (inputRef.current) inputRef.current.value = "";
   };
+
 
   return (
     <>
@@ -607,11 +700,25 @@ export function CruzamentoImport({
                   </p>
                 )}
 
-                <div className="grid grid-cols-4 gap-2">
-                  <StatCard label="Na planilha (período)" value={linhasEscopo.length} />
-                  <StatCard label="Equipes com quantidade menor no sistema" value={equipesFaltando.length} tone="warn" />
-                  <StatCard label="Faltantes no sistema" value={faltantes.length} tone="warn" />
-                  <StatCard label="Com divergência" value={divergencias.length} tone="warn" />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Escopo: {dataDe || "—"} a {dataAte || "—"}.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={exportar}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar base completa (.xlsx)
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <StatCard label="Na planilha" value={linhasEscopo.length} />
+                  <StatCard label="No PontoScan (total)" value={incidentesEscopo.length} />
+                  <StatCard label="Em ambos" value={emAmbos.length} />
+                  <StatCard label="Faltando no PontoScan" value={faltantes.length} tone="warn" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <StatCard label="Só no PontoScan (fora da planilha)" value={extras.length} />
+                  <StatCard label="Com divergência (existem nos dois, dados diferentes)" value={divergencias.length} tone="warn" />
                 </div>
 
                 <Tabs defaultValue="polos">
@@ -623,7 +730,7 @@ export function CruzamentoImport({
                   <TabsContent value="polos" className="space-y-4">
                     <Section
                       title="Preenchimento do PontoScan por polo"
-                      desc="Planilha = incidentes da planilha no escopo. No PontoScan = os que têm registro correspondente. Faltando = os que não têm. Planilha = No PontoScan + Faltando."
+                      desc="Planilha = o que existe na planilha. PontoScan = tudo que o polo registrou no sistema no escopo. Em ambos = mesmo incidente nos dois. Faltando = Planilha − Em ambos."
                     >
                       <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -636,7 +743,10 @@ export function CruzamentoImport({
                             <Bar dataKey="planilha" name="Planilha" fill="hsl(217 91% 55%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="planilha" position="top" style={{ fontSize: 10 }} />
                             </Bar>
-                            <Bar dataKey="encontrados" name="No PontoScan" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
+                            <Bar dataKey="sistema" name="PontoScan" fill="hsl(199 89% 48%)" radius={[4, 4, 0, 0]}>
+                              <LabelList dataKey="sistema" position="top" style={{ fontSize: 10 }} />
+                            </Bar>
+                            <Bar dataKey="encontrados" name="Em ambos" fill="hsl(152 55% 40%)" radius={[4, 4, 0, 0]}>
                               <LabelList dataKey="encontrados" position="top" style={{ fontSize: 10 }} />
                             </Bar>
                             <Bar dataKey="faltando" name="Faltando" fill="hsl(38 92% 50%)" radius={[4, 4, 0, 0]}>
@@ -644,6 +754,7 @@ export function CruzamentoImport({
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
+
                       </div>
 
                     </Section>
@@ -689,21 +800,20 @@ export function CruzamentoImport({
 
                     <Section
                       title={`Tabela por polo (${porPolo.length})`}
-                      desc="Aderência = No PontoScan ÷ Planilha. “Total PontoScan” é tudo que o polo registrou no escopo (pode ser maior que a planilha)."
+                      desc="Aderência = Em ambos ÷ Planilha. PontoScan = tudo que o polo registrou no escopo (pode ser maior que a planilha)."
                     >
                       {porPolo.length === 0 ? (
                         <Empty>Sem dados no escopo atual.</Empty>
                       ) : (
                         <Tabela
                           headers={[
-                            "Polo", "Planilha", "No PontoScan", "Faltando",
+                            "Polo", "Planilha", "PontoScan", "Em ambos", "Faltando",
                             ...tiposVisiveis.map((t) => `Falta ${TIPO_LABEL[t]}`),
-                            "Total PontoScan", "Aderência",
+                            "Aderência",
                           ]}
                           rows={porPolo.map((p) => [
-                            p.polo, p.planilha, p.encontrados, p.faltando,
+                            p.polo, p.planilha, p.sistema, p.encontrados, p.faltando,
                             ...tiposVisiveis.map((t) => p[`falta_${t}` as const]),
-                            p.sistema,
                             `${p.aderencia}%`,
                           ])}
                         />
@@ -714,16 +824,16 @@ export function CruzamentoImport({
                   <TabsContent value="equipes" className="space-y-4">
                 <Section
                   title={`Quantidade por equipe (${porEquipe.length})`}
-                  desc="Clique em uma quantidade para ver os incidentes correspondentes. Diferença positiva indica registros que a equipe deveria ter feito no sistema e não fez."
+                  desc="Planilha = o que existe na planilha. PontoScan = o que a equipe registrou. Em ambos = mesmo incidente nos dois lados. Faltando = Planilha − Em ambos. Clique nos números azuis para ver a lista."
                 >
                   {porEquipe.length === 0 ? (
                     <Empty>Sem dados no escopo atual.</Empty>
                   ) : (
-                    <div className="max-h-64 overflow-auto rounded-md border">
+                    <div className="max-h-72 overflow-auto rounded-md border">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-muted">
                           <tr>
-                            {["Equipe", "Sistema", "Planilha", "Diferença"].map((h) => (
+                            {["Equipe", "Planilha", "PontoScan", "Em ambos", "Faltando", "Só no PontoScan"].map((h) => (
                               <th key={h} className="p-2 text-left font-medium">{h}</th>
                             ))}
                           </tr>
@@ -731,16 +841,7 @@ export function CruzamentoImport({
                         <tbody>
                           {porEquipe.map((e) => (
                             <tr key={e.equipe} className="border-t">
-                              <td className="p-2">{e.equipe}</td>
-                              <td className="p-2">
-                                <button
-                                  className="text-primary underline underline-offset-2 disabled:text-muted-foreground disabled:no-underline"
-                                  disabled={e.sistema === 0}
-                                  onClick={() => abrirSistema(e.equipe)}
-                                >
-                                  {e.sistema}
-                                </button>
-                              </td>
+                              <td className="p-2 font-medium">{e.equipe}</td>
                               <td className="p-2">
                                 <button
                                   className="text-primary underline underline-offset-2 disabled:text-muted-foreground disabled:no-underline"
@@ -750,9 +851,20 @@ export function CruzamentoImport({
                                   {e.xlsx}
                                 </button>
                               </td>
-                              <td className={`p-2 ${e.dif > 0 ? "font-semibold text-amber-600" : ""}`}>
-                                {e.dif > 0 ? `+${e.dif}` : String(e.dif)}
+                              <td className="p-2">
+                                <button
+                                  className="text-primary underline underline-offset-2 disabled:text-muted-foreground disabled:no-underline"
+                                  disabled={e.sistema === 0}
+                                  onClick={() => abrirSistema(e.equipe)}
+                                >
+                                  {e.sistema}
+                                </button>
                               </td>
+                              <td className="p-2 text-emerald-700 dark:text-emerald-400">{e.ambos}</td>
+                              <td className={`p-2 ${e.faltando > 0 ? "font-semibold text-amber-600" : "text-muted-foreground"}`}>
+                                {e.faltando}
+                              </td>
+                              <td className="p-2 text-muted-foreground">{e.soSistema}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -760,6 +872,7 @@ export function CruzamentoImport({
                     </div>
                   )}
                 </Section>
+
 
                 <Section title={`Faltantes no sistema (${faltantes.length})`} desc="Presentes na planilha e sem registro no sistema.">
                   {faltantes.length === 0 ? (
