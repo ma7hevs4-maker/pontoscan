@@ -369,29 +369,43 @@ export function CruzamentoImport({
     return out;
   }, [linhasEscopo, sistemaMap]);
 
+  // Incidentes que existem nos dois lados (planilha ∩ PontoScan).
+  const emAmbos = useMemo(() => {
+    const out: { linha: LinhaXlsx; sis: IncidenteLite }[] = [];
+    for (const l of linhasEscopo) {
+      const sis = sistemaMap.get(l.numero);
+      if (sis) out.push({ linha: l, sis });
+    }
+    return out;
+  }, [linhasEscopo, sistemaMap]);
+
   // Comparativo de quantidade por equipe — foco principal do cruzamento.
   const porEquipe = useMemo(() => {
-    const map = new Map<string, { sistema: number; xlsx: number }>();
+    const map = new Map<string, { sistema: number; xlsx: number; ambos: number }>();
+    const get = (k: string) =>
+      map.get(k) ?? (map.set(k, { sistema: 0, xlsx: 0, ambos: 0 }), map.get(k)!);
     for (const i of incidentesEscopo) {
       const k = normUp(i.prefixo);
-      if (!k) continue;
-      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
-      cur.sistema++;
-      map.set(k, cur);
+      if (k) get(k).sistema++;
     }
     for (const l of linhasEscopo) {
-      const k = l.equipe;
-      if (!k) continue;
-      const cur = map.get(k) ?? { sistema: 0, xlsx: 0 };
-      cur.xlsx++;
-      map.set(k, cur);
+      if (!l.equipe) continue;
+      const c = get(l.equipe);
+      c.xlsx++;
+      if (sistemaMap.has(l.numero)) c.ambos++;
     }
     return Array.from(map.entries())
-      .map(([equipe, v]) => ({ equipe, ...v, dif: v.xlsx - v.sistema }))
-      .sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif) || b.xlsx - a.xlsx);
-  }, [incidentesEscopo, linhasEscopo]);
+      .map(([equipe, v]) => ({
+        equipe,
+        ...v,
+        faltando: v.xlsx - v.ambos,
+        soSistema: Math.max(0, v.sistema - v.ambos),
+      }))
+      .sort((a, b) => b.faltando - a.faltando || b.xlsx - a.xlsx);
+  }, [incidentesEscopo, linhasEscopo, sistemaMap]);
 
-  const equipesFaltando = porEquipe.filter((e) => e.dif > 0);
+  const equipesFaltando = porEquipe.filter((e) => e.faltando > 0);
+
 
   // Diagnóstico por polo: quanto da planilha está efetivamente no PontoScan.
   // "Sem polo" (prefixo não reconhecido) é ignorado a pedido da operação.
