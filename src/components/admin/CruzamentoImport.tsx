@@ -439,19 +439,52 @@ export function CruzamentoImport({
               )}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              {role === "ADMIN_DISPATCH" && (
-                <div>
-                  <Label className="text-xs">Polo</Label>
-                  <Select value={fPolo} onValueChange={setFPolo}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {POLOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+            {role === "ADMIN_DISPATCH" && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label className="text-xs">UT</Label>
+                  {(["all", "UTN", "UTS"] as const).map((u) => (
+                    <Button
+                      key={u}
+                      type="button"
+                      size="sm"
+                      variant={fUt === u ? "default" : "outline"}
+                      onClick={() => { setFUt(u); setFPolos([]); }}
+                    >
+                      {u === "all" ? "Todas" : u}
+                    </Button>
+                  ))}
                 </div>
-              )}
+                <div>
+                  <Label className="text-xs">Polos (multi-seleção)</Label>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {polosDaUt.map((p) => {
+                      const on = fPolos.includes(p);
+                      return (
+                        <Button
+                          key={p}
+                          type="button"
+                          size="sm"
+                          variant={on ? "default" : "outline"}
+                          onClick={() =>
+                            setFPolos((prev) => (on ? prev.filter((x) => x !== p) : [...prev, p]))
+                          }
+                        >
+                          {p}
+                        </Button>
+                      );
+                    })}
+                    {fPolos.length > 0 && (
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setFPolos([])}>
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <Label className="text-xs">Equipe (prefixo)</Label>
                 <Input value={fEquipe} onChange={(e) => setFEquipe(e.target.value)} placeholder="Ex.: SG010" />
@@ -469,6 +502,7 @@ export function CruzamentoImport({
                 </Select>
               </div>
             </div>
+
 
             {erro && (
               <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
