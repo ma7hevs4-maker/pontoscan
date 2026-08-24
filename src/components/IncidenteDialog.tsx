@@ -200,7 +200,7 @@ function TipoButton({ icon, label, onClick, disabled }: { icon: React.ReactNode;
 
 
 function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string | null {
-  for (const q of qs) {
+  for (const q of visibleQuestions(qs, vals)) {
     const v = (vals[q.chave] ?? "").trim();
     if (q.obrigatoria && !v) return `Preencha: ${q.rotulo}`;
     if (q.campo_tipo === "choice" && q.permite_outro && v === "Outro") {
@@ -211,6 +211,19 @@ function validarExtras(qs: FormQuestion[], vals: Record<string, string>): string
   return null;
 }
 
+/** Remove respostas de perguntas que ficaram ocultas (o eletricista trocou a resposta do pai). */
+function limparOcultas(qs: FormQuestion[], vals: Record<string, string>): Record<string, string> {
+  const visiveis = new Set(visibleQuestions(qs, vals).map((q) => q.chave));
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vals)) {
+    const base = k.endsWith("Outro") ? k.slice(0, -5) : k;
+    const q = qs.find((x) => x.chave === base);
+    if (q && !visiveis.has(q.chave)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 function ExtrasRenderer({
   questions, values, onChange,
 }: {
@@ -218,12 +231,14 @@ function ExtrasRenderer({
   values: Record<string, string>;
   onChange: (v: Record<string, string>) => void;
 }) {
-  if (!questions.length) return null;
+  const visiveis = visibleQuestions(questions, values);
+  if (!visiveis.length) return null;
   const set = (k: string, v: string) => onChange({ ...values, [k]: v });
   return (
     <div className="space-y-5">
-      {questions.map((q) => (
+      {visiveis.map((q) => (
         <Field key={q.id} label={q.rotulo} required={q.obrigatoria}>
+
           {q.campo_tipo === "text" && (
             <Input value={values[q.chave] ?? ""} onChange={(e) => set(q.chave, e.target.value)} placeholder="Texto de resposta" />
           )}
