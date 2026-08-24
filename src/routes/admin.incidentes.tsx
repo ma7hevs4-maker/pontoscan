@@ -62,6 +62,7 @@ function IncidentesFeed() {
   const [dataDe, setDataDe] = useState<string>(hoje);
   const [dataAte, setDataAte] = useState<string>(hoje);
   const [detalhe, setDetalhe] = useState<Incidente | null>(null);
+  const fotosEnabled = useFotosEnabled();
 
   const load = async () => {
     setLoading(true);
@@ -307,20 +308,19 @@ function IncidentesFeed() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map(inc => (
-            <IncidenteCard key={inc.id} inc={inc} isNovo={novosIds.has(inc.id)} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => abrirDetalhe(inc)} />
+            <IncidenteCard key={inc.id} inc={inc} fotosEnabled={fotosEnabled} isNovo={novosIds.has(inc.id)} nome={inc.usuario_id ? nomes[inc.usuario_id] : (inc.nome_colaborador ?? undefined)} onOpen={() => abrirDetalhe(inc)} />
           ))}
         </div>
       )}
 
-      <IncidenteDetalhe inc={detalhe} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : (detalhe?.nome_colaborador ?? undefined)} onClose={() => setDetalhe(null)} />
+      <IncidenteDetalhe inc={detalhe} fotosEnabled={fotosEnabled} nome={detalhe?.usuario_id ? nomes[detalhe.usuario_id] : (detalhe?.nome_colaborador ?? undefined)} onClose={() => setDetalhe(null)} />
     </div>
   );
 }
 
-function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: string; onOpen: () => void; isNovo?: boolean }) {
+function IncidenteCard({ inc, nome, onOpen, isNovo, fotosEnabled }: { inc: Incidente; nome?: string; onOpen: () => void; isNovo?: boolean; fotosEnabled: boolean }) {
   const [thumb, setThumb] = useState<string | null>(null);
   const [visivel, setVisivel] = useState(false);
-  const fotosEnabled = useFotosEnabled();
   const boxRef = useRef<HTMLDivElement | null>(null);
 
   // Só busca a imagem quando o card entra na tela (economiza tráfego).
@@ -419,10 +419,9 @@ function IncidenteCard({ inc, nome, onOpen, isNovo }: { inc: Incidente; nome?: s
   );
 }
 
-function IncidenteDetalhe({ inc, nome, onClose }: { inc: Incidente | null; nome?: string; onClose: () => void }) {
+function IncidenteDetalhe({ inc, nome, onClose, fotosEnabled }: { inc: Incidente | null; nome?: string; onClose: () => void; fotosEnabled: boolean }) {
   const [urls, setUrls] = useState<string[]>([]);
   const [ligacaoUrls, setLigacaoUrls] = useState<string[]>([]);
-  const fotosEnabled = useFotosEnabled();
   useEffect(() => {
     if (!inc || !fotosEnabled) { setUrls([]); setLigacaoUrls([]); return; }
     Promise.all(inc.fotos.map(p => signedPhotoUrl(p, 3600))).then(us => setUrls(us.filter(Boolean) as string[]));

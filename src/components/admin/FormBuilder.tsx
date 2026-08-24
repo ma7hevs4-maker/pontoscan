@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Plus, Save, Trash2, Loader2, X, Check } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Save, Trash2, Loader2, X, Check, CalendarDays } from "lucide-react";
 import {
   deleteFormTipo,
   loadAllFormQuestions,
@@ -40,6 +41,12 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [togglingForms, setTogglingForms] = useState(false);
   const [fotosEnabled, setFotosEnabled] = useState(true);
   const [togglingFotos, setTogglingFotos] = useState(false);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [fotosDe, setFotosDe] = useState(hoje);
+  const [fotosAte, setFotosAte] = useState(hoje);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  const [excluindoFotos, setExcluindoFotos] = useState(false);
+  const [ultimoResultado, setUltimoResultado] = useState<{ fotosExcluidas: number; incidentesAtualizados: number } | null>(null);
 
   const [novoRotulo, setNovoRotulo] = useState("");
   const [criandoAba, setCriandoAba] = useState(false);
@@ -96,6 +103,29 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
       toast.error(e.message ?? "Falha ao alterar");
     } finally {
       setTogglingFotos(false);
+    }
+  };
+
+  const excluirFotos = async () => {
+    if (!fotosDe || !fotosAte || fotosDe > fotosAte) return toast.error("Informe um período válido");
+    setExcluindoFotos(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada. Entre novamente.");
+      const response = await fetch("/api/admin-photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ dataDe: fotosDe, dataAte: fotosAte }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const result = await response.json() as { fotosExcluidas: number; incidentesAtualizados: number };
+      setUltimoResultado(result);
+      setConfirmarExclusao(false);
+      toast.success(`${result.fotosExcluidas} foto(s) excluída(s) definitivamente`);
+    } catch (error: any) {
+      toast.error(error.message ?? "Falha ao excluir fotos");
+    } finally {
+      setExcluindoFotos(false);
     }
   };
 
@@ -277,6 +307,7 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Construtor de formulários</DialogTitle>
+          <DialogDescription>Configure os formulários, o uso de fotos e os tipos de incidente.</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
@@ -302,6 +333,51 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
           </div>
           <Switch checked={fotosEnabled} disabled={togglingFotos || loading} onCheckedChange={toggleFotos} />
         </div>
+
+        <div className="space-y-3 rounded-lg border border-destructive/40 p-3">
+          <div>
+            <p className="text-sm font-medium">Excluir fotos armazenadas</p>
+            <p className="text-xs text-muted-foreground">
+              Remove definitivamente as evidências e prints dos incidentes no período. Os incidentes e suas respostas serão mantidos.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+              <Label htmlFor="fotos-de" className="text-xs">De</Label>
+              <Input id="fotos-de" type="date" value={fotosDe} onChange={(e) => setFotosDe(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="fotos-ate" className="text-xs">Até</Label>
+              <Input id="fotos-ate" type="date" value={fotosAte} onChange={(e) => setFotosAte(e.target.value)} />
+            </div>
+            <Button variant="destructive" onClick={() => setConfirmarExclusao(true)} disabled={!fotosDe || !fotosAte || fotosDe > fotosAte || excluindoFotos}>
+              <Trash2 className="mr-2 h-4 w-4" /> Excluir fotos
+            </Button>
+          </div>
+          {ultimoResultado && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" /> Última limpeza: {ultimoResultado.fotosExcluidas} foto(s) removida(s) de {ultimoResultado.incidentesAtualizados} incidente(s).
+            </p>
+          )}
+        </div>
+
+        <AlertDialog open={confirmarExclusao} onOpenChange={setConfirmarExclusao}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir definitivamente as fotos?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Todas as fotos e prints de ligação dos incidentes entre {fotosDe.split("-").reverse().join("/")} e {fotosAte.split("-").reverse().join("/")} serão apagados do armazenamento. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={excluindoFotos}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={excluirFotos} disabled={excluindoFotos} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {excluindoFotos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Excluir definitivamente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
 
         <p className="text-xs text-muted-foreground">
