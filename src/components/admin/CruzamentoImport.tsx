@@ -575,6 +575,8 @@ export function CruzamentoImport({
                     />
                   )}
                 </Section>
+                </TabsContent>
+                </Tabs>
               </>
             )}
           </div>
