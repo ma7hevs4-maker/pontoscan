@@ -268,20 +268,48 @@ export function CruzamentoImport({
 
   const naoClassificadas = useMemo(() => linhasEscopo.filter((l) => !l.tipo), [linhasEscopo]);
 
+  // Conjuntos de COMPARAÇÃO: nunca filtrados por tipo.
+  // A classificação da planilha e a do sistema podem divergir para o mesmo
+  // incidente; se o casamento usasse o filtro de tipo, um registro existente
+  // apareceria como "faltando" (era a causa de 35 planilha / 31 sistema / 33 faltando).
+  const incidentesMatch = useMemo(() => {
+    return incidentes.filter((i) => {
+      if (equipeQ && !i.prefixo.toUpperCase().includes(equipeQ)) return false;
+      if (restringePolo) {
+        const pi = poloFromPrefixo(i.prefixo);
+        if (!pi || !polosAtivos.includes(pi)) return false;
+      }
+      return true;
+    });
+  }, [incidentes, equipeQ, polosAtivos, restringePolo]);
+
+  const linhasMatch = useMemo(() => {
+    return linhas.filter((l) => {
+      if (equipeQ && !l.equipe.includes(equipeQ)) return false;
+      if (restringePolo && (!l.polo || !polosAtivos.includes(l.polo))) return false;
+      if (l.data) {
+        const ts = l.data.getTime();
+        if (deTs != null && ts < deTs) return false;
+        if (ateTs != null && ts > ateTs) return false;
+      }
+      return true;
+    });
+  }, [linhas, equipeQ, polosAtivos, restringePolo, deTs, ateTs]);
+
   const sistemaMap = useMemo(() => {
     const m = new Map<string, IncidenteLite>();
-    for (const i of incidentesEscopo) {
+    for (const i of incidentesMatch) {
       const k = normNum(i.numero_incidente);
       if (k && !m.has(k)) m.set(k, i);
     }
     return m;
-  }, [incidentesEscopo]);
+  }, [incidentesMatch]);
 
   const xlsxMap = useMemo(() => {
     const m = new Map<string, LinhaXlsx>();
-    for (const l of linhasEscopo) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
+    for (const l of linhasMatch) if (l.numero && !m.has(l.numero)) m.set(l.numero, l);
     return m;
-  }, [linhasEscopo]);
+  }, [linhasMatch]);
 
   const faltantes = useMemo(
     () => linhasEscopo.filter((l) => !sistemaMap.has(l.numero)),
