@@ -82,6 +82,23 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
     }
   };
 
+  const toggleFotos = async (v: boolean) => {
+    setTogglingFotos(true);
+    const prev = fotosEnabled;
+    setFotosEnabled(v);
+    try {
+      await saveFotosEnabled(v);
+      toast.success(v ? "Fotos ativadas" : "Fotos desativadas — envio e exibição de fotos ocultos");
+    } catch (e: any) {
+      setFotosEnabled(prev);
+      toast.error(e.message ?? "Falha ao alterar");
+    } finally {
+      setTogglingFotos(false);
+    }
+  };
+
+
+
   const criarAba = async () => {
     const rotulo = novoRotulo.trim();
     if (!rotulo) return toast.error("Informe o nome da aba");
