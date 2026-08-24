@@ -109,6 +109,9 @@ export async function saveFotosEnabled(valor: boolean): Promise<void> {
     .from("app_settings")
     .upsert({ chave: FOTOS_ENABLED_KEY, valor, updated_at: new Date().toISOString() }, { onConflict: "chave" });
   if (error) throw new Error(error.message);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("pontoscan:fotos-enabled", { detail: valor }));
+  }
 }
 
 

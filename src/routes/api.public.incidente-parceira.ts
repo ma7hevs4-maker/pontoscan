@@ -81,7 +81,14 @@ export const Route = createFileRoute("/api/public/incidente-parceira")({
         if (!PARCEIRAS.includes(parceira)) return new Response("Parceira inválida", { status: 400 });
         if (!(await tipoValido(tipo))) return new Response("Tipo inválido", { status: 400 });
         if (!/^[A-Z0-9]{10}$/.test(numero)) return new Response("Nº incidente inválido", { status: 400 });
-        if (fotos.length === 0 || fotos.length > 20) return new Response("Fotos inválidas", { status: 400 });
+        const { data: photoSetting } = await (supabaseAdmin as any)
+          .from("app_settings")
+          .select("valor")
+          .eq("chave", "fotos_enabled")
+          .maybeSingle();
+        const fotosEnabled = photoSetting?.valor !== false;
+        if (fotosEnabled && (fotos.length === 0 || fotos.length > 20)) return new Response("Fotos inválidas", { status: 400 });
+        if (!fotosEnabled && fotos.length > 0) return new Response("O envio de fotos está desativado", { status: 400 });
 
         const poloPrefixo = poloFromPrefixo(prefixo);
         const poloGeo = await poloFromGeo(lat, lng);
