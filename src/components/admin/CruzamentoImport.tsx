@@ -670,20 +670,23 @@ export function CruzamentoImport({
                       </div>
                     </Section>
 
-                    <Section title={`Tabela por polo (${porPolo.length})`} desc="Aderência = registros no PontoScan ÷ registros na planilha.">
+                    <Section
+                      title={`Tabela por polo (${porPolo.length})`}
+                      desc="Aderência = No PontoScan ÷ Planilha. “Total PontoScan” é tudo que o polo registrou no escopo (pode ser maior que a planilha)."
+                    >
                       {porPolo.length === 0 ? (
                         <Empty>Sem dados no escopo atual.</Empty>
                       ) : (
                         <Tabela
                           headers={[
-                            "Polo", "Planilha", "PontoScan", "Faltando",
-                            ...(semAtInd ? [] : ["Falta At. Individual"]),
-                            "Falta Ordem 2", "Falta Improdutivo", "Aderência",
+                            "Polo", "Planilha", "No PontoScan", "Faltando",
+                            ...tiposVisiveis.map((t) => `Falta ${TIPO_LABEL[t]}`),
+                            "Total PontoScan", "Aderência",
                           ]}
                           rows={porPolo.map((p) => [
-                            p.polo, p.planilha, p.sistema, p.faltando,
-                            ...(semAtInd ? [] : [p.falta_ATENDIMENTO_INDIVIDUAL]),
-                            p.falta_ORDEM_2, p.falta_IMPRODUTIVO,
+                            p.polo, p.planilha, p.encontrados, p.faltando,
+                            ...tiposVisiveis.map((t) => p[`falta_${t}` as const]),
+                            p.sistema,
                             `${p.aderencia}%`,
                           ])}
                         />
