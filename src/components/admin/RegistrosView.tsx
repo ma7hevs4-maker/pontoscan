@@ -227,7 +227,8 @@ export function RegistrosView() {
                   <TableCell><span className="rounded-full bg-secondary px-2 py-1 text-xs font-semibold">{ETAPA_LABEL[r.etapa] ?? r.etapa}</span></TableCell>
                   <TableCell>{r.base_nome ?? "—"}</TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
