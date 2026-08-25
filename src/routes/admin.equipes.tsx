@@ -174,16 +174,21 @@ function EquipesView() {
 
   const equipes: Equipe[] = useMemo(() => {
     const map = new Map<string, Equipe>();
+    const ultimoPrefixoPorUsuario = new Map<string, { prefixo: string; polo: string }>();
+    for (const r of regs) {
+      const ov = overrides[r.usuario_id];
+      const prefixo = (ov?.prefixo ?? r.prefixo_override ?? r.prefixo ?? "").trim();
+      if (prefixo) ultimoPrefixoPorUsuario.set(r.usuario_id, { prefixo, polo: ov?.polo ?? r.user_polo ?? "" });
+    }
     for (const m of manuais) {
       if (polo !== "all" && m.polo !== polo) continue;
       const key = `${m.prefixo}|${m.polo}`;
       map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] });
     }
     for (const r of regs) {
-      const ov = overrides[r.usuario_id];
-      const prefixo = (ov?.prefixo ?? r.prefixo_override ?? r.prefixo ?? "").trim();
-      if (!prefixo) continue;
-      const p = ov?.polo ?? r.user_polo ?? "";
+      const equipeAtual = ultimoPrefixoPorUsuario.get(r.usuario_id);
+      if (!equipeAtual) continue;
+      const { prefixo, polo: p } = equipeAtual;
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
