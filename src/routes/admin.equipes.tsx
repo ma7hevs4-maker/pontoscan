@@ -48,7 +48,7 @@ const AREA_LABEL: Record<Area, string> = { BT: "BT", MT_RAMAL: "MT RAMAL", MT_TR
 
 interface Reg {
   id: string; etapa: string; timestamp: string; usuario_id: string;
-  prefixo_override: string | null; nome: string | null; prefixo: string | null;
+  prefixo_override: string | null; prefixo_efetivo: string | null; nome: string | null; prefixo: string | null;
   user_polo: string | null; base_nome: string | null; base_polo: string | null;
 }
 
@@ -130,7 +130,7 @@ function EquipesView() {
     const start = new Date(`${dia}T00:00:00-03:00`).toISOString();
     const end = new Date(`${dia}T23:59:59-03:00`).toISOString();
     let q = supabase.from("vw_registros_admin")
-      .select("id, etapa, timestamp, usuario_id, prefixo_override, nome, prefixo, user_polo, base_nome, base_polo")
+      .select("id, etapa, timestamp, usuario_id, prefixo_override, prefixo_efetivo, nome, prefixo, user_polo, base_nome, base_polo")
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
@@ -177,7 +177,7 @@ function EquipesView() {
     const ultimoPrefixoPorUsuario = new Map<string, { prefixo: string; polo: string }>();
     for (const r of regs) {
       const ov = overrides[r.usuario_id];
-      const prefixo = (ov?.prefixo ?? r.prefixo_override ?? r.prefixo ?? "").trim();
+      const prefixo = (ov?.prefixo ?? r.prefixo_efetivo ?? r.prefixo ?? "").trim();
       if (prefixo) ultimoPrefixoPorUsuario.set(r.usuario_id, { prefixo, polo: ov?.polo ?? r.user_polo ?? "" });
     }
     for (const m of manuais) {
