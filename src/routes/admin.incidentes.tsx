@@ -30,6 +30,7 @@ type Incidente = {
   id: string;
   usuario_id: string | null;
   prefixo: string;
+  prefixo_efetivo?: string | null;
   polo_eletricista: string | null;
   polo_prefixo: string | null;
   polo_geo: string | null;
@@ -67,11 +68,14 @@ function IncidentesFeed() {
   const load = async () => {
     setLoading(true);
     const { data } = await (supabase as any)
-      .from("incidentes")
+      .from("vw_incidentes_admin")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    const list = (data as Incidente[]) ?? [];
+    const list = ((data as Incidente[]) ?? []).map((item) => ({
+      ...item,
+      prefixo: item.prefixo_efetivo ?? item.prefixo,
+    }));
     setRows(list);
     const ids = Array.from(new Set(list.map(r => r.usuario_id).filter(Boolean))) as string[];
     if (ids.length) {
@@ -96,8 +100,6 @@ function IncidentesFeed() {
       .channel("admin-incidentes")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "incidentes" }, async (payload) => {
         const novo = payload.new as Incidente;
-        // Evita duplicatas se o INSERT vier antes do reload inicial
-        setRows((prev) => (prev.some((r) => r.id === novo.id) ? prev : [novo, ...prev]));
         setNovosIds((prev) => {
           const next = new Set(prev);
           next.add(novo.id);
@@ -112,6 +114,7 @@ function IncidentesFeed() {
             .maybeSingle();
           if (prof) setNomes((m) => ({ ...m, [prof.id]: (prof as any).nome }));
         }
+        await load();
         // Pequeno "beep" visual: pisca o indicador
         setAoVivo(true);
         setTimeout(() => setAoVivo(false), 1200);

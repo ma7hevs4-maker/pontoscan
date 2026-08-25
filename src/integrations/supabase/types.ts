@@ -488,6 +488,28 @@ export type Database = {
       }
     }
     Views: {
+      vw_incidentes_admin: {
+        Row: {
+          created_at: string | null
+          dados: Json | null
+          fotos: string[] | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          nome_colaborador: string | null
+          numero_incidente: string | null
+          origem: Database["public"]["Enums"]["origem_incidente_enum"] | null
+          parceira: string | null
+          polo_eletricista: Database["public"]["Enums"]["polo_enum"] | null
+          polo_geo: Database["public"]["Enums"]["polo_enum"] | null
+          polo_prefixo: Database["public"]["Enums"]["polo_enum"] | null
+          prefixo: string | null
+          prefixo_efetivo: string | null
+          tipo: string | null
+          usuario_id: string | null
+        }
+        Relationships: []
+      }
       vw_registros_admin: {
         Row: {
           base_id: string | null
@@ -499,6 +521,7 @@ export type Database = {
           longitude: number | null
           nome: string | null
           prefixo: string | null
+          prefixo_efetivo: string | null
           prefixo_override: string | null
           timestamp: string | null
           user_polo: Database["public"]["Enums"]["polo_enum"] | null

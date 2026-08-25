@@ -15,6 +15,7 @@ interface Row {
   id: string; etapa: string; timestamp: string; usuario_id: string;
   latitude: number | null; longitude: number | null;
   prefixo_override: string | null;
+  prefixo_efetivo: string | null;
   nome: string | null;
   prefixo: string | null;
   user_polo: string | null;
@@ -49,7 +50,7 @@ export function RegistrosView() {
     let offset = 0;
     while (true) {
       let q = supabase.from("vw_registros_admin")
-        .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, nome, prefixo, user_polo, base_nome, base_polo")
+        .select("id, etapa, timestamp, usuario_id, latitude, longitude, prefixo_override, prefixo_efetivo, nome, prefixo, user_polo, base_nome, base_polo")
         .gte("timestamp", start).lte("timestamp", end)
         .order("timestamp", { ascending: false })
         .range(offset, offset + pageSize - 1);
@@ -68,7 +69,7 @@ export function RegistrosView() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to, polo]);
 
   const filteredBase = rows.filter(r => {
-    const prefEfetivo = r.prefixo_override ?? r.prefixo ?? "";
+    const prefEfetivo = r.prefixo_efetivo ?? r.prefixo ?? "";
     if (turno !== "all") {
       const letra = prefEfetivo.split("-")[1]?.[0]?.toUpperCase();
       if (letra !== turno) return false;
@@ -84,7 +85,7 @@ export function RegistrosView() {
   });
 
   const getVal = (r: Row, k: string): string | number => {
-    const pref = r.prefixo_override ?? r.prefixo ?? "";
+    const pref = r.prefixo_efetivo ?? r.prefixo ?? "";
     switch (k) {
       case "timestamp": return new Date(r.timestamp).getTime();
       case "nome": return (r.nome ?? "").toLowerCase();
@@ -113,7 +114,7 @@ export function RegistrosView() {
     const header = ["Data","Hora","Nome","Prefixo","Polo","Etapa","Base","Polo da base","Lat","Lng"];
     const lines = filtered.map(r => {
       const d = new Date(r.timestamp);
-      const pref = r.prefixo_override ? `${r.prefixo_override} (prov.)` : r.prefixo;
+      const pref = r.prefixo_efetivo && r.prefixo_efetivo !== r.prefixo ? `${r.prefixo_efetivo} (prov.)` : r.prefixo;
       return [d.toLocaleDateString("pt-BR"), d.toLocaleTimeString("pt-BR"), r.nome, pref, r.user_polo, ETAPA_LABEL[r.etapa] ?? r.etapa, r.base_nome ?? "", r.base_polo ?? "", r.latitude ?? "", r.longitude ?? ""].join(";");
     });
     const blob = new Blob([[header.join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
@@ -197,9 +198,9 @@ export function RegistrosView() {
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
                   <TableCell>{r.nome}</TableCell>
                   <TableCell className="font-mono">
-                    {r.prefixo_override ? (
+                    {r.prefixo_efetivo && r.prefixo_efetivo !== r.prefixo ? (
                       <span title={`Original: ${r.prefixo}`}>
-                        {r.prefixo_override}
+                        {r.prefixo_efetivo}
                         <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">prov.</span>
                       </span>
                     ) : r.prefixo}
