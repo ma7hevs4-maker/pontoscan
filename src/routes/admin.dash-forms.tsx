@@ -109,13 +109,9 @@ const FIELDS: Record<string, FieldDef[]> = {
     { key: "noKirchhoff", label: "Nó de Kirchhoff" },
     { key: "medicao", label: "Medição" },
     { key: "correlacaoDefeito", label: "Correlação do Defeito", outroKey: "correlacaoDefeitoOutro" },
-    { key: "ligacaoCliente", label: "Ligação para o cliente" },
   ],
   ORDEM_2: [{ key: "motivo", label: "Motivo" }],
-  IMPRODUTIVO: [
-    { key: "motivo", label: "Motivo" },
-    { key: "ligacaoCliente", label: "Ligação para o cliente" },
-  ],
+  IMPRODUTIVO: [{ key: "motivo", label: "Motivo" }],
 };
 
 function DashForms() {

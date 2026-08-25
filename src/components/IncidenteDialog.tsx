@@ -175,7 +175,6 @@ export function IncidenteDialog({ open, onOpenChange, actor: actorProp }: { open
             actor={actor}
             onBack={reset}
             onDone={close}
-            withLigacaoCliente={tipoSel.chave === "IMPRODUTIVO"}
           />
         )}
       </DialogContent>
@@ -394,7 +393,7 @@ function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v
 
 
 function DynamicForm({
-  tipo, title, fotosLabel, successMsg, actor, onBack, onDone, withLigacaoCliente,
+  tipo, title, fotosLabel, successMsg, actor, onBack, onDone,
 }: {
   tipo: TipoIncidente;
   title: string;
@@ -403,7 +402,6 @@ function DynamicForm({
   actor: IncidenteActor;
   onBack: () => void;
   onDone: () => void;
-  withLigacaoCliente?: boolean;
 }) {
   const [numero, setNumero] = useState("");
   const [fotos, setFotos] = useState<File[]>([]);
@@ -411,7 +409,6 @@ function DynamicForm({
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [ligacaoCliente, setLigacaoCliente] = useState("");
   const fotosEnabled = useFotosEnabled();
 
   useEffect(() => {
@@ -422,14 +419,10 @@ function DynamicForm({
     if (!/^[A-Z0-9]{10}$/.test(numero)) return toast.error("Nº Incidente deve ter 10 caracteres (A-Z, 0-9)");
     const err = validarExtras(questions, vals);
     if (err) return toast.error(err);
-    if (withLigacaoCliente) {
-      if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-    }
     if (fotosEnabled && fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
     try {
       const dados: Record<string, any> = { ...limparOcultas(questions, vals) };
-      if (withLigacaoCliente) dados.ligacaoCliente = ligacaoCliente;
       await submitIncidente({
         tipo,
         numero,
@@ -458,20 +451,6 @@ function DynamicForm({
           <p className="text-xs text-muted-foreground">Carregando perguntas…</p>
         ) : (
           <ExtrasRenderer questions={questions} values={vals} onChange={setVals} />
-        )}
-        {withLigacaoCliente && (
-          <>
-            <Field label="Foi efetuada ligação para o cliente?" required>
-              <RadioGroup value={ligacaoCliente} onValueChange={setLigacaoCliente} className="gap-2">
-                {["Sim", "Não"].map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                    <RadioGroupItem value={opt} id={`lig-${opt}`} />
-                    <span>{opt}</span>
-                  </label>
-                ))}
-              </RadioGroup>
-            </Field>
-          </>
         )}
         {fotosEnabled && <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />}
         <div className="flex gap-2 pt-2">
