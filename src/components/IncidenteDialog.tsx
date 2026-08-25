@@ -373,41 +373,6 @@ function EvidenciasPicker({ fotos, onChange, label = "Insira as evidências (fot
   );
 }
 
-function PrintLigacaoPicker({ fotos, onChange }: { fotos: File[]; onChange: (f: File[]) => void }) {
-  const albumRef = useRef<HTMLInputElement>(null);
-  const add = async (list: FileList | null) => {
-    if (!list) return;
-    const arr = Array.from(list).filter(f => f.type.startsWith("image/"));
-    if (!arr.length) return;
-    const comp = await compressImages(arr);
-    onChange([...fotos, ...comp]);
-  };
-  const remove = (i: number) => onChange(fotos.filter((_, idx) => idx !== i));
-  const previews = useMemo(() => fotos.map(f => ({ url: URL.createObjectURL(f), name: f.name })), [fotos]);
-  return (
-    <Field label="Print da ligação para o cliente" required>
-      <Button type="button" variant="outline" onClick={() => albumRef.current?.click()} className="h-12 w-full">
-        <ImageIcon className="mr-2 h-5 w-5" /> Álbum
-      </Button>
-      <input ref={albumRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
-      {previews.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 pt-2">
-          {previews.map((p, i) => (
-            <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
-              <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
-              <button type="button" onClick={() => remove(i)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white" aria-label="Remover">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">{fotos.length} print(s) anexado(s)</p>
-    </Field>
-  );
-}
-
 /* ---------- Nº Incidente input (shared) ---------- */
 
 function NumeroIncidenteField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -448,7 +413,6 @@ function DynamicForm({
   const [loading, setLoading] = useState(true);
   const [ligacaoCliente, setLigacaoCliente] = useState("");
   const fotosEnabled = useFotosEnabled();
-  const [printLigacao, setPrintLigacao] = useState<File[]>([]);
 
   useEffect(() => {
     loadFormQuestions(tipo).then((qs) => { setQuestions(qs); setLoading(false); });
@@ -460,7 +424,6 @@ function DynamicForm({
     if (err) return toast.error(err);
     if (withLigacaoCliente) {
       if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-      if (fotosEnabled && ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     }
     if (fotosEnabled && fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
@@ -473,9 +436,6 @@ function DynamicForm({
         dados,
         fotos: fotosEnabled ? fotos : [],
         actor,
-        extraFotos: fotosEnabled && withLigacaoCliente && ligacaoCliente === "Sim"
-          ? [{ key: "ligacaoPrint", files: printLigacao }]
-          : [],
       });
       toast.success(successMsg(numero));
       onDone();
@@ -511,9 +471,6 @@ function DynamicForm({
                 ))}
               </RadioGroup>
             </Field>
-            {fotosEnabled && ligacaoCliente === "Sim" && (
-              <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
-            )}
           </>
         )}
         {fotosEnabled && <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />}
