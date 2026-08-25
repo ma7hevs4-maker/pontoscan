@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown, TriangleAlert } from "lucide-react";
 
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRE_DDS", SAIDA_BASE: "SAIDA_BASE" };
 
@@ -192,14 +192,27 @@ export function RegistrosView() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Sem registros</TableCell></TableRow>}
-              {filtered.map(r => (
-                <TableRow key={r.id}>
+              {filtered.map(r => {
+                const provisorio = !!r.prefixo_efetivo && r.prefixo_efetivo !== r.prefixo;
+                return (
+                <TableRow key={r.id} className={provisorio ? "bg-amber-50/60 hover:bg-amber-50" : undefined}>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell className="font-mono text-xs">{new Date(r.timestamp).toLocaleTimeString("pt-BR")}</TableCell>
-                  <TableCell>{r.nome}</TableCell>
+                  <TableCell>
+                    {r.nome}
+                    {provisorio && (
+                      <span
+                        className="ml-2 inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 align-middle"
+                        title={`Prefixo de cadastro: ${r.prefixo}`}
+                      >
+                        <TriangleAlert className="h-3 w-3" />
+                        PREFIXO PROVISÓRIO
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono">
-                    {r.prefixo_efetivo && r.prefixo_efetivo !== r.prefixo ? (
-                      <span title={`Original: ${r.prefixo}`}>
+                    {provisorio ? (
+                      <span title={`Prefixo de cadastro: ${r.prefixo}`}>
                         {r.prefixo_efetivo}
                         <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">prov.</span>
                       </span>
