@@ -424,7 +424,6 @@ function DynamicForm({
     if (err) return toast.error(err);
     if (withLigacaoCliente) {
       if (!ligacaoCliente) return toast.error("Informe se foi efetuada ligação para o cliente");
-      if (fotosEnabled && ligacaoCliente === "Sim" && printLigacao.length === 0) return toast.error("Anexe o print da ligação para o cliente");
     }
     if (fotosEnabled && fotos.length === 0) return toast.error(`Anexe ao menos uma foto em ${fotosLabel}`);
     setSubmitting(true);
@@ -437,9 +436,6 @@ function DynamicForm({
         dados,
         fotos: fotosEnabled ? fotos : [],
         actor,
-        extraFotos: fotosEnabled && withLigacaoCliente && ligacaoCliente === "Sim"
-          ? [{ key: "ligacaoPrint", files: printLigacao }]
-          : [],
       });
       toast.success(successMsg(numero));
       onDone();
@@ -475,9 +471,6 @@ function DynamicForm({
                 ))}
               </RadioGroup>
             </Field>
-            {fotosEnabled && ligacaoCliente === "Sim" && (
-              <PrintLigacaoPicker fotos={printLigacao} onChange={setPrintLigacao} />
-            )}
           </>
         )}
         {fotosEnabled && <EvidenciasPicker label={fotosLabel} fotos={fotos} onChange={setFotos} />}
