@@ -179,17 +179,20 @@ function ContasPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Prefixo</TableHead>
+                <TableHead>Polo</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pedidos.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">Nenhuma solicitação pendente</TableCell></TableRow>}
+              {pedidos.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhuma solicitação pendente</TableCell></TableRow>}
               {pedidos.map(p => (
                 <TableRow key={p.id}>
                   <TableCell>{p.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{p.prefixo}</TableCell>
+                  <TableCell className="text-xs">{p.polo ?? <span className="text-muted-foreground">não identificado</span>}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR")}</TableCell>
+
                   <TableCell className="space-x-2 text-right">
                     <Button variant="outline" size="sm" onClick={() => buscarDoPedido(p)}>
                       <Search className="mr-1 h-3 w-3" />Localizar conta
