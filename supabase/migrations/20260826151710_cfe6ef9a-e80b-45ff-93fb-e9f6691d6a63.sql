@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.solicitacoes_senha_set_polo() FROM PUBLIC, anon, authenticated;
