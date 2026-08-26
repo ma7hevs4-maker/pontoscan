@@ -152,6 +152,16 @@ function LoginPage() {
                   <Label htmlFor="en">Nome completo</Label>
                   <Input id="en" value={esqNome} onChange={(e) => setEsqNome(e.target.value)} required />
                 </div>
+                <div>
+                  <Label>Polo</Label>
+                  <Select value={esqPolo} onValueChange={setEsqPolo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o polo" /></SelectTrigger>
+                    <SelectContent>
+                      {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={esqSaving}>
                   {esqSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar solicitação"}
                 </Button>
