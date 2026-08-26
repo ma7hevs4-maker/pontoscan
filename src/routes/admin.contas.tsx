@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin/contas")({ component: ContasPage })
 
 interface AdminRow { user_id: string; email: string | null; nome: string; role: string; polo: string | null; }
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }
-interface SolicitacaoRow { id: string; prefixo: string; nome: string; status: string; created_at: string; }
+interface SolicitacaoRow { id: string; prefixo: string; nome: string; status: string; created_at: string; polo: string | null; }
 
 async function callAdmin(body: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
