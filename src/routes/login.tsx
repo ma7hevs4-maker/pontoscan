@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { POLOS } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
