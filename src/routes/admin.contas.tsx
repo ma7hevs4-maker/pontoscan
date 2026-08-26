@@ -130,9 +130,10 @@ function ContasPage() {
   const carregarPedidos = async () => {
     const { data } = await (supabase as any)
       .from("solicitacoes_senha")
-      .select("id, prefixo, nome, status, created_at")
+      .select("id, prefixo, nome, status, created_at, polo")
       .eq("status", "PENDENTE")
       .order("created_at", { ascending: false });
+
     setPedidos((data as SolicitacaoRow[]) ?? []);
   };
   useEffect(() => { carregarPedidos(); /* eslint-disable-next-line */ }, []);
