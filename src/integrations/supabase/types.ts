@@ -436,6 +436,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          polo: Database["public"]["Enums"]["polo_enum"] | null
           prefixo: string
           status: string
           updated_at: string
@@ -446,6 +447,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          polo?: Database["public"]["Enums"]["polo_enum"] | null
           prefixo: string
           status?: string
           updated_at?: string
@@ -456,6 +458,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          polo?: Database["public"]["Enums"]["polo_enum"] | null
           prefixo?: string
           status?: string
           updated_at?: string
