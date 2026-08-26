@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin/contas")({ component: ContasPage })
 
 interface AdminRow { user_id: string; email: string | null; nome: string; role: string; polo: string | null; }
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }
-interface SolicitacaoRow { id: string; prefixo: string; nome: string; status: string; created_at: string; }
+interface SolicitacaoRow { id: string; prefixo: string; nome: string; status: string; created_at: string; polo: string | null; }
 
 async function callAdmin(body: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -130,9 +130,10 @@ function ContasPage() {
   const carregarPedidos = async () => {
     const { data } = await (supabase as any)
       .from("solicitacoes_senha")
-      .select("id, prefixo, nome, status, created_at")
+      .select("id, prefixo, nome, status, created_at, polo")
       .eq("status", "PENDENTE")
       .order("created_at", { ascending: false });
+
     setPedidos((data as SolicitacaoRow[]) ?? []);
   };
   useEffect(() => { carregarPedidos(); /* eslint-disable-next-line */ }, []);
@@ -179,17 +180,20 @@ function ContasPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Prefixo</TableHead>
+                <TableHead>Polo</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pedidos.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">Nenhuma solicitação pendente</TableCell></TableRow>}
+              {pedidos.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhuma solicitação pendente</TableCell></TableRow>}
               {pedidos.map(p => (
                 <TableRow key={p.id}>
                   <TableCell>{p.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{p.prefixo}</TableCell>
+                  <TableCell className="text-xs">{p.polo ?? <span className="text-muted-foreground">não identificado</span>}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR")}</TableCell>
+
                   <TableCell className="space-x-2 text-right">
                     <Button variant="outline" size="sm" onClick={() => buscarDoPedido(p)}>
                       <Search className="mr-1 h-3 w-3" />Localizar conta

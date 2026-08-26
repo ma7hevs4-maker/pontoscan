@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { POLOS } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -32,6 +33,7 @@ function LoginPage() {
   const [esqOpen, setEsqOpen] = useState(false);
   const [esqPrefixo, setEsqPrefixo] = useState("");
   const [esqNome, setEsqNome] = useState("");
+  const [esqPolo, setEsqPolo] = useState<string>("");
   const [esqSaving, setEsqSaving] = useState(false);
   const navigate = useNavigate();
 
@@ -40,15 +42,17 @@ function LoginPage() {
     const p = esqPrefixo.trim().toUpperCase();
     const n = esqNome.trim();
     if (!p || !n) return toast.error("Informe prefixo e nome completo");
+    if (!esqPolo) return toast.error("Selecione o polo");
     setEsqSaving(true);
     const { error } = await (supabase as any)
       .from("solicitacoes_senha")
-      .insert({ prefixo: p, nome: n, status: "PENDENTE" });
+      .insert({ prefixo: p, nome: n, polo: esqPolo, status: "PENDENTE" });
     setEsqSaving(false);
     if (error) return toast.error("Não foi possível enviar a solicitação");
     toast.success("Solicitação enviada. Um administrador vai redefinir sua senha.");
-    setEsqPrefixo(""); setEsqNome(""); setEsqOpen(false);
+    setEsqPrefixo(""); setEsqNome(""); setEsqPolo(""); setEsqOpen(false);
   };
+
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +153,16 @@ function LoginPage() {
                   <Label htmlFor="en">Nome completo</Label>
                   <Input id="en" value={esqNome} onChange={(e) => setEsqNome(e.target.value)} required />
                 </div>
+                <div>
+                  <Label>Polo</Label>
+                  <Select value={esqPolo} onValueChange={setEsqPolo}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o polo" /></SelectTrigger>
+                    <SelectContent>
+                      {POLOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={esqSaving}>
                   {esqSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar solicitação"}
                 </Button>
