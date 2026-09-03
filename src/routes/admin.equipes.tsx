@@ -220,7 +220,7 @@ function EquipesView() {
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados]);
+  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados, telefones]);
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
