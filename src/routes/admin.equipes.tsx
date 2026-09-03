@@ -687,6 +687,23 @@ function EquipesView() {
                 {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
                 Gerar via grids
               </Button>
+              <input
+                ref={telInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  if (f) importarTelefones(f);
+                }}
+              />
+              <Button variant="outline" onClick={baixarModeloTelefones}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />Modelo de telefones
+              </Button>
+              <Button variant="secondary" onClick={() => telInputRef.current?.click()} disabled={importandoTel}>
+                {importandoTel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
+                Importar telefones
+              </Button>
             </div>
           </div>
         </div>
