@@ -103,6 +103,12 @@ function EquipesView() {
   const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [processoFiltro, setProcessoFiltro] = useState<string>("all");
+  const [telefones, setTelefones] = useState<Record<string, string>>({});
+  const [telEdit, setTelEdit] = useState<string>("");
+  const telInputRef = useRef<HTMLInputElement>(null);
+  const [importandoTel, setImportandoTel] = useState(false);
+  const [resultadoTel, setResultadoTel] = useState<{ atualizados: number; ignorados: string[] } | null>(null);
   const [mesclarOpen, setMesclarOpen] = useState(false);
   const [selEquipes, setSelEquipes] = useState<string[]>([]);
   const [selMembros, setSelMembros] = useState<string[]>([]);
