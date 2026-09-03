@@ -106,7 +106,7 @@ function EquipesView() {
   const [turno, setTurno] = useState<string>("all");
   const [processoFiltro, setProcessoFiltro] = useState<string>("all");
   const [telefones, setTelefones] = useState<Record<string, string>>({});
-  const [telEdit, setTelEdit] = useState<string>("");
+  
   const telInputRef = useRef<HTMLInputElement>(null);
   const [importandoTel, setImportandoTel] = useState(false);
   const [resultadoTel, setResultadoTel] = useState<{ atualizados: number; ignorados: string[] } | null>(null);
