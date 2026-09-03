@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 export const Route = createFileRoute("/admin/equipes")({
   component: EquipesView,
