@@ -723,7 +723,9 @@ function EquipesView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Equipe</TableHead>
+                <TableHead>Processo</TableHead>
                 <TableHead>Polo</TableHead>
+                <TableHead>Telefone</TableHead>
                 <TableHead>Colaboradores</TableHead>
                 <TableHead>Jornada completa</TableHead>
                 <TableHead>Base</TableHead>
