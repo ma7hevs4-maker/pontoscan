@@ -24,6 +24,8 @@ type Tipo = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
 
 type LinhaXlsx = {
   numero: string;
+  /** Número exatamente como veio na planilha (mantém prefixo DT/BA e zeros). */
+  numero_raw: string;
   equipe: string;
   causa: string;
   polo: Polo | null;
@@ -223,6 +225,7 @@ export function CruzamentoImport({
         const row = matrix[i] ?? [];
         const numero = normNum(row[idxNum]);
         if (!numero) continue;
+        const numeroRaw = norm(row[idxNum]) || numero;
         const equipe = normUp(row[idxEq]);
         const causa = idxCa >= 0 ? norm(row[idxCa]) : "";
         const obs = idxObs >= 0 ? norm(row[idxObs]) : "";
@@ -230,6 +233,7 @@ export function CruzamentoImport({
         if (!data) nulos++;
         dados.push({
           numero,
+          numero_raw: numeroRaw,
           equipe,
           causa,
           polo: poloFromPrefixo(equipe),
@@ -383,7 +387,7 @@ export function CruzamentoImport({
 
       if (causaDif || eqDif || tipoDif) {
         out.push({
-          numero: l.numero,
+          numero: l.numero_raw,
           equipe_xlsx: l.equipe,
           equipe_sis: eqSis,
           causa_xlsx: l.causa,
@@ -492,7 +496,7 @@ export function CruzamentoImport({
       titulo: `Planilha — ${equipe} (${lista.length})`,
       headers: ["Número", "Tipo (planilha)", "Causa", "Data Início", "No sistema?"],
       rows: lista.map((l) => [
-        l.numero,
+        l.numero_raw,
         l.tipo ? TIPO_LABEL[l.tipo] : "Não classificado",
         l.causa || "—",
         l.data ? l.data.toLocaleString("pt-BR") : "—",
@@ -532,7 +536,7 @@ export function CruzamentoImport({
     })));
 
     add("Em ambos", emAmbos.map(({ linha, sis }) => ({
-      Número: linha.numero,
+      Número: linha.numero_raw,
       Polo: linha.polo ?? "",
       "Equipe (planilha)": linha.equipe,
       "Equipe (PontoScan)": normUp(sis.prefixo),
@@ -544,7 +548,7 @@ export function CruzamentoImport({
     })));
 
     add("Faltando no PontoScan", faltantes.map((f) => ({
-      Número: f.numero,
+      Número: f.numero_raw,
       Polo: f.polo ?? "",
       Equipe: f.equipe,
       Tipo: f.tipo ? TIPO_LABEL[f.tipo] : "Não classificado",
@@ -571,7 +575,7 @@ export function CruzamentoImport({
     })));
 
     add("Não classificados", naoClassificadas.map((l) => ({
-      Número: l.numero,
+      Número: l.numero_raw,
       Equipe: l.equipe,
       Causa: l.causa,
       "Data Início": dataStr(l.data),
@@ -908,7 +912,7 @@ export function CruzamentoImport({
                     <Tabela
                       headers={["Número", "Equipe (xlsx)", "Tipo (xlsx)", "Causa (xlsx)", "Data Início"]}
                       rows={faltantes.map((f) => [
-                        f.numero,
+                        f.numero_raw,
                         f.equipe || "—",
                         f.tipo ? TIPO_LABEL[f.tipo] : "Não classificado",
                         f.causa || "—",
@@ -960,7 +964,7 @@ export function CruzamentoImport({
                     <Tabela
                       headers={["Número", "Equipe", "Causa", "Data Início"]}
                       rows={naoClassificadas.map((l) => [
-                        l.numero,
+                        l.numero_raw,
                         l.equipe || "—",
                         l.causa || "—",
                         l.data ? l.data.toLocaleString("pt-BR") : "—",
