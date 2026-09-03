@@ -588,6 +588,16 @@ function EquipesView() {
               </Select>
             </div>
             <div className="min-w-0">
+              <Label className="mb-1.5 block">Processo</Label>
+              <Select value={processoFiltro} onValueChange={setProcessoFiltro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0">
               <Label className="mb-1.5 block">Polo</Label>
               <Select value={polo} onValueChange={setPolo} disabled={role === "ADMIN_POLO"}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
