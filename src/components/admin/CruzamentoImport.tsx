@@ -225,6 +225,7 @@ export function CruzamentoImport({
         const row = matrix[i] ?? [];
         const numero = normNum(row[idxNum]);
         if (!numero) continue;
+        const numeroRaw = norm(row[idxNum]) || numero;
         const equipe = normUp(row[idxEq]);
         const causa = idxCa >= 0 ? norm(row[idxCa]) : "";
         const obs = idxObs >= 0 ? norm(row[idxObs]) : "";
@@ -232,6 +233,7 @@ export function CruzamentoImport({
         if (!data) nulos++;
         dados.push({
           numero,
+          numero_raw: numeroRaw,
           equipe,
           causa,
           polo: poloFromPrefixo(equipe),
