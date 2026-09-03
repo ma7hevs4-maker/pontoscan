@@ -874,7 +874,7 @@ function EquipesView() {
                         className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
                         {inc.numero}
                         {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
-                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"}</span>
+                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"} · {horaBR(inc.criado_em)}</span>
                         <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, inc.numero)} title="Remover"><Trash2 className="h-3 w-3" /></button>
                       </span>
                     );
