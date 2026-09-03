@@ -21,6 +21,7 @@ function rotuloTipo(chave: string): string {
   return TIPOS_CACHE.find((t) => t.chave === chave)?.rotulo ?? TIPO_LABEL[chave] ?? chave;
 }
 import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
 
@@ -58,6 +59,7 @@ function IncidentesFeed() {
   const [tiposForm, setTiposForm] = useState<FormTipo[]>([]);
   const [origem, setOrigem] = useState<string>("all");
   const [polo, setPolo] = useState<string>("all");
+  const [processo, setProcesso] = useState<string>("all");
   const [equipe, setEquipe] = useState<string[]>([]);
   const hoje = new Date().toISOString().slice(0, 10);
   const [dataDe, setDataDe] = useState<string>(hoje);
@@ -147,6 +149,7 @@ function IncidentesFeed() {
         if (r.polo_eletricista !== polo && r.polo_prefixo !== polo && r.polo_geo !== polo) return false;
       }
       if (equipe.length > 0 && !equipe.includes((r.prefixo ?? "").trim().toUpperCase())) return false;
+      if (processo !== "all" && nomeProcesso(r.prefixo ?? "") !== processo) return false;
       const ts = new Date(r.created_at).getTime();
       if (deTs != null && ts < deTs) return false;
       if (ateTs != null && ts > ateTs) return false;
@@ -156,7 +159,7 @@ function IncidentesFeed() {
       }
       return true;
     });
-  }, [rows, busca, tipo, origem, polo, equipe, dataDe, dataAte, nomes]);
+  }, [rows, busca, tipo, origem, polo, equipe, processo, dataDe, dataAte, nomes]);
 
   const equipes = useMemo(() => {
     const set = new Set<string>();
@@ -216,6 +219,16 @@ function IncidentesFeed() {
               </Select>
             </div>
           )}
+          <div>
+            <Label>Processo</Label>
+            <Select value={processo} onValueChange={setProcesso}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>Equipe</Label>
             <Popover>

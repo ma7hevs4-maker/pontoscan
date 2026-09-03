@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { POLOS, useAuth } from "@/lib/auth-context";
 import { Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown, TriangleAlert } from "lucide-react";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRE_DDS", SAIDA_BASE: "SAIDA_BASE" };
 
@@ -32,6 +33,7 @@ export function RegistrosView() {
   const [usuario, setUsuario] = useState("");
   const [turno, setTurno] = useState<string>("all");
   const [etapa, setEtapa] = useState<string>("all");
+  const [processo, setProcesso] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<string>("timestamp");
@@ -75,6 +77,7 @@ export function RegistrosView() {
       if (letra !== turno) return false;
     }
     if (etapa !== "all" && r.etapa !== etapa) return false;
+    if (processo !== "all" && nomeProcesso(prefEfetivo) !== processo) return false;
     if (usuario.trim()) {
       const s = usuario.trim().toLowerCase();
       const n = (r.nome ?? "").toLowerCase();
@@ -126,7 +129,7 @@ export function RegistrosView() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-7">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
           <div><Label>De</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div><Label>Até</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div>
@@ -164,6 +167,16 @@ export function RegistrosView() {
                 <SelectItem value="PONTO">PONTO</SelectItem>
                 <SelectItem value="POS_DDS">PRE_DDS</SelectItem>
                 <SelectItem value="SAIDA_BASE">SAIDA_BASE</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Processo</Label>
+            <Select value={processo} onValueChange={setProcesso}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
