@@ -704,8 +704,14 @@ function EquipesView() {
                 {importandoTel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                 Importar telefones
               </Button>
-            </div>
+             </div>
           </div>
+          {resultadoTel && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {resultadoTel.atualizados} telefone(s) importado(s)
+              {resultadoTel.ignorados.length > 0 && ` · ${resultadoTel.ignorados.length} linha(s) ignorada(s): ${resultadoTel.ignorados.slice(0, 8).join(", ")}${resultadoTel.ignorados.length > 8 ? "…" : ""}`}
+            </p>
+          )}
         </div>
       </Card>
 
