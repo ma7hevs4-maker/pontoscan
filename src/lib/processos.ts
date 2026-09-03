@@ -25,10 +25,10 @@ const POR_LETRA = new Map(PROCESSOS.map((p) => [p.letra, p]));
 /** Lista única de processos, na ordem da tabela oficial. */
 export const PROCESSOS_UNICOS: string[] = [...new Set(PROCESSOS.map((p) => p.processo))];
 
-/** Retorna o processo da equipe com base no 6º caractere do prefixo. */
+/** Retorna o processo da equipe com base no 7º caractere do prefixo. */
 export function processoDe(prefixo: string): ProcessoInfo | null {
   const limpo = (prefixo ?? "").trim().toUpperCase();
-  const letra = limpo.charAt(5);
+  const letra = limpo.charAt(6);
   if (!letra) return null;
   return POR_LETRA.get(letra) ?? null;
 }
