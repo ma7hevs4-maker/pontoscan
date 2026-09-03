@@ -22,8 +22,17 @@ export const PROCESSOS: ProcessoInfo[] = [
 
 const POR_LETRA = new Map(PROCESSOS.map((p) => [p.letra, p]));
 
-/** Lista única de processos, na ordem da tabela oficial. */
-export const PROCESSOS_UNICOS: string[] = [...new Set(PROCESSOS.map((p) => p.processo))];
+/** Lista única de processos, na ordem solicitada para os KPIs. */
+export const PROCESSOS_UNICOS: string[] = [
+  "Emergência",
+  "Comercial",
+  "Poda",
+  "Perdas",
+  "Manutenção",
+  "Linha Viva",
+  "Telecontrole",
+  "Obras",
+];
 
 /** Retorna o processo da equipe com base no 7º caractere do prefixo. */
 export function processoDe(prefixo: string): ProcessoInfo | null {
