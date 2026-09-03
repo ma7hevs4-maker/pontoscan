@@ -735,7 +735,7 @@ function EquipesView() {
             </TableHeader>
             <TableBody>
               {visiveis.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
               )}
               {visiveis.map(e => {
                 const ok = completos(e);
