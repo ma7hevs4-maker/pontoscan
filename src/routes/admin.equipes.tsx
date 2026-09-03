@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
 import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
@@ -109,7 +110,6 @@ function EquipesView() {
   
   const telInputRef = useRef<HTMLInputElement>(null);
   const [importandoTel, setImportandoTel] = useState(false);
-  const [resultadoTel, setResultadoTel] = useState<{ atualizados: number; ignorados: string[] } | null>(null);
   const [mesclarOpen, setMesclarOpen] = useState(false);
   const [selEquipes, setSelEquipes] = useState<string[]>([]);
   const [selMembros, setSelMembros] = useState<string[]>([]);
@@ -286,7 +286,6 @@ function EquipesView() {
 
   const importarTelefones = async (file: File) => {
     setImportandoTel(true);
-    setResultadoTel(null);
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]!]!;
@@ -315,8 +314,11 @@ function EquipesView() {
         rows.forEach(r => { n[`${r.prefixo}|${r.polo}`] = r.telefone; });
         return n;
       });
-      setResultadoTel({ atualizados: rows.length, ignorados });
-      toast.success(`${rows.length} telefone(s) importado(s)`);
+      toast.success(`${rows.length} telefone(s) importado(s)`, {
+        description: ignorados.length
+          ? `${ignorados.length} linha(s) ignorada(s): ${ignorados.slice(0, 6).join(", ")}${ignorados.length > 6 ? "…" : ""}`
+          : undefined,
+      });
     } catch (err: any) {
       toast.error(err.message ?? "Falha ao importar telefones");
     } finally {
@@ -567,8 +569,8 @@ function EquipesView() {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <div className="min-w-0">
               <Label className="mb-1.5 block">Buscar</Label>
               <div className="relative">
@@ -658,61 +660,59 @@ function EquipesView() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:items-end">
-            <p className="text-xs text-muted-foreground lg:text-right">
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+            <Button size="sm" variant="outline" onClick={load}>Atualizar</Button>
+            {role === "ADMIN_DISPATCH" && (
+              <Button size="sm" variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => { setMesclarOpen(true); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla(""); }}>
+              <Merge className="mr-2 h-4 w-4" />Mesclar
+            </Button>
+            <Button size="sm" onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
+              <Plus className="mr-2 h-4 w-4" />Gerar equipe
+            </Button>
+            <input
+              ref={gridInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(ev) => {
+                const f = ev.target.files?.[0];
+                ev.target.value = "";
+                if (f) importarGrids(f);
+              }}
+            />
+            <Button size="sm" variant="secondary" onClick={() => gridInputRef.current?.click()} disabled={importando}>
+              {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+              Gerar via grids
+            </Button>
+            <input
+              ref={telInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(ev) => {
+                const f = ev.target.files?.[0];
+                if (f) importarTelefones(f);
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={importandoTel}>
+                  {importandoTel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
+                  Telefones
+                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={baixarModeloTelefones}>Baixar modelo</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => telInputRef.current?.click()}>Importar planilha</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <p className="ml-auto text-xs text-muted-foreground">
               Dia {new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR")} · as áreas resetam automaticamente todo dia
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={load}>Atualizar</Button>
-              {role === "ADMIN_DISPATCH" && (
-                <Button variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
-              )}
-              <Button variant="outline" onClick={() => { setMesclarOpen(true); setSelEquipes([]); setSelMembros([]); setDestino(""); setPrefixoMescla(""); }}>
-                <Merge className="mr-2 h-4 w-4" />Mesclar equipe
-              </Button>
-              <Button onClick={() => { setNovaOpen(true); setNovoPolo(role === "ADMIN_POLO" ? (adminPolo ?? "") : ""); }}>
-                <Plus className="mr-2 h-4 w-4" />Gerar equipe
-              </Button>
-              <input
-                ref={gridInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(ev) => {
-                  const f = ev.target.files?.[0];
-                  ev.target.value = "";
-                  if (f) importarGrids(f);
-                }}
-              />
-              <Button variant="secondary" onClick={() => gridInputRef.current?.click()} disabled={importando}>
-                {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
-                Gerar via grids
-              </Button>
-              <input
-                ref={telInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(ev) => {
-                  const f = ev.target.files?.[0];
-                  if (f) importarTelefones(f);
-                }}
-              />
-              <Button variant="outline" onClick={baixarModeloTelefones}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />Modelo de telefones
-              </Button>
-              <Button variant="secondary" onClick={() => telInputRef.current?.click()} disabled={importandoTel}>
-                {importandoTel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
-                Importar telefones
-              </Button>
-             </div>
           </div>
-          {resultadoTel && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              {resultadoTel.atualizados} telefone(s) importado(s)
-              {resultadoTel.ignorados.length > 0 && ` · ${resultadoTel.ignorados.length} linha(s) ignorada(s): ${resultadoTel.ignorados.slice(0, 8).join(", ")}${resultadoTel.ignorados.length > 8 ? "…" : ""}`}
-            </p>
-          )}
         </div>
       </Card>
 
