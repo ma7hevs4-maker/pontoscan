@@ -61,6 +61,7 @@ interface Inc {
   numero: string;
   ponto_eletrico: string;
   alimentador: string;
+  criado_em: string;
 }
 
 interface Equipe {
@@ -71,6 +72,12 @@ interface Equipe {
   gerada: boolean;
   ajustado: boolean;
   incidentes: Inc[];
+  telefone: string;
+}
+
+function horaBR(iso: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function hoje() {
