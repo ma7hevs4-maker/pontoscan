@@ -22,6 +22,7 @@ import { Route as AdminEquipesRouteImport } from './routes/admin.equipes'
 import { Route as AdminIncidentesRouteImport } from './routes/admin.incidentes'
 import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as ApiAdminPhotosRouteImport } from './routes/api.admin-photos'
+import { Route as ApiAdminPurgeRouteImport } from './routes/api.admin-purge'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
 import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
 
@@ -90,6 +91,11 @@ const ApiAdminPhotosRoute = ApiAdminPhotosRouteImport.update({
   path: '/api/admin-photos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPurgeRoute = ApiAdminPurgeRouteImport.update({
+  id: '/api/admin-purge',
+  path: '/api/admin-purge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
   id: '/api/admin-users',
   path: '/api/admin-users',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-photos': typeof ApiAdminPhotosRoute
+  '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-photos': typeof ApiAdminPhotosRoute
+  '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/admin/incidentes': typeof AdminIncidentesRoute
   '/admin/metricas': typeof AdminMetricasRoute
   '/api/admin-photos': typeof ApiAdminPhotosRoute
+  '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-photos'
+    | '/api/admin-purge'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   fileRoutesByTo: FileRoutesByTo
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-photos'
+    | '/api/admin-purge'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   id:
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/admin/incidentes'
     | '/admin/metricas'
     | '/api/admin-photos'
+    | '/api/admin-purge'
     | '/api/admin-users'
     | '/api/public/incidente-parceira'
   fileRoutesById: FileRoutesById
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ParceiraRoute: typeof ParceiraRoute
   ApiAdminPhotosRoute: typeof ApiAdminPhotosRoute
+  ApiAdminPurgeRoute: typeof ApiAdminPurgeRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
   ApiPublicIncidenteParceiraRoute: typeof ApiPublicIncidenteParceiraRoute
 }
@@ -313,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminPhotosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin-purge': {
+      id: '/api/admin-purge'
+      path: '/api/admin-purge'
+      fullPath: '/api/admin-purge'
+      preLoaderRoute: typeof ApiAdminPurgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin-users': {
       id: '/api/admin-users'
       path: '/api/admin-users'
@@ -358,6 +378,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ParceiraRoute: ParceiraRoute,
   ApiAdminPhotosRoute: ApiAdminPhotosRoute,
+  ApiAdminPurgeRoute: ApiAdminPurgeRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
   ApiPublicIncidenteParceiraRoute: ApiPublicIncidenteParceiraRoute,
 }

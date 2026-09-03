@@ -47,6 +47,12 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindoFotos, setExcluindoFotos] = useState(false);
   const [ultimoResultado, setUltimoResultado] = useState<{ fotosExcluidas: number; incidentesAtualizados: number } | null>(null);
+  const [purgeTipo, setPurgeTipo] = useState<"incidentes" | "registros">("incidentes");
+  const [purgeDe, setPurgeDe] = useState(hoje);
+  const [purgeAte, setPurgeAte] = useState(hoje);
+  const [confirmarPurge, setConfirmarPurge] = useState(false);
+  const [purgando, setPurgando] = useState(false);
+  const [purgeResultado, setPurgeResultado] = useState<{ tipo: string; excluidos: number; fotosExcluidas: number } | null>(null);
 
   const [novoRotulo, setNovoRotulo] = useState("");
   const [criandoAba, setCriandoAba] = useState(false);
