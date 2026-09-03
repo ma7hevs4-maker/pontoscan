@@ -747,7 +747,18 @@ function EquipesView() {
                       {e.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
                       {e.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
                     </TableCell>
+                    <TableCell className="text-sm">{nomeProcesso(e.prefixo)}</TableCell>
                     <TableCell>{e.polo}</TableCell>
+                    <TableCell onClick={(ev) => ev.stopPropagation()}>
+                      <Input
+                        className="h-8 w-[140px]"
+                        placeholder="(00) 00000-0000"
+                        defaultValue={e.telefone}
+                        key={`${e.key}-${e.telefone}`}
+                        onBlur={(ev) => { if (ev.target.value.trim() !== e.telefone) salvarTelefone(e, ev.target.value); }}
+                        onKeyDown={(ev) => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); }}
+                      />
+                    </TableCell>
                     <TableCell><span className="inline-flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{e.membros.length}</span></TableCell>
                     <TableCell>
                       {pend === 0 ? (
