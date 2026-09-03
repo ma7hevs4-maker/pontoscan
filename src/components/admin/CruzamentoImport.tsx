@@ -24,6 +24,8 @@ type Tipo = "ATENDIMENTO_INDIVIDUAL" | "ORDEM_2" | "IMPRODUTIVO";
 
 type LinhaXlsx = {
   numero: string;
+  /** Número exatamente como veio na planilha (mantém prefixo DT/BA e zeros). */
+  numero_raw: string;
   equipe: string;
   causa: string;
   polo: Polo | null;
