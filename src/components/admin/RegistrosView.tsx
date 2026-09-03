@@ -33,6 +33,7 @@ export function RegistrosView() {
   const [usuario, setUsuario] = useState("");
   const [turno, setTurno] = useState<string>("all");
   const [etapa, setEtapa] = useState<string>("all");
+  const [processo, setProcesso] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<string>("timestamp");
@@ -76,6 +77,7 @@ export function RegistrosView() {
       if (letra !== turno) return false;
     }
     if (etapa !== "all" && r.etapa !== etapa) return false;
+    if (processo !== "all" && nomeProcesso(prefEfetivo) !== processo) return false;
     if (usuario.trim()) {
       const s = usuario.trim().toLowerCase();
       const n = (r.nome ?? "").toLowerCase();
