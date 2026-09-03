@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Users, Timer, Activity, ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 export const Route = createFileRoute("/admin/metricas")({ component: MetricasPage });
 
@@ -265,7 +266,7 @@ function MetricasPage() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-7">
           <div><Label>De</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
           <div><Label>Até</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
           <div>
@@ -291,6 +292,16 @@ function MetricasPage() {
                 <SelectItem value="A">Turno A</SelectItem>
                 <SelectItem value="B">Turno B</SelectItem>
                 <SelectItem value="C">Turno C</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Processo</Label>
+            <Select value={processo} onValueChange={setProcesso}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
