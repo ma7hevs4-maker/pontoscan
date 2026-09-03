@@ -137,6 +137,29 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
 
 
 
+  const executarPurge = async () => {
+    if (!purgeDe || !purgeAte || purgeDe > purgeAte) return toast.error("Informe um período válido");
+    setPurgando(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada. Entre novamente.");
+      const response = await fetch("/api/admin-purge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ tipo: purgeTipo, dataDe: purgeDe, dataAte: purgeAte }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const result = await response.json() as { tipo: string; excluidos: number; fotosExcluidas: number };
+      setPurgeResultado(result);
+      setConfirmarPurge(false);
+      toast.success(`${result.excluidos} ${purgeTipo === "incidentes" ? "incidente(s)" : "registro(s)"} excluído(s)`);
+    } catch (error: any) {
+      toast.error(error.message ?? "Falha ao excluir dados");
+    } finally {
+      setPurgando(false);
+    }
+  };
+
   const criarAba = async () => {
     const rotulo = novoRotulo.trim();
     if (!rotulo) return toast.error("Informe o nome da aba");
