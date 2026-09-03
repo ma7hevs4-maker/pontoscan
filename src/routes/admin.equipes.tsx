@@ -174,7 +174,7 @@ function EquipesView() {
     (inc ?? []).forEach((i: any) => {
       const key = `${i.prefixo}|${i.polo}`;
       if (!imap[key]) imap[key] = [];
-      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "" });
+      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "", criado_em: i.created_at });
     });
     setIncidentesMap(imap);
     setLoading(false);
