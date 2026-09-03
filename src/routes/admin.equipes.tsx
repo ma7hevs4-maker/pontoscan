@@ -350,11 +350,12 @@ function EquipesView() {
     if (!alim) return toast.error("Informe o alimentador");
     if (e.incidentes.some(i => i.numero === num)) return toast.error("Incidente já atribuído a esta equipe");
     setSalvando(true);
-    const { error } = await supabase.from("equipe_incidentes")
-      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim });
+    const { data: inserido, error } = await supabase.from("equipe_incidentes")
+      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim })
+      .select("created_at").maybeSingle();
     setSalvando(false);
     if (error) return toast.error("Não foi possível atribuir o incidente");
-    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim };
+    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim, criado_em: inserido?.created_at ?? new Date().toISOString() };
     setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), novo] }));
     setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, novo] } : prev);
     setNovoIncidente("");
