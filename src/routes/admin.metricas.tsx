@@ -68,6 +68,7 @@ function MetricasPage() {
   const [polo, setPolo] = useState<string>(role === "ADMIN_POLO" ? (adminPolo ?? "") : "all");
   const [search, setSearch] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [processo, setProcesso] = useState<string>("all");
   const [rows, setRows] = useState<VRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [agrupamento, setAgrupamento] = useState<"equipe" | "pessoa">("equipe");
@@ -114,6 +115,7 @@ function MetricasPage() {
       const letra = (r.prefixo ?? "").split("-")[1]?.[0]?.toUpperCase();
       if (letra !== turno) return false;
     }
+    if (processo !== "all" && nomeProcesso(r.prefixo ?? "") !== processo) return false;
     if (search.trim()) {
       const s = search.trim().toLowerCase();
       if (!(r.nome ?? "").toLowerCase().includes(s) && !(r.prefixo ?? "").toLowerCase().includes(s)) return false;
