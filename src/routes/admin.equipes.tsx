@@ -789,7 +789,7 @@ function EquipesView() {
                           {e.incidentes.map((inc, idx) => {
                             const atual = idx === e.incidentes.length - 1;
                             return (
-                              <span key={inc.numero} title={`Ponto elétrico: ${inc.ponto_eletrico || "—"} · Alimentador: ${inc.alimentador || "—"}`}
+                              <span key={inc.numero} title={`Ponto elétrico: ${inc.ponto_eletrico || "—"} · Alimentador: ${inc.alimentador || "—"} · Inserido às ${horaBR(inc.criado_em)}`}
                                 className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
                                 {inc.numero}
                                 {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
