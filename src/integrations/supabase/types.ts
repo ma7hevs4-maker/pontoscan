@@ -216,6 +216,33 @@ export type Database = {
         }
         Relationships: []
       }
+      equipe_telefones: {
+        Row: {
+          created_at: string
+          id: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          polo: Database["public"]["Enums"]["polo_enum"]
+          prefixo: string
+          telefone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          polo?: Database["public"]["Enums"]["polo_enum"]
+          prefixo?: string
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_questions: {
         Row: {
           ativa: boolean

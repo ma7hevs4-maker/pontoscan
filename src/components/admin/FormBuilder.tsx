@@ -47,6 +47,12 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindoFotos, setExcluindoFotos] = useState(false);
   const [ultimoResultado, setUltimoResultado] = useState<{ fotosExcluidas: number; incidentesAtualizados: number } | null>(null);
+  const [purgeTipo, setPurgeTipo] = useState<"incidentes" | "registros">("incidentes");
+  const [purgeDe, setPurgeDe] = useState(hoje);
+  const [purgeAte, setPurgeAte] = useState(hoje);
+  const [confirmarPurge, setConfirmarPurge] = useState(false);
+  const [purgando, setPurgando] = useState(false);
+  const [purgeResultado, setPurgeResultado] = useState<{ tipo: string; excluidos: number; fotosExcluidas: number } | null>(null);
 
   const [novoRotulo, setNovoRotulo] = useState("");
   const [criandoAba, setCriandoAba] = useState(false);
@@ -130,6 +136,29 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
   };
 
 
+
+  const executarPurge = async () => {
+    if (!purgeDe || !purgeAte || purgeDe > purgeAte) return toast.error("Informe um período válido");
+    setPurgando(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada. Entre novamente.");
+      const response = await fetch("/api/admin-purge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ tipo: purgeTipo, dataDe: purgeDe, dataAte: purgeAte }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const result = await response.json() as { tipo: string; excluidos: number; fotosExcluidas: number };
+      setPurgeResultado(result);
+      setConfirmarPurge(false);
+      toast.success(`${result.excluidos} ${purgeTipo === "incidentes" ? "incidente(s)" : "registro(s)"} excluído(s)`);
+    } catch (error: any) {
+      toast.error(error.message ?? "Falha ao excluir dados");
+    } finally {
+      setPurgando(false);
+    }
+  };
 
   const criarAba = async () => {
     const rotulo = novoRotulo.trim();
@@ -386,6 +415,62 @@ export function FormBuilder({ open, onOpenChange }: { open: boolean; onOpenChang
               <AlertDialogCancel disabled={excluindoFotos}>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={excluirFotos} disabled={excluindoFotos} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 {excluindoFotos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Excluir definitivamente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <div className="space-y-3 rounded-lg border border-destructive/40 p-3">
+          <div>
+            <p className="text-sm font-medium">Excluir dados do banco</p>
+            <p className="text-xs text-muted-foreground">
+              Apaga definitivamente todos os incidentes (com suas fotos) ou todos os registros de ponto do período escolhido.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+            <div>
+              <Label className="text-xs">Dados</Label>
+              <Select value={purgeTipo} onValueChange={(v) => setPurgeTipo(v as "incidentes" | "registros")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="incidentes">Incidentes</SelectItem>
+                  <SelectItem value="registros">Registros de ponto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="purge-de" className="text-xs">De</Label>
+              <Input id="purge-de" type="date" value={purgeDe} onChange={(e) => setPurgeDe(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="purge-ate" className="text-xs">Até</Label>
+              <Input id="purge-ate" type="date" value={purgeAte} onChange={(e) => setPurgeAte(e.target.value)} />
+            </div>
+            <Button variant="destructive" onClick={() => setConfirmarPurge(true)} disabled={!purgeDe || !purgeAte || purgeDe > purgeAte || purgando}>
+              <Trash2 className="mr-2 h-4 w-4" /> Excluir dados
+            </Button>
+          </div>
+          {purgeResultado && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" /> Última exclusão: {purgeResultado.excluidos} {purgeResultado.tipo === "incidentes" ? "incidente(s)" : "registro(s)"} removido(s)
+              {purgeResultado.tipo === "incidentes" ? ` · ${purgeResultado.fotosExcluidas} foto(s)` : ""}.
+            </p>
+          )}
+        </div>
+
+        <AlertDialog open={confirmarPurge} onOpenChange={setConfirmarPurge}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir definitivamente os {purgeTipo === "incidentes" ? "incidentes" : "registros de ponto"}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Todos os {purgeTipo === "incidentes" ? "incidentes e suas fotos" : "registros de ponto"} entre {purgeDe.split("-").reverse().join("/")} e {purgeAte.split("-").reverse().join("/")} serão apagados do banco. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={purgando}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={executarPurge} disabled={purgando} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {purgando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                 Excluir definitivamente
               </AlertDialogAction>
             </AlertDialogFooter>

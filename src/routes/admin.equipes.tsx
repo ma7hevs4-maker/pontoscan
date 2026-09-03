@@ -9,13 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { POLOS, useAuth } from "@/lib/auth-context";
-import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { Loader2, Users, AlertTriangle, CheckCircle2, Plus, History, Trash2, Merge, Pencil, Search, FileSpreadsheet, ChevronDown, Phone } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 export const Route = createFileRoute("/admin/equipes")({
   component: EquipesView,
@@ -61,6 +62,7 @@ interface Inc {
   numero: string;
   ponto_eletrico: string;
   alimentador: string;
+  criado_em: string;
 }
 
 interface Equipe {
@@ -71,6 +73,12 @@ interface Equipe {
   gerada: boolean;
   ajustado: boolean;
   incidentes: Inc[];
+  telefone: string;
+}
+
+function horaBR(iso: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function hoje() {
@@ -96,6 +104,12 @@ function EquipesView() {
   const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [processoFiltro, setProcessoFiltro] = useState<string>("all");
+  const [telefones, setTelefones] = useState<Record<string, string>>({});
+  
+  const telInputRef = useRef<HTMLInputElement>(null);
+  const [importandoTel, setImportandoTel] = useState(false);
+  const [resultadoTel, setResultadoTel] = useState<{ atualizados: number; ignorados: string[] } | null>(null);
   const [mesclarOpen, setMesclarOpen] = useState(false);
   const [selEquipes, setSelEquipes] = useState<string[]>([]);
   const [selMembros, setSelMembros] = useState<string[]>([]);
@@ -134,14 +148,18 @@ function EquipesView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
-    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }] = await Promise.all([
+    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }, { data: tel }] = await Promise.all([
       q,
       supabase.from("equipe_areas").select("prefixo, polo, area, gerada, ajustado").eq("dia", dia),
       supabase.from("equipe_incidentes")
         .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
         .eq("dia", dia).order("created_at", { ascending: true }),
       supabase.from("equipe_membros_override").select("usuario_id, prefixo, polo").eq("dia", dia),
+      supabase.from("equipe_telefones").select("prefixo, polo, telefone"),
     ]);
+    const tmap: Record<string, string> = {};
+    (tel ?? []).forEach((t: any) => { tmap[`${t.prefixo}|${t.polo}`] = t.telefone ?? ""; });
+    setTelefones(tmap);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
@@ -157,7 +175,7 @@ function EquipesView() {
     (inc ?? []).forEach((i: any) => {
       const key = `${i.prefixo}|${i.polo}`;
       if (!imap[key]) imap[key] = [];
-      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "" });
+      imap[key].push({ numero: i.numero_incidente, ponto_eletrico: i.ponto_eletrico ?? "", alimentador: i.alimentador ?? "", criado_em: i.created_at });
     });
     setIncidentesMap(imap);
     setLoading(false);
@@ -183,7 +201,7 @@ function EquipesView() {
     for (const m of manuais) {
       if (polo !== "all" && m.polo !== polo) continue;
       const key = `${m.prefixo}|${m.polo}`;
-      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] });
+      map.set(key, { key, prefixo: m.prefixo, polo: m.polo, membros: [], bases: [], area: areas[key] ?? null, gerada: true, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [], telefone: telefones[key] ?? "" });
     }
     for (const r of regs) {
       const equipeAtual = ultimoPrefixoPorUsuario.get(r.usuario_id);
@@ -192,7 +210,7 @@ function EquipesView() {
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [], telefone: telefones[key] ?? "" };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
@@ -203,7 +221,7 @@ function EquipesView() {
     return [...map.values()]
       .filter(e => e.gerada || e.membros.some(m => m.marcacoes["PONTO"]))
       .sort((a, b) => a.prefixo.localeCompare(b.prefixo));
-  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados]);
+  }, [regs, areas, manuais, polo, incidentesMap, overrides, ajustados, telefones]);
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -220,10 +238,11 @@ function EquipesView() {
       })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (processoFiltro !== "all" && nomeProcesso(e.prefixo) !== processoFiltro) return false;
       if (!termo) return true;
       return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
     });
-  }, [equipes, areas, areaFiltro, busca, turno]);
+  }, [equipes, areas, areaFiltro, busca, turno, processoFiltro]);
 
   const kpis = useMemo(() => {
     const base = turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno);
@@ -234,6 +253,77 @@ function EquipesView() {
       MT_TRONCO: base.filter(e => e.area === "MT_TRONCO").length,
     };
   }, [equipes, turno]);
+
+  const kpisProcesso = useMemo(() => {
+    const base = (turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno))
+      .filter(e => e.area !== "INATIVA");
+    return PROCESSOS_UNICOS.map(p => ({ processo: p, total: base.filter(e => nomeProcesso(e.prefixo) === p).length }));
+  }, [equipes, turno]);
+
+  const salvarTelefone = async (e: Equipe, valor: string) => {
+    const telefone = valor.trim();
+    const key = e.key;
+    if (!telefone) {
+      const { error } = await supabase.from("equipe_telefones").delete().eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+      if (error) return toast.error("Não foi possível remover o telefone");
+      setTelefones(prev => { const n = { ...prev }; delete n[key]; return n; });
+      return toast.success("Telefone removido");
+    }
+    const { error } = await supabase.from("equipe_telefones")
+      .upsert({ prefixo: e.prefixo, polo: e.polo as any, telefone }, { onConflict: "prefixo,polo" });
+    if (error) return toast.error("Não foi possível salvar o telefone");
+    setTelefones(prev => ({ ...prev, [key]: telefone }));
+    toast.success("Telefone salvo");
+  };
+
+  const baixarModeloTelefones = () => {
+    const linhas = equipes.map(e => ({ Prefixo: e.prefixo, Polo: e.polo, Telefone: telefones[e.key] ?? "" }));
+    const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ Prefixo: "", Polo: "", Telefone: "" }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Telefones");
+    XLSX.writeFile(wb, "modelo-telefones-equipes.xlsx");
+  };
+
+  const importarTelefones = async (file: File) => {
+    setImportandoTel(true);
+    setResultadoTel(null);
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]!]!;
+      const linhas = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+      const rows: { prefixo: string; polo: string; telefone: string }[] = [];
+      const ignorados: string[] = [];
+      for (const l of linhas) {
+        const get = (nome: string) => {
+          const chave = Object.keys(l).find(k => k.trim().toLowerCase() === nome);
+          return chave ? String(l[chave] ?? "").trim() : "";
+        };
+        const prefixo = get("prefixo").toUpperCase();
+        const telefone = get("telefone");
+        let polo = get("polo");
+        if (!prefixo) continue;
+        if (!polo) polo = equipes.find(e => e.prefixo.toUpperCase() === prefixo)?.polo ?? "";
+        if (!polo || !telefone) { ignorados.push(prefixo); continue; }
+        rows.push({ prefixo, polo, telefone });
+      }
+      if (rows.length) {
+        const { error } = await supabase.from("equipe_telefones").upsert(rows as any, { onConflict: "prefixo,polo" });
+        if (error) throw error;
+      }
+      setTelefones(prev => {
+        const n = { ...prev };
+        rows.forEach(r => { n[`${r.prefixo}|${r.polo}`] = r.telefone; });
+        return n;
+      });
+      setResultadoTel({ atualizados: rows.length, ignorados });
+      toast.success(`${rows.length} telefone(s) importado(s)`);
+    } catch (err: any) {
+      toast.error(err.message ?? "Falha ao importar telefones");
+    } finally {
+      setImportandoTel(false);
+      if (telInputRef.current) telInputRef.current.value = "";
+    }
+  };
 
   const setArea = async (e: Equipe, area: Area | "none") => {
     if (area === "none") {
@@ -260,11 +350,12 @@ function EquipesView() {
     if (!alim) return toast.error("Informe o alimentador");
     if (e.incidentes.some(i => i.numero === num)) return toast.error("Incidente já atribuído a esta equipe");
     setSalvando(true);
-    const { error } = await supabase.from("equipe_incidentes")
-      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim });
+    const { data: inserido, error } = await supabase.from("equipe_incidentes")
+      .insert({ dia, prefixo: e.prefixo, polo: e.polo as any, numero_incidente: num, ponto_eletrico: ponto, alimentador: alim })
+      .select("created_at").maybeSingle();
     setSalvando(false);
     if (error) return toast.error("Não foi possível atribuir o incidente");
-    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim };
+    const novo: Inc = { numero: num, ponto_eletrico: ponto, alimentador: alim, criado_em: inserido?.created_at ?? new Date().toISOString() };
     setIncidentesMap(prev => ({ ...prev, [e.key]: [...(prev[e.key] ?? []), novo] }));
     setAberta(prev => prev && prev.key === e.key ? { ...prev, incidentes: [...prev.incidentes, novo] } : prev);
     setNovoIncidente("");
@@ -466,6 +557,15 @@ function EquipesView() {
         ))}
       </div>
 
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {kpisProcesso.map(k => (
+          <Card key={k.processo} className="p-3">
+            <p className="truncate text-[11px] font-medium text-muted-foreground" title={k.processo}>{k.processo}</p>
+            <p className="mt-0.5 text-2xl font-bold text-primary">{k.total}</p>
+          </Card>
+        ))}
+      </div>
+
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -485,6 +585,16 @@ function EquipesView() {
                   <SelectItem value="A">Turno A</SelectItem>
                   <SelectItem value="B">Turno B</SelectItem>
                   <SelectItem value="C">Turno C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Processo</Label>
+              <Select value={processoFiltro} onValueChange={setProcessoFiltro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -578,8 +688,31 @@ function EquipesView() {
                 {importando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
                 Gerar via grids
               </Button>
-            </div>
+              <input
+                ref={telInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  if (f) importarTelefones(f);
+                }}
+              />
+              <Button variant="outline" onClick={baixarModeloTelefones}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />Modelo de telefones
+              </Button>
+              <Button variant="secondary" onClick={() => telInputRef.current?.click()} disabled={importandoTel}>
+                {importandoTel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
+                Importar telefones
+              </Button>
+             </div>
           </div>
+          {resultadoTel && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {resultadoTel.atualizados} telefone(s) importado(s)
+              {resultadoTel.ignorados.length > 0 && ` · ${resultadoTel.ignorados.length} linha(s) ignorada(s): ${resultadoTel.ignorados.slice(0, 8).join(", ")}${resultadoTel.ignorados.length > 8 ? "…" : ""}`}
+            </p>
+          )}
         </div>
       </Card>
 
@@ -591,7 +724,9 @@ function EquipesView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Equipe</TableHead>
+                <TableHead>Processo</TableHead>
                 <TableHead>Polo</TableHead>
+                <TableHead>Telefone</TableHead>
                 <TableHead>Colaboradores</TableHead>
                 <TableHead>Jornada completa</TableHead>
                 <TableHead>Base</TableHead>
@@ -601,7 +736,7 @@ function EquipesView() {
             </TableHeader>
             <TableBody>
               {visiveis.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Nenhuma equipe ativa hoje</TableCell></TableRow>
               )}
               {visiveis.map(e => {
                 const ok = completos(e);
@@ -613,7 +748,18 @@ function EquipesView() {
                       {e.gerada && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">gerada</span>}
                       {e.ajustado && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">ajustado</span>}
                     </TableCell>
+                    <TableCell className="text-sm">{nomeProcesso(e.prefixo)}</TableCell>
                     <TableCell>{e.polo}</TableCell>
+                    <TableCell onClick={(ev) => ev.stopPropagation()}>
+                      <Input
+                        className="h-8 w-[140px]"
+                        placeholder="(00) 00000-0000"
+                        defaultValue={e.telefone}
+                        key={`${e.key}-${e.telefone}`}
+                        onBlur={(ev) => { if (ev.target.value.trim() !== e.telefone) salvarTelefone(e, ev.target.value); }}
+                        onKeyDown={(ev) => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); }}
+                      />
+                    </TableCell>
                     <TableCell><span className="inline-flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{e.membros.length}</span></TableCell>
                     <TableCell>
                       {pend === 0 ? (
@@ -643,7 +789,7 @@ function EquipesView() {
                           {e.incidentes.map((inc, idx) => {
                             const atual = idx === e.incidentes.length - 1;
                             return (
-                              <span key={inc.numero} title={`Ponto elétrico: ${inc.ponto_eletrico || "—"} · Alimentador: ${inc.alimentador || "—"}`}
+                              <span key={inc.numero} title={`Ponto elétrico: ${inc.ponto_eletrico || "—"} · Alimentador: ${inc.alimentador || "—"} · Inserido às ${horaBR(inc.criado_em)}`}
                                 className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
                                 {inc.numero}
                                 {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
@@ -729,7 +875,7 @@ function EquipesView() {
                         className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${atual ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-500" : "bg-primary/10 text-primary"}`}>
                         {inc.numero}
                         {atual && <span className="rounded bg-emerald-600 px-1 text-[9px] font-bold text-white">ATUAL</span>}
-                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"}</span>
+                        <span className="font-normal opacity-80">· PE {inc.ponto_eletrico || "—"} · AL {inc.alimentador || "—"} · {horaBR(inc.criado_em)}</span>
                         <button className="ml-1 hover:text-destructive" onClick={() => removerIncidente(aberta, inc.numero)} title="Remover"><Trash2 className="h-3 w-3" /></button>
                       </span>
                     );
