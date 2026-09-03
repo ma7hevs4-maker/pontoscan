@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { poloFromPrefixo } from "@/lib/incidentes";
 import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
@@ -109,7 +110,6 @@ function EquipesView() {
   
   const telInputRef = useRef<HTMLInputElement>(null);
   const [importandoTel, setImportandoTel] = useState(false);
-  const [resultadoTel, setResultadoTel] = useState<{ atualizados: number; ignorados: string[] } | null>(null);
   const [mesclarOpen, setMesclarOpen] = useState(false);
   const [selEquipes, setSelEquipes] = useState<string[]>([]);
   const [selMembros, setSelMembros] = useState<string[]>([]);
@@ -286,7 +286,6 @@ function EquipesView() {
 
   const importarTelefones = async (file: File) => {
     setImportandoTel(true);
-    setResultadoTel(null);
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]!]!;
