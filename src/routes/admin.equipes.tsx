@@ -209,7 +209,7 @@ function EquipesView() {
       const key = `${prefixo}|${p}`;
       let e = map.get(key);
       if (!e) {
-        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [] };
+        e = { key, prefixo, polo: p, membros: [], bases: [], area: areas[key] ?? null, gerada: false, ajustado: !!ajustados[key], incidentes: incidentesMap[key] ?? [], telefone: telefones[key] ?? "" };
         map.set(key, e);
       }
       let m = e.membros.find(x => x.usuario_id === r.usuario_id);
