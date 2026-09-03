@@ -315,8 +315,11 @@ function EquipesView() {
         rows.forEach(r => { n[`${r.prefixo}|${r.polo}`] = r.telefone; });
         return n;
       });
-      setResultadoTel({ atualizados: rows.length, ignorados });
-      toast.success(`${rows.length} telefone(s) importado(s)`);
+      toast.success(`${rows.length} telefone(s) importado(s)`, {
+        description: ignorados.length
+          ? `${ignorados.length} linha(s) ignorada(s): ${ignorados.slice(0, 6).join(", ")}${ignorados.length > 6 ? "…" : ""}`
+          : undefined,
+      });
     } catch (err: any) {
       toast.error(err.message ?? "Falha ao importar telefones");
     } finally {
