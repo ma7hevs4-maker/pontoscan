@@ -237,10 +237,11 @@ function EquipesView() {
       })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (processoFiltro !== "all" && nomeProcesso(e.prefixo) !== processoFiltro) return false;
       if (!termo) return true;
       return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
     });
-  }, [equipes, areas, areaFiltro, busca, turno]);
+  }, [equipes, areas, areaFiltro, busca, turno, processoFiltro]);
 
   const kpis = useMemo(() => {
     const base = turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno);
@@ -251,6 +252,77 @@ function EquipesView() {
       MT_TRONCO: base.filter(e => e.area === "MT_TRONCO").length,
     };
   }, [equipes, turno]);
+
+  const kpisProcesso = useMemo(() => {
+    const base = (turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno))
+      .filter(e => e.area !== "INATIVA");
+    return PROCESSOS_UNICOS.map(p => ({ processo: p, total: base.filter(e => nomeProcesso(e.prefixo) === p).length }));
+  }, [equipes, turno]);
+
+  const salvarTelefone = async (e: Equipe, valor: string) => {
+    const telefone = valor.trim();
+    const key = e.key;
+    if (!telefone) {
+      const { error } = await supabase.from("equipe_telefones").delete().eq("prefixo", e.prefixo).eq("polo", e.polo as any);
+      if (error) return toast.error("Não foi possível remover o telefone");
+      setTelefones(prev => { const n = { ...prev }; delete n[key]; return n; });
+      return toast.success("Telefone removido");
+    }
+    const { error } = await supabase.from("equipe_telefones")
+      .upsert({ prefixo: e.prefixo, polo: e.polo as any, telefone }, { onConflict: "prefixo,polo" });
+    if (error) return toast.error("Não foi possível salvar o telefone");
+    setTelefones(prev => ({ ...prev, [key]: telefone }));
+    toast.success("Telefone salvo");
+  };
+
+  const baixarModeloTelefones = () => {
+    const linhas = equipes.map(e => ({ Prefixo: e.prefixo, Polo: e.polo, Telefone: telefones[e.key] ?? "" }));
+    const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ Prefixo: "", Polo: "", Telefone: "" }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Telefones");
+    XLSX.writeFile(wb, "modelo-telefones-equipes.xlsx");
+  };
+
+  const importarTelefones = async (file: File) => {
+    setImportandoTel(true);
+    setResultadoTel(null);
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]!]!;
+      const linhas = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+      const rows: { prefixo: string; polo: string; telefone: string }[] = [];
+      const ignorados: string[] = [];
+      for (const l of linhas) {
+        const get = (nome: string) => {
+          const chave = Object.keys(l).find(k => k.trim().toLowerCase() === nome);
+          return chave ? String(l[chave] ?? "").trim() : "";
+        };
+        const prefixo = get("prefixo").toUpperCase();
+        const telefone = get("telefone");
+        let polo = get("polo");
+        if (!prefixo) continue;
+        if (!polo) polo = equipes.find(e => e.prefixo.toUpperCase() === prefixo)?.polo ?? "";
+        if (!polo || !telefone) { ignorados.push(prefixo); continue; }
+        rows.push({ prefixo, polo, telefone });
+      }
+      if (rows.length) {
+        const { error } = await supabase.from("equipe_telefones").upsert(rows as any, { onConflict: "prefixo,polo" });
+        if (error) throw error;
+      }
+      setTelefones(prev => {
+        const n = { ...prev };
+        rows.forEach(r => { n[`${r.prefixo}|${r.polo}`] = r.telefone; });
+        return n;
+      });
+      setResultadoTel({ atualizados: rows.length, ignorados });
+      toast.success(`${rows.length} telefone(s) importado(s)`);
+    } catch (err: any) {
+      toast.error(err.message ?? "Falha ao importar telefones");
+    } finally {
+      setImportandoTel(false);
+      if (telInputRef.current) telInputRef.current.value = "";
+    }
+  };
 
   const setArea = async (e: Equipe, area: Area | "none") => {
     if (area === "none") {
