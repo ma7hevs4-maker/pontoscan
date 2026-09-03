@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { POLOS, useAuth } from "@/lib/auth-context";
 import { Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown, TriangleAlert } from "lucide-react";
+import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
 const ETAPA_LABEL: Record<string, string> = { PONTO: "PONTO", POS_DDS: "PRE_DDS", SAIDA_BASE: "SAIDA_BASE" };
 

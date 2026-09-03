@@ -559,7 +559,7 @@ function EquipesView() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {kpisProcesso.map(k => (
           <Card key={k.processo} className="p-3">
             <p className="truncate text-[11px] font-medium text-muted-foreground" title={k.processo}>{k.processo}</p>
