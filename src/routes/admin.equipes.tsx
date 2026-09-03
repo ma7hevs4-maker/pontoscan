@@ -147,14 +147,18 @@ function EquipesView() {
       .gte("timestamp", start).lte("timestamp", end)
       .order("timestamp", { ascending: true });
     if (polo && polo !== "all") q = q.or(`user_polo.eq.${polo},base_polo.eq.${polo}`);
-    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }] = await Promise.all([
+    const [{ data, error }, { data: ar }, { data: inc }, { data: ov }, { data: tel }] = await Promise.all([
       q,
       supabase.from("equipe_areas").select("prefixo, polo, area, gerada, ajustado").eq("dia", dia),
       supabase.from("equipe_incidentes")
         .select("prefixo, polo, numero_incidente, ponto_eletrico, alimentador, created_at")
         .eq("dia", dia).order("created_at", { ascending: true }),
       supabase.from("equipe_membros_override").select("usuario_id, prefixo, polo").eq("dia", dia),
+      supabase.from("equipe_telefones").select("prefixo, polo, telefone"),
     ]);
+    const tmap: Record<string, string> = {};
+    (tel ?? []).forEach((t: any) => { tmap[`${t.prefixo}|${t.polo}`] = t.telefone ?? ""; });
+    setTelefones(tmap);
     if (!error) setRegs((data as Reg[]) ?? []);
     const map: Record<string, Area> = {};
     (ar ?? []).forEach((a: any) => { if (a.area) map[`${a.prefixo}|${a.polo}`] = a.area as Area; });
