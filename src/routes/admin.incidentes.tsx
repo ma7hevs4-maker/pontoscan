@@ -159,7 +159,7 @@ function IncidentesFeed() {
       }
       return true;
     });
-  }, [rows, busca, tipo, origem, polo, equipe, dataDe, dataAte, nomes]);
+  }, [rows, busca, tipo, origem, polo, equipe, processo, dataDe, dataAte, nomes]);
 
   const equipes = useMemo(() => {
     const set = new Set<string>();
@@ -219,6 +219,16 @@ function IncidentesFeed() {
               </Select>
             </div>
           )}
+          <div>
+            <Label>Processo</Label>
+            <Select value={processo} onValueChange={setProcesso}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {PROCESSOS_UNICOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>Equipe</Label>
             <Popover>
