@@ -612,6 +612,17 @@ function EquipesView() {
               </Select>
             </div>
             <div className="min-w-0">
+              <Label className="mb-1.5 block">Enel/Parceira</Label>
+              <Select value={empresaFiltro} onValueChange={setEmpresaFiltro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="ENEL">Enel</SelectItem>
+                  <SelectItem value="PARCEIRA">Parceira</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0">
               <Label className="mb-1.5 block">Processo</Label>
               <Select value={processoFiltro} onValueChange={setProcessoFiltro}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
