@@ -184,10 +184,19 @@ function EquipesView() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const agendar = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => load(), 1500);
+    };
     const ch = supabase.channel("equipes-live")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "registros" }, () => load())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "registros" }, agendar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipe_incidentes" }, agendar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipe_areas" }, agendar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipe_telefones" }, agendar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "equipe_membros_override" }, agendar)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { if (timer) clearTimeout(timer); supabase.removeChannel(ch); };
   }, [load]);
 
   const equipes: Equipe[] = useMemo(() => {
