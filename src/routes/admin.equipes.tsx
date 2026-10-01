@@ -91,6 +91,16 @@ function turnoDe(prefixo: string) {
   return m ? m[1] : "";
 }
 
+// Concessionária pela última letra antes do primeiro "-": E = Enel, P = Parceira
+function empresaDe(prefixo: string): "ENEL" | "PARCEIRA" | "" {
+  const p = prefixo.trim().toUpperCase();
+  const i = p.indexOf("-");
+  const letra = i > 0 ? p[i - 1] : "";
+  if (letra === "E") return "ENEL";
+  if (letra === "P") return "PARCEIRA";
+  return "";
+}
+
 function EquipesView() {
   const { role, adminPolo } = useAuth();
   const dia = hoje();
@@ -105,6 +115,7 @@ function EquipesView() {
   const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [empresaFiltro, setEmpresaFiltro] = useState<string>("all");
   const [processoFiltro, setProcessoFiltro] = useState<string>("all");
   const [telefones, setTelefones] = useState<Record<string, string>>({});
   
