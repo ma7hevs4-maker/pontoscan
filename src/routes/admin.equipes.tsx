@@ -258,11 +258,12 @@ function EquipesView() {
       })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (empresaFiltro !== "all" && empresaDe(e.prefixo) !== empresaFiltro) return false;
       if (processoFiltro !== "all" && nomeProcesso(e.prefixo) !== processoFiltro) return false;
       if (!termo) return true;
       return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
     });
-  }, [equipes, areas, areaFiltro, busca, turno, processoFiltro]);
+  }, [equipes, areas, areaFiltro, busca, turno, empresaFiltro, processoFiltro]);
 
   const kpis = useMemo(() => {
     const base = turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno);
