@@ -181,8 +181,8 @@ export function RegistrosView() {
             </Select>
           </div>
           <div className="flex items-end gap-2">
-            <Button onClick={load} className="flex-1">Filtrar</Button>
-            <Button variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />CSV</Button>
+            <Button onClick={load} className="flex-1 whitespace-nowrap">Filtrar</Button>
+            <Button variant="outline" size="icon" onClick={exportCsv} title="Baixar CSV" aria-label="Baixar CSV" className="shrink-0"><Download className="h-4 w-4" /></Button>
           </div>
         </div>
       </Card>
