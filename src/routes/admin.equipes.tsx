@@ -670,7 +670,6 @@ function EquipesView() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-            <Button size="sm" variant="outline" onClick={load}>Atualizar</Button>
             {role === "ADMIN_DISPATCH" && (
               <Button size="sm" variant="outline" onClick={() => setLogOpen(true)}><History className="mr-2 h-4 w-4" />Log</Button>
             )}
