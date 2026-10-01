@@ -91,6 +91,16 @@ function turnoDe(prefixo: string) {
   return m ? m[1] : "";
 }
 
+// Concessionária pela última letra antes do primeiro "-": E = Enel, P = Parceira
+function empresaDe(prefixo: string): "ENEL" | "PARCEIRA" | "" {
+  const p = prefixo.trim().toUpperCase();
+  const i = p.indexOf("-");
+  const letra = i > 0 ? p[i - 1] : "";
+  if (letra === "E") return "ENEL";
+  if (letra === "P") return "PARCEIRA";
+  return "";
+}
+
 function EquipesView() {
   const { role, adminPolo } = useAuth();
   const dia = hoje();
@@ -105,6 +115,7 @@ function EquipesView() {
   const [areaFiltro, setAreaFiltro] = useState<AreaFiltroItem[]>([]);
   const [busca, setBusca] = useState("");
   const [turno, setTurno] = useState<string>("all");
+  const [empresaFiltro, setEmpresaFiltro] = useState<string>("all");
   const [processoFiltro, setProcessoFiltro] = useState<string>("all");
   const [telefones, setTelefones] = useState<Record<string, string>>({});
   
@@ -247,11 +258,12 @@ function EquipesView() {
       })();
       if (!okArea) return false;
       if (turno !== "all" && turnoDe(e.prefixo) !== turno) return false;
+      if (empresaFiltro !== "all" && empresaDe(e.prefixo) !== empresaFiltro) return false;
       if (processoFiltro !== "all" && nomeProcesso(e.prefixo) !== processoFiltro) return false;
       if (!termo) return true;
       return e.prefixo.toLowerCase().includes(termo) || e.membros.some(m => m.nome.toLowerCase().includes(termo));
     });
-  }, [equipes, areas, areaFiltro, busca, turno, processoFiltro]);
+  }, [equipes, areas, areaFiltro, busca, turno, empresaFiltro, processoFiltro]);
 
   const kpis = useMemo(() => {
     const base = turno === "all" ? equipes : equipes.filter(e => turnoDe(e.prefixo) === turno);
@@ -579,7 +591,7 @@ function EquipesView() {
 
       <Card className="p-4">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <div className="min-w-0">
               <Label className="mb-1.5 block">Buscar</Label>
               <div className="relative">
@@ -596,6 +608,17 @@ function EquipesView() {
                   <SelectItem value="A">Turno A</SelectItem>
                   <SelectItem value="B">Turno B</SelectItem>
                   <SelectItem value="C">Turno C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">Enel/Parceira</Label>
+              <Select value={empresaFiltro} onValueChange={setEmpresaFiltro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="ENEL">Enel</SelectItem>
+                  <SelectItem value="PARCEIRA">Parceira</SelectItem>
                 </SelectContent>
               </Select>
             </div>
