@@ -67,13 +67,26 @@ function IncidentesFeed() {
   const [detalhe, setDetalhe] = useState<Incidente | null>(null);
   const fotosEnabled = useFotosEnabled();
 
+  const periodoRef = useRef({ de: dataDe, ate: dataAte });
+  periodoRef.current = { de: dataDe, ate: dataAte };
+
   const load = async () => {
     setLoading(true);
-    const { data } = await (supabase as any)
+    const { de, ate } = periodoRef.current;
+    let q = (supabase as any)
       .from("vw_incidentes_admin")
       .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
+      .order("created_at", { ascending: false });
+    if (de) q = q.gte("created_at", new Date(de + "T00:00:00").toISOString());
+    if (ate) q = q.lte("created_at", new Date(ate + "T23:59:59.999").toISOString());
+    const all: Incidente[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page } = await q.range(from, from + 999);
+      const arr = (page as Incidente[]) ?? [];
+      all.push(...arr);
+      if (arr.length < 1000 || all.length >= 20000) break;
+    }
+    const data = all;
     const list = ((data as Incidente[]) ?? []).map((item) => ({
       ...item,
       prefixo: item.prefixo_efetivo ?? item.prefixo,
@@ -91,7 +104,7 @@ function IncidentesFeed() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [dataDe, dataAte]);
   useEffect(() => {
     loadFormTipos().then((ts) => { TIPOS_CACHE = ts; setTiposForm(ts); }).catch(() => {});
   }, []);
