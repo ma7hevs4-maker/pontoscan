@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { useFotosEnabled } from "@/hooks/use-fotos-enabled";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -85,7 +86,12 @@ function IncidentesFeed() {
     };
     const all: Incidente[] = [];
     for (let from = 0; ; from += 1000) {
-      const { data: page } = await build().range(from, from + 999);
+      let page: any = null, error: any = null;
+      for (let t = 0; t < 3; t++) {
+        ({ data: page, error } = await build().range(from, from + 999));
+        if (!error) break;
+      }
+      if (error) { toast.error("Não foi possível carregar todos os incidentes do período. Tente novamente."); break; }
       const arr = (page as Incidente[]) ?? [];
       all.push(...arr);
       if (arr.length < 1000 || all.length >= 50000) break;
