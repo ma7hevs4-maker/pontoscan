@@ -73,18 +73,22 @@ function IncidentesFeed() {
   const load = async () => {
     setLoading(true);
     const { de, ate } = periodoRef.current;
-    let q = (supabase as any)
-      .from("vw_incidentes_admin")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (de) q = q.gte("created_at", new Date(de + "T00:00:00").toISOString());
-    if (ate) q = q.lte("created_at", new Date(ate + "T23:59:59.999").toISOString());
+    const build = () => {
+      let q = (supabase as any)
+        .from("vw_incidentes_admin")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
+      if (de) q = q.gte("created_at", new Date(de + "T00:00:00").toISOString());
+      if (ate) q = q.lte("created_at", new Date(ate + "T23:59:59.999").toISOString());
+      return q;
+    };
     const all: Incidente[] = [];
     for (let from = 0; ; from += 1000) {
-      const { data: page } = await q.range(from, from + 999);
+      const { data: page } = await build().range(from, from + 999);
       const arr = (page as Incidente[]) ?? [];
       all.push(...arr);
-      if (arr.length < 1000 || all.length >= 20000) break;
+      if (arr.length < 1000 || all.length >= 50000) break;
     }
     const data = all;
     const list = ((data as Incidente[]) ?? []).map((item) => ({

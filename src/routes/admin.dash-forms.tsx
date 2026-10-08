@@ -131,20 +131,37 @@ function DashForms() {
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      const { data } = await (supabase as any)
-        .from("incidentes")
-        .select("tipo, dados, created_at, origem, polo_eletricista, polo_prefixo, polo_geo")
-        .order("created_at", { ascending: false })
-        .limit(5000);
-      setRows((data as Row[]) ?? []);
       const [ts, qs] = await Promise.all([loadFormTipos(true), loadAllFormQuestions()]);
       setTipos(ts);
       setAllQs(qs);
       setTipo((prev) => (ts.some((t) => t.chave === prev) ? prev : ts[0]?.chave ?? prev));
-      setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      setLoading(true);
+      const all: Row[] = [];
+      for (let from = 0; ; from += 1000) {
+        let q = (supabase as any)
+          .from("incidentes")
+          .select("tipo, dados, created_at, origem, polo_eletricista, polo_prefixo, polo_geo")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (de) q = q.gte("created_at", new Date(de + "T00:00:00").toISOString());
+        if (ate) q = q.lte("created_at", new Date(ate + "T23:59:59.999").toISOString());
+        const { data } = await q.range(from, from + 999);
+        const arr = (data as Row[]) ?? [];
+        all.push(...arr);
+        if (arr.length < 1000 || all.length >= 50000) break;
+      }
+      if (cancel) return;
+      setRows(all);
+      setLoading(false);
+    })();
+    return () => { cancel = true; };
+  }, [de, ate]);
 
   const qsDoTipo = useMemo(() => allQs[tipo] ?? [], [allQs, tipo]);
 
