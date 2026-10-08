@@ -8,6 +8,13 @@
       "when": 1791462103852,
       "tag": "0000_add_date_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791462284342,
+      "tag": "0001_speed_vw_incidentes_admin",
+      "breakpoints": true
     }
   ]
 }
