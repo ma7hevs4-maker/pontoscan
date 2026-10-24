@@ -1,4 +1,3 @@
-/// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import { campusLimit, campusUsesSince, collectCampusRows } from "./export-campus";
 
@@ -15,7 +14,7 @@ describe("Campus export", () => {
     expect(campusUsesSince("bases")).toBe(false);
   });
   test("collects 5000 rows in five inclusive ranges of 1000", async () => {
-    const calls: number[][] = [];
+    const calls = [];
     const result = await collectCampusRows(5000, async (from, to) => {
       calls.push([from, to]);
       return { data: Array.from({ length: to - from + 1 }, (_, i) => from + i), error: null };
@@ -34,7 +33,7 @@ describe("Campus export", () => {
     expect(calls).toBe(2);
   });
   test("handles a final range smaller than 1000", async () => {
-    const calls: number[][] = [];
+    const calls = [];
     const result = await collectCampusRows(1250, async (from, to) => {
       calls.push([from, to]);
       return { data: Array(to - from + 1).fill(0), error: null };
