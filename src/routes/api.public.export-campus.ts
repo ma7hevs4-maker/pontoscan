@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { campusLimit, campusUsesSince, collectCampusRows } from "@/lib/export-campus";
 
 // Exportação somente-leitura para integração externa (Campus).
 // Protegida por token estático em EXPORT_CAMPUS_TOKEN. Nunca logar o token.
@@ -59,20 +59,24 @@ export const Route = createFileRoute("/api/public/export-campus")({
           desde = d.toISOString();
         }
 
-        const limiteRaw = Number(url.searchParams.get("limite") ?? 5000);
-        const limite = Number.isFinite(limiteRaw) && limiteRaw > 0 ? Math.min(Math.floor(limiteRaw), 10000) : 5000;
+        const limite = campusLimit(url.searchParams.get("limite"));
 
         // profiles: somente colunas não sensíveis (sem e-mail, sem nada de auth).
         const select = tabela === "profiles" ? "id, nome, prefixo, polo" : "*";
 
-        let query = (supabaseAdmin as any).from(tabela).select(select).order("created_at", { ascending: true }).limit(limite);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data, error } = await collectCampusRows(limite, (from, to) => {
+          let query = supabaseAdmin.from(tabela).select(select)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to);
 
-        // "desde" só se aplica a registros e incidentes; as demais tabelas devolvem tudo.
-        if (desde && (tabela === "registros" || tabela === "incidentes")) {
-          query = query.gt("created_at", desde);
-        }
-
-        const { data, error } = await query;
+          // Todas estas tabelas possuem created_at; bases mantém o comportamento anterior.
+          if (desde && campusUsesSince(tabela)) {
+            query = query.gt("created_at", desde);
+          }
+          return query;
+        });
         if (error) {
           console.error("export-campus error:", error.message);
           return Response.json({ erro: "Erro ao consultar dados" }, { status: 500 });
