@@ -24,6 +24,7 @@ import { Route as AdminMetricasRouteImport } from './routes/admin.metricas'
 import { Route as ApiAdminPhotosRouteImport } from './routes/api.admin-photos'
 import { Route as ApiAdminPurgeRouteImport } from './routes/api.admin-purge'
 import { Route as ApiAdminUsersRouteImport } from './routes/api.admin-users'
+import { Route as ApiPublicExportCampusRouteImport } from './routes/api.public.export-campus'
 import { Route as ApiPublicIncidenteParceiraRouteImport } from './routes/api.public.incidente-parceira'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
   path: '/api/admin-users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicExportCampusRoute = ApiPublicExportCampusRouteImport.update({
+  id: '/api/public/export-campus',
+  path: '/api/public/export-campus',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicIncidenteParceiraRoute =
   ApiPublicIncidenteParceiraRouteImport.update({
     id: '/api/public/incidente-parceira',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/export-campus': typeof ApiPublicExportCampusRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRoutesByTo {
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/export-campus': typeof ApiPublicExportCampusRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRoutesById {
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/api/admin-photos': typeof ApiAdminPhotosRoute
   '/api/admin-purge': typeof ApiAdminPurgeRoute
   '/api/admin-users': typeof ApiAdminUsersRoute
+  '/api/public/export-campus': typeof ApiPublicExportCampusRoute
   '/api/public/incidente-parceira': typeof ApiPublicIncidenteParceiraRoute
 }
 export interface FileRouteTypes {
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/admin-photos'
     | '/api/admin-purge'
     | '/api/admin-users'
+    | '/api/public/export-campus'
     | '/api/public/incidente-parceira'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/api/admin-photos'
     | '/api/admin-purge'
     | '/api/admin-users'
+    | '/api/public/export-campus'
     | '/api/public/incidente-parceira'
   id:
     | '__root__'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/admin-photos'
     | '/api/admin-purge'
     | '/api/admin-users'
+    | '/api/public/export-campus'
     | '/api/public/incidente-parceira'
   fileRoutesById: FileRoutesById
 }
@@ -230,6 +242,7 @@ export interface RootRouteChildren {
   ApiAdminPhotosRoute: typeof ApiAdminPhotosRoute
   ApiAdminPurgeRoute: typeof ApiAdminPurgeRoute
   ApiAdminUsersRoute: typeof ApiAdminUsersRoute
+  ApiPublicExportCampusRoute: typeof ApiPublicExportCampusRoute
   ApiPublicIncidenteParceiraRoute: typeof ApiPublicIncidenteParceiraRoute
 }
 
@@ -340,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/export-campus': {
+      id: '/api/public/export-campus'
+      path: '/api/public/export-campus'
+      fullPath: '/api/public/export-campus'
+      preLoaderRoute: typeof ApiPublicExportCampusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/incidente-parceira': {
       id: '/api/public/incidente-parceira'
       path: '/api/public/incidente-parceira'
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminPhotosRoute: ApiAdminPhotosRoute,
   ApiAdminPurgeRoute: ApiAdminPurgeRoute,
   ApiAdminUsersRoute: ApiAdminUsersRoute,
+  ApiPublicExportCampusRoute: ApiPublicExportCampusRoute,
   ApiPublicIncidenteParceiraRoute: ApiPublicIncidenteParceiraRoute,
 }
 export const routeTree = rootRouteImport
