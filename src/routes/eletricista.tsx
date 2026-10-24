@@ -15,7 +15,7 @@ import { ScanLine, LogOut, Loader2, CheckCircle2, XCircle, QrCode, History, User
 import { AlterarSenhaDialog } from "@/components/AlterarSenhaDialog";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/eletricista")({ component: EletricistaPage });
+export const Route = createFileRoute("/eletricista")({ head: () => ({ meta: [{ title: "Ponto do eletricista · PontoScan" }, { name: "description", content: "Registre pontos e incidentes das atividades de campo no PontoScan." }, { property: "og:title", content: "Ponto do eletricista · PontoScan" }, { property: "og:description", content: "Registre pontos e incidentes das atividades de campo no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: EletricistaPage });
 
 type Etapa = "PONTO" | "POS_DDS" | "SAIDA_BASE";
 const ETAPA_LABEL: Record<Etapa, string> = { PONTO: "Ponto", POS_DDS: "Pré DDS", SAIDA_BASE: "Sair da Base" };

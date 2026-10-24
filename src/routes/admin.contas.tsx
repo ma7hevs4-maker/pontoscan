@@ -13,7 +13,7 @@ import { Loader2, KeyRound, Mail, Search, Tag, ArrowUp, ArrowDown, ArrowUpDown, 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/contas")({ component: ContasPage });
+export const Route = createFileRoute("/admin/contas")({ head: () => ({ meta: [{ title: "Contas · PontoScan" }, { name: "description", content: "Gerenciamento de contas e solicitações de acesso no PontoScan." }, { property: "og:title", content: "Contas · PontoScan" }, { property: "og:description", content: "Gerenciamento de contas e solicitações de acesso no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: ContasPage });
 
 interface AdminRow { user_id: string; email: string | null; nome: string; role: string; polo: string | null; }
 interface UserRow { id: string; nome: string; prefixo: string; polo: string; email: string | null; }

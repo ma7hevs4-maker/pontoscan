@@ -13,7 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useAuth } from "@/lib/auth-context";
 import { loadAllFormQuestions, loadFormTipos, visibleQuestions, type FormQuestion, type FormTipo } from "@/lib/form-config";
 
-export const Route = createFileRoute("/admin/dash-forms")({ component: DashForms });
+export const Route = createFileRoute("/admin/dash-forms")({ head: () => ({ meta: [{ title: "Dash Forms · PontoScan" }, { name: "description", content: "Respostas e indicadores dos formulários de campo no PontoScan." }, { property: "og:title", content: "Dash Forms · PontoScan" }, { property: "og:description", content: "Respostas e indicadores dos formulários de campo no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: DashForms });
 
 const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"] as const;
 

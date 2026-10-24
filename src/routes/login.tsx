@@ -12,7 +12,7 @@ import { ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { POLOS } from "@/lib/auth-context";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
+export const Route = createFileRoute("/login")({ head: () => ({ meta: [{ title: "Entrar · PontoScan" }, { name: "description", content: "Acesse o PontoScan para registrar e acompanhar atividades de campo." }, { property: "og:title", content: "Entrar · PontoScan" }, { property: "og:description", content: "Acesse o PontoScan para registrar e acompanhar atividades de campo." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: LoginPage });
 
 const PARCEIRAS = ["Engelmig", "PSE", "3C", "ELLCA", "Ceneged"] as const;
 const PARCEIRA_KEY = "pontoscan.parceira_session";
