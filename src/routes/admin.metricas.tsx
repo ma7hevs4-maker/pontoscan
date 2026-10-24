@@ -12,7 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
-export const Route = createFileRoute("/admin/metricas")({ component: MetricasPage });
+export const Route = createFileRoute("/admin/metricas")({ head: () => ({ meta: [{ title: "Métricas · PontoScan" }, { name: "description", content: "Indicadores de presença e tempos das equipes de campo no PontoScan." }, { property: "og:title", content: "Métricas · PontoScan" }, { property: "og:description", content: "Indicadores de presença e tempos das equipes de campo no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: MetricasPage });
 
 interface VRow {
   usuario_id: string; nome: string; prefixo: string; polo: string;

@@ -24,7 +24,7 @@ function rotuloTipo(chave: string): string {
 import { CruzamentoImport } from "@/components/admin/CruzamentoImport";
 import { nomeProcesso, PROCESSOS_UNICOS } from "@/lib/processos";
 
-export const Route = createFileRoute("/admin/incidentes")({ component: IncidentesFeed });
+export const Route = createFileRoute("/admin/incidentes")({ head: () => ({ meta: [{ title: "Incidentes · PontoScan" }, { name: "description", content: "Consulta e exportação de incidentes registrados no PontoScan." }, { property: "og:title", content: "Incidentes · PontoScan" }, { property: "og:description", content: "Consulta e exportação de incidentes registrados no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: IncidentesFeed });
 
 const POLOS = ["Magé","Niterói","São Gonçalo","Serrana","Sul","Campos","Lagos","Macaé","Noroeste","Perdas"] as const;
 

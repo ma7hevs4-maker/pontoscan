@@ -13,7 +13,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { Loader2, MapPin, Plus, QrCode, Printer, Power, Crosshair, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/bases")({ component: BasesPage });
+export const Route = createFileRoute("/admin/bases")({ head: () => ({ meta: [{ title: "Bases · PontoScan" }, { name: "description", content: "Gerenciamento das bases e códigos QR de ponto no PontoScan." }, { property: "og:title", content: "Bases · PontoScan" }, { property: "og:description", content: "Gerenciamento das bases e códigos QR de ponto no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: BasesPage });
 
 const ETAPAS = [
   { key: "PONTO", label: "Ponto" },

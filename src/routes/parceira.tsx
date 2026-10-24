@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { IncidenteDialog, type IncidenteActor } from "@/components/IncidenteDialog";
 import { AlertTriangle, LogOut, ScanLine, Building2 } from "lucide-react";
 
-export const Route = createFileRoute("/parceira")({ component: ParceiraPage });
+export const Route = createFileRoute("/parceira")({ head: () => ({ meta: [{ title: "Área da parceira · PontoScan" }, { name: "description", content: "Registro de incidentes das equipes parceiras no PontoScan." }, { property: "og:title", content: "Área da parceira · PontoScan" }, { property: "og:description", content: "Registro de incidentes das equipes parceiras no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: ParceiraPage });
 
 const PARCEIRA_KEY = "pontoscan.parceira_session";
 

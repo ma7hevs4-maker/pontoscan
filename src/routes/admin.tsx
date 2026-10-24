@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { FormBuilder } from "@/components/admin/FormBuilder";
 import { loadFormsEnabled } from "@/lib/form-config";
 
-export const Route = createFileRoute("/admin")({ component: AdminLayout });
+export const Route = createFileRoute("/admin")({ head: () => ({ meta: [{ title: "Painel administrativo · PontoScan" }, { name: "description", content: "Acompanhe registros e gerencie as operações de campo no PontoScan." }, { property: "og:title", content: "Painel administrativo · PontoScan" }, { property: "og:description", content: "Acompanhe registros e gerencie as operações de campo no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: AdminLayout });
 
 function AdminLayout() {
   const { user, role, profile, adminPolo, loading, signOut } = useAuth();

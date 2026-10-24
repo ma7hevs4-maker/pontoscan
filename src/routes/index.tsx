@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Loader2, ScanLine } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [{ title: "PontoScan · Controle de ponto" }, { name: "description", content: "Controle de ponto e acompanhamento de equipes de campo no PontoScan." }, { property: "og:title", content: "PontoScan · Controle de ponto" }, { property: "og:description", content: "Controle de ponto e acompanhamento de equipes de campo no PontoScan." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Index,
 });
 
